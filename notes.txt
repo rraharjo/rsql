@@ -1,0 +1,5 @@
+.rsql format:
+
+first 4 bytes = n : how many items are stored
+the next k * n bytes are the row data, k being the row size
+the last 4 * (n + 1) are the children
