@@ -3,9 +3,9 @@
 #define DEGREE 4
 int main(){
     std::vector<rsql::Column> sample_structure;
-    sample_structure.push_back(rsql::IntColumn(4));
-    sample_structure.push_back(rsql::DateColumn());
-    sample_structure.push_back(rsql::CharColumn(10));
+    sample_structure.push_back(rsql::Column::int_column(4));
+    sample_structure.push_back(rsql::Column::date_column());
+    sample_structure.push_back(rsql::Column::char_column(10));
     rsql::BNode *new_node = new rsql::BNode(sample_structure, DEGREE);
     std::string sample_insert = "fourdd-MM-yyyy10bytelong";
     new_node->insert(sample_insert);

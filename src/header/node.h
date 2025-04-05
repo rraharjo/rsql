@@ -1,24 +1,28 @@
 #ifndef BNODE_H
 #define BNODE_H
+#include <regex>
 #include <vector>
 #include <fstream>
 #include <cstring>
 #include "column.h"
+namespace rsql{
+    class BTree;
+}
 namespace rsql
 {
     class BNode
     {
-    private:
-        std::vector<Column> cols;
+    public:
+        BTree *tree;
         // except the root, minimum of t-1 keys and a maximum of 2t - 1 keys
         std::vector<char *> keys;
         /*the number represent the file for the next node
         e.g. MYDB_int
         */
-        std::vector<int> children;
+        std::vector<unsigned int> children;
+        unsigned int node_num;
         size_t size;
-        // degree
-        size_t t;
+        bool changed, leaf;
 
     public:
         /**
@@ -28,17 +32,10 @@ namespace rsql
          * @param file_name
          * @return BNode*
          */
-        static BNode *read_disk(std::vector<Column> &cols, size_t t, std::string file_name);
-        BNode(std::vector<Column> &cols, size_t t);
+        static BNode *read_disk(BTree *tree, std::string file_name);
+        BNode(BTree *tree, unsigned int node_num);
         ~BNode();
-        /**
-         * @brief Get the width of the row in bytes
-         * @return size_t
-         */
-        size_t get_width();
-        size_t get_size();
-        size_t get_t();
-        void insert(const std::string row);
+        void insert(const char *row);
         void write_disk(std::string file_name);
     };
 }

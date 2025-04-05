@@ -1,35 +1,28 @@
 #ifndef COLUMN_H
 #define COLUMN_H
 #include <string>
+#include "data_type.h"
 
 #define MAX_COL_NAME 64
 #define DATE_COL_W 10
-namespace rsql{
-    class Column{
-        protected:
-            //std::string col_name;
-            // How many bytes the column is
-            size_t width;
-        public:
-            Column(size_t width);
+#define PKEY_COL_W 32 //32 bytes -> 248 bits pretty -> 2^248 pretty sure this is big enough :)
+namespace rsql
+{
+    class Column
+    {
+    public:
+        // std::string col_name;
+        // How many bytes the column is
+        size_t width;
+        DataType type;
+        Column(size_t width, DataType type);
 
-            size_t get_width();
-    };
+        static Column pkey_column();
+        static Column int_column(size_t width);
+        static Column char_column(size_t width);
+        static Column date_column();
 
-    class IntColumn : public Column{
-        public:
-            IntColumn(size_t width);
-    };
-
-    class DateColumn: public Column{
-        public:
-            //dd-MM-yyyy
-            DateColumn();
-    };
-
-    class CharColumn : public Column{
-        public:
-            CharColumn(size_t width);
+        static Column get_column(DataType type, size_t width);
     };
 }
 #endif

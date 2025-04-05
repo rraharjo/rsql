@@ -1,0 +1,84 @@
+#include "tree.h"
+namespace rsql
+{
+    BTree::BTree(const std::vector<Column> columns)
+        : columns(columns), root_num(1), max_node_num(1), t(DEGREE)
+    {
+        this->width = 0;
+        for (Column &c : this->columns){
+            this->width += c.width;
+        }
+    }
+    BTree *BTree::read_disk()
+    {
+        std::ifstream tree_file(TREE_FILE, std::ios::binary);
+        if (!tree_file)
+        {
+            throw std::invalid_argument("Can't open read tree file...");
+        }
+        char s_pad[sizeof(int)];
+        tree_file.read(s_pad, 4);
+        int col_size = *reinterpret_cast<int *>(s_pad);
+        std::vector<Column> cols;
+        for (int i = 0; i < col_size; i++)
+        {
+            char c_type[DT_STR_LEN];
+            tree_file.read(c_type, DT_STR_LEN);
+            std::string c_type_str(c_type, DT_STR_LEN);
+            char c_len[sizeof(int)];
+            tree_file.read(c_len, 4);
+            int c_width = *reinterpret_cast<int *>(c_len);
+            cols.push_back(Column::get_column(str_to_dt(c_type_str), (size_t)c_width));
+        }
+        tree_file.read(s_pad, 4);
+        unsigned int root_num = *reinterpret_cast<int *>(s_pad);
+        tree_file.read(s_pad, 4);
+        unsigned int max_node_num = *reinterpret_cast<int *>(s_pad);
+        BTree *to_ret = new BTree(cols);
+        to_ret->root_num = root_num;
+        to_ret->max_node_num = max_node_num;
+        tree_file.close();
+        return to_ret;
+    }
+
+    void BTree::insert_row(const char *src)
+    {
+        std::string root_file_name = "node_" + std::to_string(this->root_num) + ".rsql";
+        BNode *root = nullptr;
+        try{
+            root = BNode::read_disk(this, root_file_name);
+        }
+        catch (const std::invalid_argument &e){
+            root = new BNode(this, this->root_num);
+            root->leaf = true;
+            root->write_disk(root_file_name);
+        }
+        root->insert(src);
+        delete root;
+    }
+
+    void BTree::write_disk()
+    {
+        std::ofstream tree_file(TREE_FILE, std::ios::binary);
+        if (!tree_file)
+        {
+            throw std::invalid_argument("Can't open write tree file...");
+        }
+        int col_size = this->columns.size();
+        char *s_pad = reinterpret_cast<char *>(&col_size);
+        tree_file.write(s_pad, 4);
+        for (int i = 0; i < col_size; i++)
+        {
+            std::string type = dt_to_str(this->columns[i].type);
+            tree_file.write(type.c_str(), DT_STR_LEN);
+            int width = this->columns[i].width;
+            char *w_pad = reinterpret_cast<char *>(&width);
+            tree_file.write(w_pad, 4);
+        }
+        char *r_pad = reinterpret_cast<char *>(&this->root_num);
+        tree_file.write(r_pad, 4);
+        char *max_node_pad = reinterpret_cast<char *>(&this->max_node_num);
+        tree_file.write(max_node_pad, 4);
+        tree_file.close();
+    }
+}

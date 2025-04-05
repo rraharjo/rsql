@@ -1,11 +1,27 @@
 #include "node.h"
+#include "tree.h"
+
+unsigned int get_node_no(const std::string& file_name){
+    std::regex pattern(".*_([0-9]+)\\.rsql");
+    std::smatch match;
+    unsigned int node_no = 0;
+    if (std::regex_match(file_name, match, pattern)) {
+        // match[1] contains the first captured group, which is the number
+        std::string extracted_number = match[1];
+        node_no = std::stoi(extracted_number);
+    } else {
+        throw std::invalid_argument("File name is in the wrong format");
+    }
+    return node_no;
+}
 
 namespace rsql
 {
-    BNode *BNode::read_disk(std::vector<Column> &cols, size_t t, std::string file_name)
+    BNode *BNode::read_disk(BTree *tree, std::string file_name)
     {
-        BNode *new_node = new BNode(cols, t);
-        size_t row_size = new_node->get_width();
+        unsigned int node_no = get_node_no(file_name);
+        BNode *new_node = new BNode(tree, node_no);
+        size_t row_size = tree->width;
         std::ifstream node_file(file_name, std::ios::binary);
         if (!node_file)
         {
@@ -18,7 +34,7 @@ namespace rsql
         new_node->size = node_size;
         for (int i = 0; i < node_size; i++)
         {
-            new_node->keys[i] = new char[new_node->get_width()];
+            new_node->keys[i] = new char[new_node->tree->width];
             node_file.read(new_node->keys[i], row_size);
         }
         for (int i = 0; i <= node_size; i++)
@@ -32,41 +48,42 @@ namespace rsql
         node_file.close();
         return new_node;
     }
-    BNode::BNode(std::vector<Column> &cols, size_t t) : cols(cols), t(t)
+    BNode::BNode(BTree *tree, unsigned int node_num)
+        : tree(tree), node_num(node_num), leaf(false), changed(false)
     {
-        this->keys.reserve(2 * this->t - 1);
+        this->keys.reserve(2 * this->tree->t - 1);
         this->keys.assign(this->keys.capacity(), nullptr);
-        this->children.reserve(2 * this->t);
-        this->children.assign(this->children.capacity(), -1);
+        this->children.reserve(2 * this->tree->t);
+        this->children.assign(this->children.capacity(), 0);
     }
 
     BNode::~BNode()
     {
-        for (int i = 0; i < this->get_size(); i++)
+        for (int i = 0; i < this->size; i++)
         {
             delete[] this->keys[i];
         }
     }
 
-    void BNode::insert(const std::string row){
-        if (row.length() > this->get_width()){
-            throw std::invalid_argument("Row is too long");
-        }
-        this->keys[this->get_size()] = new char[this->get_width()];
-        std::memcpy(this->keys[this->get_size()], row.c_str(), this->get_width());
+    void BNode::insert(const char *row)
+    {
+        this->keys[this->size] = new char[this->tree->width];
+        std::memcpy(this->keys[this->size], row, this->tree->width);
         this->size++;
     }
 
     void BNode::write_disk(std::string file_name)
     {
         std::ofstream node_file(file_name, std::ios::binary);
-        int this_size = (int) this->get_size();
+        int this_size = (int)this->size;
         char *npad = reinterpret_cast<char *>(&this_size);
         node_file.write(npad, 4);
-        for (int i = 0 ; i < this->get_size() ; i++){
-            node_file.write(this->keys[i], this->get_width());
+        for (int i = 0; i < this->size; i++)
+        {
+            node_file.write(this->keys[i], this->tree->width);
         }
-        for (int i = 0 ; i <= this->get_size() ; i++){
+        for (int i = 0; i <= this->size; i++)
+        {
             int cur_child = this->children[i];
             char *cpad = reinterpret_cast<char *>(&cur_child);
             node_file.write(cpad, 4);
@@ -74,28 +91,5 @@ namespace rsql
         node_file.close();
     }
 
-    size_t BNode::get_size()
-    {
-        return this->size;
-    }
-    size_t BNode::get_t()
-    {
-        return this->t;
-    }
-    size_t BNode::get_width()
-    {
-        size_t to_ret = 0;
-        for (Column &c : this->cols)
-        {
-            to_ret += c.get_width();
-        }
-        return to_ret;
-    }
-    std::ostream &operator<<(std::ostream &o, const BNode &node){
-        for (int i = 0 ; i < node.size ; i++){
-            o << std::string(node.keys[i], 24) << " ";
-        }
-        return o;
-    }
 
 }
