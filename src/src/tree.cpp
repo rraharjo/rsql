@@ -2,12 +2,19 @@
 namespace rsql
 {
     BTree::BTree(const std::vector<Column> columns)
-        : columns(columns), root_num(1), max_node_num(1), t(DEGREE)
+        : columns(columns), root_num(1), max_node_num(1), t(DEGREE), root(nullptr)
     {
         this->width = 0;
-        for (Column &c : this->columns){
+        for (Column &c : this->columns)
+        {
             this->width += c.width;
         }
+    }
+
+    BTree::~BTree()
+    {
+        this->write_disk();
+        delete this->root;
     }
     BTree *BTree::read_disk()
     {
@@ -43,18 +50,35 @@ namespace rsql
 
     void BTree::insert_row(const char *src)
     {
-        std::string root_file_name = "node_" + std::to_string(this->root_num) + ".rsql";
-        BNode *root = nullptr;
-        try{
-            root = BNode::read_disk(this, root_file_name);
+        if (this->root == nullptr)
+        {
+            std::string root_file_name = "node_" + std::to_string(this->root_num) + ".rsql";
+            try
+            {
+                this->root = BNode::read_disk(this, root_file_name);
+            }
+            catch (const std::invalid_argument &e)
+            {
+                this->root = new BNode(this, this->root_num);//set this changed to true
+                this->root->leaf = true;
+            }
         }
-        catch (const std::invalid_argument &e){
-            root = new BNode(this, this->root_num);
-            root->leaf = true;
-            root->write_disk(root_file_name);
+        if (this->root->full()){
+            BNode *new_root = new BNode(this, ++this->max_node_num);//This should be max_node_num + 1
+            this->root_num = this->max_node_num;
+            new_root->leaf = false;
+            new_root->children[0] = this->root->node_num;
+            BNode *new_children = new_root->split_children(0, this->root);
+            delete new_children;
+            delete this->root;
+            this->root = new_root;
+            this->root->write_disk();
+            this->root->insert(src);
         }
-        root->insert(src);
-        delete root;
+        else{
+            this->root->insert(src);
+        }
+        
     }
 
     void BTree::write_disk()

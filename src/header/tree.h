@@ -1,6 +1,7 @@
 #ifndef BTREE_H
 #define BTREE_H
 #include "node.h"
+#include <iostream>
 #define DEGREE 4
 #define TREE_FILE "tree.rsql"
 namespace rsql
@@ -19,6 +20,7 @@ namespace rsql
     public:
         static BTree *read_disk();
         BTree(const std::vector<Column> columns);
+        ~BTree();
 
         /**
          * @brief insert src to the tree, length of the src must equal the width of the table

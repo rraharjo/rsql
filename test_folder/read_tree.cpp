@@ -9,5 +9,12 @@ int main(){
     tree->write_disk();
     delete tree;
     tree = rsql::BTree::read_disk();
+    char src[32 + 4 + 10 + 10 + 1] = "6bytes6bytes6bytes6bytes6bytes6bytes6bytes6bytes6bytes2b";
+    for (int i = 0 ; i < 7 ; i++){
+        tree->insert_row(src);
+        src[PKEY_COL_W - 1]++;
+    }
+    tree->insert_row(src);
+    delete tree;
     return 0;
 }

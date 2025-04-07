@@ -12,6 +12,30 @@ namespace rsql
 {
     class BNode
     {
+    private:
+        /**
+         * @brief Compare the first k byte, where k is the size of the first column
+         * 
+         * @param k_1 
+         * @param k_2 
+         * @return < 0 if k_1 is less than k_2 ; > 0 if k_1 is larger than k_2
+         */
+        int compare_key(const char *k_1, const char *k_2);
+        /**
+         * @brief Shift keys to the right by 1 unit, starting at idx (inclusive)
+         * 
+         * @param idx 
+         */
+        void shift_keys(size_t idx);
+        void shift_children(size_t idx);
+        /**
+         * @brief Split the children node c_i, which has to be this children at index idx
+         * 
+         * @param idx position of the target child
+         * @param c_i a pointer to the child node (c_i has to be in index idx)
+         * @return a pointer to the newly created node, at position idx + 1
+         */
+        BNode *split_children(size_t idx, BNode *c_i);
     public:
         BTree *tree;
         // except the root, minimum of t-1 keys and a maximum of 2t - 1 keys
@@ -35,8 +59,11 @@ namespace rsql
         static BNode *read_disk(BTree *tree, std::string file_name);
         BNode(BTree *tree, unsigned int node_num);
         ~BNode();
+        bool full();
         void insert(const char *row);
-        void write_disk(std::string file_name);
+        void write_disk();
+
+        friend class BTree;
     };
 }
 #endif
