@@ -15,6 +15,9 @@ int main(){
         src[PKEY_COL_W - 1]++;
     }
     tree->insert_row(src);
+    char *row = tree->find_row("6bytes6bytes6bytes6bytes6bytes6e");
+    std::cout.write(row, 56);
+    delete[] row;
     delete tree;
     return 0;
 }

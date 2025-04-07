@@ -16,6 +16,23 @@ namespace rsql
         this->write_disk();
         delete this->root;
     }
+
+    void BTree::get_root_node(){
+        if (this->root == nullptr)
+        {
+            std::string root_file_name = "node_" + std::to_string(this->root_num) + ".rsql";
+            try
+            {
+                this->root = BNode::read_disk(this, root_file_name);
+            }
+            catch (const std::invalid_argument &e)
+            {
+                this->root = new BNode(this, this->root_num);
+                this->root->changed = true;
+                this->root->leaf = true;
+            }
+        }
+    }
     BTree *BTree::read_disk()
     {
         std::ifstream tree_file(TREE_FILE, std::ios::binary);
@@ -48,23 +65,16 @@ namespace rsql
         return to_ret;
     }
 
+    char *BTree::find_row(const char *key){
+        this->get_root_node();
+        return this->root->find(key);
+    }
+
     void BTree::insert_row(const char *src)
     {
-        if (this->root == nullptr)
-        {
-            std::string root_file_name = "node_" + std::to_string(this->root_num) + ".rsql";
-            try
-            {
-                this->root = BNode::read_disk(this, root_file_name);
-            }
-            catch (const std::invalid_argument &e)
-            {
-                this->root = new BNode(this, this->root_num);//set this changed to true
-                this->root->leaf = true;
-            }
-        }
+        this->get_root_node();
         if (this->root->full()){
-            BNode *new_root = new BNode(this, ++this->max_node_num);//This should be max_node_num + 1
+            BNode *new_root = new BNode(this, ++this->max_node_num);
             this->root_num = this->max_node_num;
             new_root->leaf = false;
             new_root->children[0] = this->root->node_num;

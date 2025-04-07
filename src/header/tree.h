@@ -6,9 +6,10 @@
 #define TREE_FILE "tree.rsql"
 namespace rsql
 {
+    class BNode;
     class BTree
     {
-    public:
+    private:
         BNode *root;
         unsigned int root_num;
         unsigned int max_node_num;
@@ -17,11 +18,14 @@ namespace rsql
         //First column is the index
         std::vector<Column> columns;
 
+        void get_root_node();
+
     public:
         static BTree *read_disk();
         BTree(const std::vector<Column> columns);
         ~BTree();
 
+        char *find_row(const char *key);
         /**
          * @brief insert src to the tree, length of the src must equal the width of the table
          * 
@@ -30,6 +34,7 @@ namespace rsql
         void insert_row(const char *src);
 
         void write_disk();
+        friend class BNode;
     };
 }
 #endif

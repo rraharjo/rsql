@@ -27,6 +27,11 @@ namespace rsql
          * @param idx 
          */
         void shift_keys(size_t idx);
+        /**
+         * @brief Shift children to the right by 1 unit, starting at idx (inclusive)
+         * 
+         * @param idx 
+         */
         void shift_children(size_t idx);
         /**
          * @brief Split the children node c_i, which has to be this children at index idx
@@ -56,10 +61,17 @@ namespace rsql
          * @param file_name
          * @return BNode*
          */
-        static BNode *read_disk(BTree *tree, std::string file_name);
+        static BNode *read_disk(BTree *tree, const std::string file_name);
         BNode(BTree *tree, unsigned int node_num);
         ~BNode();
         bool full();
+        /**
+         * @brief find the first row that matches the key
+         * 
+         * @param key only compares the first k bytes, where k is the width of the first column
+         * @return n bytes of char dynamically allocated, where n is the width of the table. If not found it returns nullptr
+         */
+        char *find(const char *key);
         void insert(const char *row);
         void write_disk();
 

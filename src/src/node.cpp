@@ -26,7 +26,7 @@ std::string get_file_name(const size_t no)
 
 namespace rsql
 {
-    BNode *BNode::read_disk(BTree *tree, std::string file_name)
+    BNode *BNode::read_disk(BTree *tree, const std::string file_name)
     {
         unsigned int node_no = get_node_no(file_name);
         size_t row_size = tree->width;
@@ -79,7 +79,6 @@ namespace rsql
             throw std::runtime_error("Can't shift key when node is full");
             return;
         }
-        // this->keys[this->size] = new char[this->tree->width];
         size_t j = this->size;
         while (j > idx)
         {
@@ -117,7 +116,7 @@ namespace rsql
         {
             throw std::runtime_error("Can't split a child if it's not full");
         }
-        BNode *new_node = new BNode(this->tree, ++this->tree->max_node_num);//
+        BNode *new_node = new BNode(this->tree, ++this->tree->max_node_num);
         new_node->leaf = c_i->leaf;
         this->shift_keys(idx);
         this->shift_children(idx + 1);
@@ -148,7 +147,7 @@ namespace rsql
     }
 
     BNode::BNode(BTree *tree, unsigned int node_num)
-        : tree(tree), node_num(node_num), leaf(false), changed(false), size(0)
+        : tree(tree), node_num(node_num), leaf(false), changed(true), size(0)
     {
         this->keys.reserve(2 * this->tree->t - 1);
         this->keys.assign(this->keys.capacity(), nullptr);
@@ -157,7 +156,9 @@ namespace rsql
     }
     BNode::~BNode()
     {
-        this->write_disk();
+        if (this->changed){
+            this->write_disk();
+        }
         for (int i = 0; i < this->size; i++)
         {
             delete[] this->keys[i];
@@ -167,6 +168,42 @@ namespace rsql
     bool BNode::full()
     {
         return this->size == this->keys.capacity();
+    }
+    char *BNode::find(const char *key)
+    {
+        size_t cur_idx = 0;
+        while (cur_idx < this->size && this->compare_key(key, this->keys[cur_idx]) > 0)
+        {
+            cur_idx++;
+        }
+        if (cur_idx < this->size && this->compare_key(key, this->keys[cur_idx]) == 0)
+        {
+            char *to_ret = new char[this->tree->width];
+            std::memcpy(to_ret, this->keys[cur_idx], this->tree->width);
+            if (this->tree->root_num != this->node_num)
+            {
+                delete this;
+            }
+            return to_ret;
+        }
+        else if (!this->leaf)
+        {
+            std::string c_i_file = get_file_name(this->children[cur_idx]);
+            BNode *c_i = BNode::read_disk(this->tree, c_i_file);
+            if (this->tree->root_num != this->node_num)
+            {
+                delete this;
+            }
+            return c_i->find(key);
+        }
+        else
+        {
+            if (this->tree->root_num != this->node_num)
+            {
+                delete this;
+            }
+            return nullptr;
+        }
     }
     void BNode::insert(const char *src)
     {
@@ -182,6 +219,9 @@ namespace rsql
             std::memcpy(this->keys[cur_idx], src, this->tree->width);
             this->size++;
             this->changed = true;
+            if (this->node_num != this->tree->root_num){
+                delete this;
+            }
         }
         else
         {
@@ -201,9 +241,13 @@ namespace rsql
                     delete c_i;
                     c_i = new_node;
                 }
-                else{
+                else
+                {
                     delete new_node;
                 }
+            }
+            if (this->node_num != this->tree->root_num){
+                delete this;
             }
             c_i->insert(src);
         }
