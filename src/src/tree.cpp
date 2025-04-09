@@ -90,7 +90,18 @@ namespace rsql
         }
         
     }
-
+    void BTree::delete_row(const char *key){
+        this->get_root_node();
+        this->root->delete_row(key);
+        if (this->root->size == 0){
+            unsigned int new_root_num = this->root->children[0];
+            std::string new_root_name = "node_" + std::to_string(new_root_num) + ".rsql";
+            BNode *new_root = BNode::read_disk(this, new_root_name);
+            this->root->destroy();
+            this->root = new_root;
+            this->root_num = this->root->node_num;
+        }
+    }
     void BTree::write_disk()
     {
         std::ofstream tree_file(TREE_FILE, std::ios::binary);

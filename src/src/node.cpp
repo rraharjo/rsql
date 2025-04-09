@@ -1,6 +1,40 @@
 #include "node.h"
 #include "tree.h"
 
+/**
+ * @brief Shift all item starting at idx (inclusive) to the right by 1 unit
+ *
+ * @tparam T
+ * @param v
+ * @param idx
+ */
+template <typename T>
+void shift_right(std::vector<T> &v, size_t idx)
+{
+    for (size_t i = v.size() - 1; i >= idx; i--)
+    {
+        v[i + 1] = v[i];
+    }
+}
+/**
+ * @brief Shift all item starting at idx (inclusive) to the left by 1 unit
+ *
+ * @tparam T
+ * @param v
+ * @param idx
+ */
+template <typename T>
+void shift_left(std::vector<T> &v, size_t idx)
+{
+    if (idx == 0)
+    {
+        throw std::invalid_argument("Can't shift left at index 0");
+    }
+    for (size_t i = idx; i < v.size(); i++)
+    {
+        v[i - 1] = v[i];
+    }
+}
 unsigned int get_node_no(const std::string &file_name)
 {
     std::regex pattern(".*_([0-9]+)\\.rsql");
@@ -18,7 +52,7 @@ unsigned int get_node_no(const std::string &file_name)
     }
     return node_no;
 }
-std::string get_file_name(const size_t no)
+std::string get_file_name(const unsigned int no)
 {
     std::string to_ret = "node_" + std::to_string(no) + ".rsql";
     return to_ret;
@@ -120,24 +154,29 @@ namespace rsql
         new_node->leaf = c_i->leaf;
         this->shift_keys(idx);
         this->shift_children(idx + 1);
-        this->keys[idx] = new char[this->tree->width];
-        std::memcpy(this->keys[idx], c_i->keys[this->tree->t - 1], this->tree->width);
+        //this->keys[idx] = new char[this->tree->width];
+        //std::memcpy(this->keys[idx], c_i->keys[this->tree->t - 1], this->tree->width);
+        this->keys[idx] = c_i->keys[this->tree->t - 1];
+        c_i->keys[this->tree->t - 1] = nullptr;
         this->children[idx + 1] = new_node->node_num;
+        c_i->size--;
         this->size++;
         for (size_t j = 0; j < this->tree->t - 1; j++)
         {
-            new_node->keys[j] = new char[this->tree->width];
-            std::memcpy(new_node->keys[j], c_i->keys[this->tree->t + j], this->tree->width);
-            c_i->size--;
-            new_node->size++;
-            delete[] c_i->keys[this->tree->t + j];
+            // new_node->keys[j] = new char[this->tree->width];
+            // std::memcpy(new_node->keys[j], c_i->keys[this->tree->t + j], this->tree->width);
+            new_node->keys[j] = c_i->keys[this->tree->t + j];
+            c_i->keys[this->tree->t + j] = nullptr;
         }
+        new_node->size += this->tree->t - 1;
+        c_i->size -= this->tree->t - 1;
         if (!c_i->leaf)
         {
             size_t c_i_idx = this->tree->t;
             for (int j = 0; j < this->tree->t; j++)
             {
-                new_node->children[j] = c_i->children[c_i_idx++];
+                new_node->children[j] = c_i->children[c_i_idx];
+                c_i->children[c_i_idx++] = 0;
             }
         }
         this->changed = true;
@@ -145,7 +184,164 @@ namespace rsql
         new_node->changed = true;
         return new_node;
     }
-
+    void BNode::merge(size_t idx, BNode *c_i, BNode *c_j)
+    {
+        size_t c_i_size = c_i->size;
+        c_i->keys[c_i_size++] = this->keys[idx];
+        for (int i = 0; i < c_j->size; i++)
+        {
+            c_i->keys[c_i_size++] = c_j->keys[i];
+            c_j->keys[i] = nullptr;
+        }
+        if (!c_j->leaf)
+        {
+            c_i_size = c_i->size + 1;
+            for (int i = 0; i < c_j->size + 1; i++)
+            {
+                c_i->children[c_i_size++] = c_j->children[i];
+            }
+        }
+        c_i->size += 1 + c_j->size;
+        shift_left(this->keys, idx + 1);
+        shift_left(this->children, idx + 2);
+        this->keys[this->size - 1] = nullptr;
+        this->children[this->size] = 0;
+        this->size--;
+        c_i->changed = true;
+        this->changed = true;
+        c_j->destroy();
+        // destroy c_j
+    }
+    void BNode::delete_row_1(size_t idx)
+    {
+        delete[] this->keys[idx];
+        shift_left(this->keys, idx + 1);
+        this->keys[this->size - 1] = nullptr;
+        this->size--;
+        this->changed = true;
+        this->del_if_not_root();
+    }
+    void BNode::delete_row_2(const char *key, size_t idx)
+    {
+        unsigned int c_i_num = this->children[idx];
+        std::string c_i_str = get_file_name(c_i_num);
+        BNode *c_i = BNode::read_disk(this->tree, c_i_str);
+        if (c_i->size >= this->tree->t)
+        {
+            char *temp = this->keys[idx];
+            this->keys[idx] = c_i->keys[c_i->size - 1];
+            c_i->keys[c_i->size - 1] = temp;
+            c_i->changed = true;
+            this->changed = true;
+            this->del_if_not_root();
+            return c_i->delete_row(key);
+        }
+        unsigned int c_j_num = this->children[idx + 1];
+        std::string c_j_str = get_file_name(c_j_num);
+        BNode *c_j = BNode::read_disk(this->tree, c_j_str);
+        if (c_j->size >= this->tree->t)
+        {
+            char *temp = this->keys[idx];
+            this->keys[idx] = c_j->keys[0];
+            c_j->keys[0] = temp;
+            c_j->changed = true;
+            this->changed = true;
+            this->del_if_not_root();
+            return c_j->delete_row(key);
+        }
+        this->merge(idx, c_i, c_j);
+        this->del_if_not_root();
+        return c_i->delete_row(key);
+    }
+    void BNode::delete_row_3(const char *key, size_t idx)
+    {
+        unsigned int c_i_num = this->children[idx];
+        std::string c_i_str = get_file_name(c_i_num);
+        BNode *c_i = BNode::read_disk(this->tree, c_i_str);
+        if (c_i->size <= this->tree->t - 1)
+        {
+            BNode *c_l = nullptr, *c_r = nullptr;
+            if (idx > 0)
+            {
+                unsigned int c_l_num = this->children[idx - 1];
+                std::string c_l_str = get_file_name(c_l_num);
+                c_l = BNode::read_disk(this->tree, c_l_str);
+                if (c_l->size >= this->tree->t)
+                {
+                    shift_right(c_i->keys, 0);
+                    shift_right(c_i->children, 0);
+                    c_i->keys[0] = this->keys[idx - 1];
+                    this->keys[idx - 1] = c_l->keys[c_l->size - 1];
+                    c_i->children[0] = c_l->children[c_l->size];
+                    c_l->keys[c_l->size - 1] = nullptr;
+                    c_l->children[c_l->size] = 0;
+                    c_l->size--;
+                    c_i->size++;
+                    c_l->changed = true;
+                    c_i->changed = true;
+                    this->changed = true;
+                    delete c_l;
+                    this->del_if_not_root();
+                    return c_i->delete_row(key);
+                }
+            }
+            if (idx < this->size)
+            {
+                unsigned int c_r_num = this->children[idx + 1];
+                std::string c_r_str = get_file_name(c_r_num);
+                c_r = BNode::read_disk(this->tree, c_r_str);
+                if (c_r->size >= this->tree->t)
+                {
+                    c_i->keys[c_i->size - 1] = this->keys[idx];
+                    this->keys[idx] = c_r->keys[0];
+                    c_i->children[c_i->size] = c_r->children[0];
+                    shift_left(c_r->keys, 1);
+                    shift_left(c_r->children, 1);
+                    c_r->keys[c_r->size - 1] = nullptr;
+                    c_r->children[c_r->size] = 0;
+                    c_i->size++;
+                    c_r->size--;
+                    c_i->changed = true;
+                    c_r->changed = true;
+                    this->changed = true;
+                    delete c_r;
+                    this->del_if_not_root();
+                    return c_i->delete_row(key);
+                }
+            }
+            if (idx > 0)
+            {
+                this->merge(idx - 1, c_l, c_i);
+                if (c_r != nullptr)
+                {
+                    delete c_r;
+                }
+                this->del_if_not_root();
+                return c_l->delete_row(key);
+            }
+            this->merge(idx, c_i, c_r);
+            // idx is definitely 0, c_l is null
+            this->del_if_not_root();
+            return c_i->delete_row(key);
+        }
+        this->del_if_not_root();
+        return c_i->delete_row(key);
+    }
+    void BNode::del_if_not_root(){
+        if (this->node_num != this->tree->root_num){
+            delete this;
+        }
+    }
+    void BNode::destroy()
+    {
+        std::string file_name = get_file_name(this->node_num);
+        if (std::remove(file_name.c_str()))
+        {
+            throw std::invalid_argument("Error deleting file");
+        }
+        this->changed = false;
+        delete this;
+    }
     BNode::BNode(BTree *tree, unsigned int node_num)
         : tree(tree), node_num(node_num), leaf(false), changed(true), size(0)
     {
@@ -156,7 +352,8 @@ namespace rsql
     }
     BNode::~BNode()
     {
-        if (this->changed){
+        if (this->changed)
+        {
             this->write_disk();
         }
         for (int i = 0; i < this->size; i++)
@@ -219,7 +416,8 @@ namespace rsql
             std::memcpy(this->keys[cur_idx], src, this->tree->width);
             this->size++;
             this->changed = true;
-            if (this->node_num != this->tree->root_num){
+            if (this->node_num != this->tree->root_num)
+            {
                 delete this;
             }
         }
@@ -246,10 +444,35 @@ namespace rsql
                     delete new_node;
                 }
             }
-            if (this->node_num != this->tree->root_num){
+            if (this->node_num != this->tree->root_num)
+            {
                 delete this;
             }
             c_i->insert(src);
+        }
+    }
+    void BNode::delete_row(const char *key)
+    {
+        size_t idx = 0;
+        while (idx < this->size && this->compare_key(key, this->keys[idx]) > 0)
+        {
+            idx++;
+        }
+        if (idx < this->size && this->compare_key(key, this->keys[idx]) == 0 && this->leaf)
+        {
+            this->delete_row_1(idx);
+        }
+        else if (idx < this->size && this->compare_key(key, this->keys[idx]) == 0 && !this->leaf)
+        {
+            this->delete_row_2(key, idx);
+        }
+        else if (!this->leaf)
+        {
+            this->delete_row_3(key, idx);
+        }
+        else
+        {
+            return;
         }
     }
     void BNode::write_disk()

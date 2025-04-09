@@ -9,14 +9,17 @@ int main(){
     tree->write_disk();
     delete tree;
     tree = rsql::BTree::read_disk();
-    char src[32 + 4 + 10 + 10 + 1] = "6bytes6bytes6bytes6bytes6bytes6bytes6bytes6bytes6bytes2b";
-    for (int i = 0 ; i < 7 ; i++){
+    char src[32 + 4 + 10 + 10 + 1] = "6bytes6bytes6bytes6bytes6bytes60ytes6bytes6bytes6bytes2b";
+    for (int i = 0 ; i < 10 ; i++){
         tree->insert_row(src);
         src[PKEY_COL_W - 1]++;
     }
-    tree->insert_row(src);
-    char *row = tree->find_row("6bytes6bytes6bytes6bytes6bytes6e");
+    char *row = tree->find_row("6bytes6bytes6bytes6bytes6bytes69");
     std::cout.write(row, 56);
+    tree->delete_row("6bytes6bytes6bytes6bytes6bytes69");
+    tree->delete_row("6bytes6bytes6bytes6bytes6bytes68");
+    tree->delete_row("6bytes6bytes6bytes6bytes6bytes61");
+    tree->delete_row("6bytes6bytes6bytes6bytes6bytes63");
     delete[] row;
     delete tree;
     return 0;
