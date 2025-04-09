@@ -9,11 +9,11 @@
  * @param idx
  */
 template <typename T>
-void shift_right(std::vector<T> &v, size_t idx)
+void shift_right(std::vector<T> &v, size_t idx, size_t size)
 {
-    for (size_t i = v.size() - 1; i >= idx; i--)
+    for (size_t i = size ; i > idx; i--)
     {
-        v[i + 1] = v[i];
+        v[i] = v[i - 1];
     }
 }
 /**
@@ -24,13 +24,13 @@ void shift_right(std::vector<T> &v, size_t idx)
  * @param idx
  */
 template <typename T>
-void shift_left(std::vector<T> &v, size_t idx)
+void shift_left(std::vector<T> &v, size_t idx, size_t size)
 {
     if (idx == 0)
     {
         throw std::invalid_argument("Can't shift left at index 0");
     }
-    for (size_t i = idx; i < v.size(); i++)
+    for (size_t i = idx; i < size ; i++)
     {
         v[i - 1] = v[i];
     }
@@ -99,51 +99,6 @@ namespace rsql
     {
         return strncmp(k_1, k_2, this->tree->columns[0].width);
     }
-    void BNode::shift_keys(size_t idx)
-    {
-        if (this->size < idx)
-        {
-            std::string err_msg =
-                "Can't shift at index " + std::to_string(idx) + " when the key size is " + std::to_string(this->size);
-            throw std::invalid_argument(err_msg);
-            return;
-        }
-        if (this->full())
-        {
-            throw std::runtime_error("Can't shift key when node is full");
-            return;
-        }
-        size_t j = this->size;
-        while (j > idx)
-        {
-            this->keys[j] = this->keys[j - 1];
-            j--;
-        }
-        this->keys[j] = nullptr;
-        return;
-    }
-    void BNode::shift_children(size_t idx)
-    {
-        if (this->size < idx - 1)
-        {
-            std::string err_msg = "Can't shift children at index " + std::to_string(idx) + " when the key size is " + std::to_string(this->size);
-            throw std::invalid_argument(err_msg);
-            return;
-        }
-        if (this->full())
-        {
-            throw std::runtime_error("Can't shift children when the node is full");
-            return;
-        }
-        size_t j = this->size + 1;
-        while (j > idx)
-        {
-            this->children[j] = this->children[j - 1];
-            j--;
-        }
-        this->children[j] = 0;
-        return;
-    }
     BNode *BNode::split_children(size_t idx, BNode *c_i)
     {
         if (!c_i->full())
@@ -152,10 +107,8 @@ namespace rsql
         }
         BNode *new_node = new BNode(this->tree, ++this->tree->max_node_num);
         new_node->leaf = c_i->leaf;
-        this->shift_keys(idx);
-        this->shift_children(idx + 1);
-        //this->keys[idx] = new char[this->tree->width];
-        //std::memcpy(this->keys[idx], c_i->keys[this->tree->t - 1], this->tree->width);
+        shift_right(this->keys, idx, this->size);
+        shift_right(this->children, idx + 1, this->size + 1);
         this->keys[idx] = c_i->keys[this->tree->t - 1];
         c_i->keys[this->tree->t - 1] = nullptr;
         this->children[idx + 1] = new_node->node_num;
@@ -163,8 +116,6 @@ namespace rsql
         this->size++;
         for (size_t j = 0; j < this->tree->t - 1; j++)
         {
-            // new_node->keys[j] = new char[this->tree->width];
-            // std::memcpy(new_node->keys[j], c_i->keys[this->tree->t + j], this->tree->width);
             new_node->keys[j] = c_i->keys[this->tree->t + j];
             c_i->keys[this->tree->t + j] = nullptr;
         }
@@ -202,20 +153,19 @@ namespace rsql
             }
         }
         c_i->size += 1 + c_j->size;
-        shift_left(this->keys, idx + 1);
-        shift_left(this->children, idx + 2);
+        shift_left(this->keys, idx + 1, this->size);
+        shift_left(this->children, idx + 2, this->size + 1);
         this->keys[this->size - 1] = nullptr;
         this->children[this->size] = 0;
         this->size--;
         c_i->changed = true;
         this->changed = true;
         c_j->destroy();
-        // destroy c_j
     }
     void BNode::delete_row_1(size_t idx)
     {
         delete[] this->keys[idx];
-        shift_left(this->keys, idx + 1);
+        shift_left(this->keys, idx + 1, this->size);
         this->keys[this->size - 1] = nullptr;
         this->size--;
         this->changed = true;
@@ -268,8 +218,8 @@ namespace rsql
                 c_l = BNode::read_disk(this->tree, c_l_str);
                 if (c_l->size >= this->tree->t)
                 {
-                    shift_right(c_i->keys, 0);
-                    shift_right(c_i->children, 0);
+                    shift_right(c_i->keys, 0, c_i->size);
+                    shift_right(c_i->children, 0, c_i->size + 1);
                     c_i->keys[0] = this->keys[idx - 1];
                     this->keys[idx - 1] = c_l->keys[c_l->size - 1];
                     c_i->children[0] = c_l->children[c_l->size];
@@ -295,8 +245,8 @@ namespace rsql
                     c_i->keys[c_i->size - 1] = this->keys[idx];
                     this->keys[idx] = c_r->keys[0];
                     c_i->children[c_i->size] = c_r->children[0];
-                    shift_left(c_r->keys, 1);
-                    shift_left(c_r->children, 1);
+                    shift_left(c_r->keys, 1, c_r->size);
+                    shift_left(c_r->children, 1, c_r->size + 1);
                     c_r->keys[c_r->size - 1] = nullptr;
                     c_r->children[c_r->size] = 0;
                     c_i->size++;
@@ -327,8 +277,10 @@ namespace rsql
         this->del_if_not_root();
         return c_i->delete_row(key);
     }
-    void BNode::del_if_not_root(){
-        if (this->node_num != this->tree->root_num){
+    void BNode::del_if_not_root()
+    {
+        if (this->node_num != this->tree->root_num)
+        {
             delete this;
         }
     }
@@ -411,15 +363,12 @@ namespace rsql
             {
                 cur_idx++;
             }
-            this->shift_keys(cur_idx);
+            shift_right(this->keys, cur_idx, this->size);
             this->keys[cur_idx] = new char[this->tree->width];
             std::memcpy(this->keys[cur_idx], src, this->tree->width);
             this->size++;
             this->changed = true;
-            if (this->node_num != this->tree->root_num)
-            {
-                delete this;
-            }
+            this->del_if_not_root();
         }
         else
         {
@@ -444,10 +393,7 @@ namespace rsql
                     delete new_node;
                 }
             }
-            if (this->node_num != this->tree->root_num)
-            {
-                delete this;
-            }
+            this->del_if_not_root();
             c_i->insert(src);
         }
     }

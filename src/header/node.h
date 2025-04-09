@@ -27,20 +27,6 @@ namespace rsql
          *
          * @param idx
          */
-        void shift_keys(size_t idx);
-        /**
-         * @brief Shift children to the right by 1 unit, starting at idx (inclusive)
-         *
-         * @param idx
-         */
-        void shift_children(size_t idx);
-        /**
-         * @brief Merge c_j to c_i, and the index of c_i has to be idx and c_j has to be (idx + 1). c_j will be destroyed afterward.
-         *
-         * @param idx index of the key
-         * @param c_i
-         * @param c_j
-         */
         void merge(size_t idx, BNode *c_i, BNode *c_j);
         /**
          * @brief case 1 of deleting an item: item is in this node, and this node is a leaf
