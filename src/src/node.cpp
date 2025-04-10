@@ -71,6 +71,24 @@ namespace rsql
             return nullptr;
         }
         BNode *new_node = new BNode(tree, node_no);
+        new_node->columns.clear();
+        char col_size_pad[sizeof(int)];
+        node_file.read(col_size_pad, 4);
+        int col_size = *reinterpret_cast<int *>(col_size_pad);
+        for (int i = 0; i < col_size; i++)
+        {
+            char c_id[4];
+            node_file.read(c_id, 4);
+            unsigned int col_id = *reinterpret_cast<int *>(c_id);
+            char c_type[DT_STR_LEN];
+            node_file.read(c_type, DT_STR_LEN);
+            std::string c_type_str(c_type, DT_STR_LEN);
+            char c_len[sizeof(int)];
+            node_file.read(c_len, 4);
+            int c_width = *reinterpret_cast<int *>(c_len);
+            new_node->columns.push_back(Column::get_column(col_id, str_to_dt(c_type_str), (size_t)c_width));
+        }
+        //TODO: if current node column is different than the tree columns, adjustment is needed
         char pad[sizeof(int)];
         std::memset(pad, '\0', sizeof(int));
         node_file.read(pad, 4);
@@ -301,6 +319,7 @@ namespace rsql
         this->keys.assign(this->keys.capacity(), nullptr);
         this->children.reserve(2 * this->tree->t);
         this->children.assign(this->children.capacity(), 0);
+        this->columns = tree->columns;
     }
     BNode::~BNode()
     {
@@ -429,6 +448,19 @@ namespace rsql
         }
         std::string file_name = "node_" + std::to_string(this->node_num) + ".rsql";
         std::ofstream node_file(file_name, std::ios::binary);
+        int col_num = this->columns.size();
+        char *col_pad = reinterpret_cast<char *>(&col_num);
+        node_file.write(col_pad, 4);
+        for (int i = 0 ; i < col_num ; i++){
+            unsigned int cur_col_id = this->columns[i].col_id;
+            char *col_pad = reinterpret_cast<char *>(&cur_col_id);
+            node_file.write(col_pad, 4);
+            std::string type = dt_to_str(this->columns[i].type);
+            node_file.write(type.c_str(), DT_STR_LEN);
+            int width = this->columns[i].width;
+            char *w_pad = reinterpret_cast<char *>(&width);
+            node_file.write(w_pad, 4);
+        }
         int this_size = (int)this->size;
         char *npad = reinterpret_cast<char *>(&this_size);
         node_file.write(npad, 4);

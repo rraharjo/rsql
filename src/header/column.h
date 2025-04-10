@@ -11,18 +11,19 @@ namespace rsql
     class Column
     {
     public:
-        // std::string col_name;
-        // How many bytes the column is
+        unsigned int col_id;
         size_t width;
         DataType type;
-        Column(size_t width, DataType type);
+        
+        Column(unsigned int col_id, size_t width, DataType type);
+        bool operator==(const Column &other);
 
-        static Column pkey_column();
-        static Column int_column(size_t width);
-        static Column char_column(size_t width);
-        static Column date_column();
+        static Column pkey_column(unsigned int col_id);
+        static Column int_column(unsigned int col_id, size_t width);
+        static Column char_column(unsigned int col_id, size_t width);
+        static Column date_column(unsigned int col_id);
 
-        static Column get_column(DataType type, size_t width);
+        static Column get_column(unsigned int col_id, DataType type, size_t width);
     };
 }
 #endif

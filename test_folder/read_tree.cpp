@@ -1,11 +1,10 @@
 #include "tree.h"
 int main(){
-    std::vector<rsql::Column> sample_structure;
-    sample_structure.push_back(rsql::Column::pkey_column());
-    sample_structure.push_back(rsql::Column::int_column(4));
-    sample_structure.push_back(rsql::Column::date_column());
-    sample_structure.push_back(rsql::Column::char_column(10));
-    rsql::BTree *tree = new rsql::BTree(sample_structure);
+    rsql::BTree *tree = new rsql::BTree();
+    tree->add_column(rsql::Column::pkey_column(0));
+    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::date_column(0));
+    tree->add_column(rsql::Column::char_column(0, 10));
     tree->write_disk();
     delete tree;
     tree = rsql::BTree::read_disk();

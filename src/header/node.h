@@ -64,11 +64,9 @@ namespace rsql
 
     public:
         BTree *tree;
+        std::vector<Column> columns;
         // except the root, minimum of t-1 keys and a maximum of 2t - 1 keys
         std::vector<char *> keys;
-        /*the number represent the file for the next node
-        e.g. MYDB_int
-        */
         std::vector<unsigned int> children;
         unsigned int node_num;
         size_t size;

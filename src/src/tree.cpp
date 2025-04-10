@@ -1,14 +1,9 @@
 #include "tree.h"
 namespace rsql
 {
-    BTree::BTree(const std::vector<Column> columns)
-        : columns(columns), root_num(1), max_node_num(1), t(DEGREE), root(nullptr)
+    BTree::BTree()
+        : columns(columns), root_num(1), max_node_num(1), t(DEGREE), root(nullptr), max_col_id(0), width(0)
     {
-        this->width = 0;
-        for (Column &c : this->columns)
-        {
-            this->width += c.width;
-        }
     }
 
     BTree::~BTree()
@@ -40,25 +35,27 @@ namespace rsql
         {
             throw std::invalid_argument("Can't open read tree file...");
         }
+        BTree *to_ret = new BTree();
         char s_pad[sizeof(int)];
         tree_file.read(s_pad, 4);
         int col_size = *reinterpret_cast<int *>(s_pad);
-        std::vector<Column> cols;
         for (int i = 0; i < col_size; i++)
         {
+            char c_id[4];
+            tree_file.read(c_id, 4);
+            unsigned int col_id = *reinterpret_cast<int *>(c_id);
             char c_type[DT_STR_LEN];
             tree_file.read(c_type, DT_STR_LEN);
             std::string c_type_str(c_type, DT_STR_LEN);
             char c_len[sizeof(int)];
             tree_file.read(c_len, 4);
             int c_width = *reinterpret_cast<int *>(c_len);
-            cols.push_back(Column::get_column(str_to_dt(c_type_str), (size_t)c_width));
+            to_ret->add_column(Column::get_column(col_id, str_to_dt(c_type_str), (size_t)c_width));
         }
         tree_file.read(s_pad, 4);
         unsigned int root_num = *reinterpret_cast<int *>(s_pad);
         tree_file.read(s_pad, 4);
         unsigned int max_node_num = *reinterpret_cast<int *>(s_pad);
-        BTree *to_ret = new BTree(cols);
         to_ret->root_num = root_num;
         to_ret->max_node_num = max_node_num;
         tree_file.close();
@@ -102,6 +99,11 @@ namespace rsql
             this->root_num = this->root->node_num;
         }
     }
+    void BTree::add_column(const Column c){
+        this->columns.push_back(c);
+        this->width += c.width;
+        this->columns[this->columns.size() - 1].col_id = ++this->max_col_id;
+    }
     void BTree::write_disk()
     {
         std::ofstream tree_file(TREE_FILE, std::ios::binary);
@@ -114,6 +116,9 @@ namespace rsql
         tree_file.write(s_pad, 4);
         for (int i = 0; i < col_size; i++)
         {
+            unsigned int cur_col_id = this->columns[i].col_id;
+            char *col_pad = reinterpret_cast<char *>(&cur_col_id);
+            tree_file.write(col_pad, 4);
             std::string type = dt_to_str(this->columns[i].type);
             tree_file.write(type.c_str(), DT_STR_LEN);
             int width = this->columns[i].width;
@@ -124,6 +129,8 @@ namespace rsql
         tree_file.write(r_pad, 4);
         char *max_node_pad = reinterpret_cast<char *>(&this->max_node_num);
         tree_file.write(max_node_pad, 4);
+        char *max_col_id = reinterpret_cast<char *>(&this->max_col_id);
+        tree_file.write(max_col_id, 4);
         tree_file.close();
     }
 }

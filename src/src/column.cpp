@@ -1,43 +1,47 @@
 #include "column.h"
 namespace rsql
 {
-    Column::Column(size_t width, DataType type) : width(width), type(type)
+    Column::Column(unsigned int col_id, size_t width, DataType type) : width(width), type(type), col_id(col_id)
     {
     }
 
-    Column Column::pkey_column()
-    {
-        return Column(PKEY_COL_W, DataType::PKEY);
+    bool Column::operator==(const Column& other){
+        return this->col_id == other.col_id && this->type == other.type && this->width == other.width;
     }
-    Column Column::int_column(size_t width)
+
+    Column Column::pkey_column(unsigned int col_id)
     {
-        return Column(width, DataType::INT);
+        return Column(col_id, PKEY_COL_W, DataType::PKEY);
     }
-    Column Column::char_column(size_t width)
+    Column Column::int_column(unsigned int col_id, size_t width)
     {
-        return Column(width, DataType::CHAR);
+        return Column(col_id, width, DataType::INT);
     }
-    Column Column::date_column()
+    Column Column::char_column(unsigned int col_id, size_t width)
     {
-        return Column(DATE_COL_W, DataType::DATE);
+        return Column(col_id, width, DataType::CHAR);
     }
-    Column Column::get_column(DataType type, size_t width)
+    Column Column::date_column(unsigned int col_id)
+    {
+        return Column(col_id, DATE_COL_W, DataType::DATE);
+    }
+    Column Column::get_column(unsigned int col_id, DataType type, size_t width)
     {
         if (type == DataType::PKEY)
         {
-            return Column::pkey_column();
+            return Column::pkey_column(col_id);
         }
         else if (type == DataType::INT)
         {
-            return Column::int_column(width);
+            return Column::int_column(col_id, width);
         }
         else if (type == DataType::CHAR)
         {
-            return Column::char_column(width);
+            return Column::char_column(col_id, width);
         }
         else if (type == DataType::DATE)
         {
-            return Column::date_column();
+            return Column::date_column(col_id);
         }
         else
         {

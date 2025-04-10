@@ -13,16 +13,17 @@ namespace rsql
         BNode *root;
         unsigned int root_num;
         unsigned int max_node_num;
+        unsigned int max_col_id;
         size_t t;
         size_t width;
         //First column is the index
         std::vector<Column> columns;
 
         void get_root_node();
-
+        BTree(const std::vector<Column>);
     public:
         static BTree *read_disk();
-        BTree(const std::vector<Column> columns);
+        BTree();
         ~BTree();
 
         /**
@@ -45,6 +46,7 @@ namespace rsql
          * @param key 
          */
         void delete_row(const char *key);
+        void add_column(const Column c);
         void write_disk();
         friend class BNode;
     };
