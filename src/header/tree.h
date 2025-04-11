@@ -10,15 +10,15 @@ namespace rsql
     class BTree
     {
     private:
+        std::vector<Column> columns;
+        uint32_t root_num;
+        uint32_t max_node_num;
+        uint32_t max_col_id;
+
         BNode *root;
-        unsigned int root_num;
-        unsigned int max_node_num;
-        unsigned int max_col_id;
         size_t t;
         size_t width;
-        //First column is the index
-        std::vector<Column> columns;
-
+        
         void get_root_node();
         BTree(const std::vector<Column>);
     public:

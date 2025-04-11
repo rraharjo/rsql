@@ -72,44 +72,47 @@ namespace rsql
         }
         BNode *new_node = new BNode(tree, node_no);
         new_node->columns.clear();
-        char col_size_pad[sizeof(int)];
+        char col_size_pad[sizeof(uint32_t)];
         node_file.read(col_size_pad, 4);
-        int col_size = *reinterpret_cast<int *>(col_size_pad);
-        for (int i = 0; i < col_size; i++)
+        uint32_t col_size = *reinterpret_cast<uint32_t *>(col_size_pad);
+        for (uint32_t i = 0; i < col_size; i++)
         {
-            char c_id[4];
-            node_file.read(c_id, 4);
-            unsigned int col_id = *reinterpret_cast<int *>(c_id);
-            char c_type[DT_STR_LEN];
-            node_file.read(c_type, DT_STR_LEN);
-            std::string c_type_str(c_type, DT_STR_LEN);
-            char c_len[sizeof(int)];
-            node_file.read(c_len, 4);
-            int c_width = *reinterpret_cast<int *>(c_len);
-            new_node->columns.push_back(Column::get_column(col_id, str_to_dt(c_type_str), (size_t)c_width));
+            char col_id_pad[4];
+            node_file.read(col_id_pad, 4);
+            uint32_t col_id = *reinterpret_cast<uint32_t *>(col_id_pad);
+
+            char col_type_pad[DT_STR_LEN];
+            node_file.read(col_type_pad, DT_STR_LEN);
+            std::string c_type_str(col_type_pad, DT_STR_LEN);
+
+            char col_width_pad[sizeof(uint32_t)];
+            node_file.read(col_width_pad, 4);
+            uint32_t col_width = *reinterpret_cast<uint32_t *>(col_width_pad);
+
+            new_node->columns.push_back(Column::get_column(col_id, str_to_dt(c_type_str), (size_t)col_width));
         }
         //TODO: if current node column is different than the tree columns, adjustment is needed
-        char pad[sizeof(int)];
-        std::memset(pad, '\0', sizeof(int));
-        node_file.read(pad, 4);
-        int node_size = *reinterpret_cast<int *>(pad);
+        char node_size_pad[sizeof(uint32_t)];
+        std::memset(node_size_pad, '\0', sizeof(uint32_t));
+        node_file.read(node_size_pad, 4);
+        uint32_t node_size = *reinterpret_cast<uint32_t *>(node_size_pad);
         new_node->size = node_size;
-        for (int i = 0; i < node_size; i++)
+        for (uint32_t i = 0; i < node_size; i++)
         {
             new_node->keys[i] = new char[new_node->tree->width];
             node_file.read(new_node->keys[i], row_size);
         }
-        for (int i = 0; i <= node_size; i++)
+        for (uint32_t i = 0; i <= node_size; i++)
         {
-            char idx_pad[sizeof(int)];
-            std::memset(idx_pad, '\0', sizeof(int));
+            char idx_pad[sizeof(uint32_t)];
+            std::memset(idx_pad, '\0', sizeof(uint32_t));
             node_file.read(idx_pad, 4);
-            int idx = *reinterpret_cast<int *>(idx_pad);
+            uint32_t idx = *reinterpret_cast<uint32_t *>(idx_pad);
             new_node->children[i] = idx;
         }
         char l_pad;
         node_file.read(&l_pad, 1);
-        new_node->leaf = (bool)l_pad;
+        new_node->leaf = l_pad;
         node_file.close();
         return new_node;
     }
@@ -157,7 +160,7 @@ namespace rsql
     {
         size_t c_i_size = c_i->size;
         c_i->keys[c_i_size++] = this->keys[idx];
-        for (int i = 0; i < c_j->size; i++)
+        for (uint32_t i = 0; i < c_j->size; i++)
         {
             c_i->keys[c_i_size++] = c_j->keys[i];
             c_j->keys[i] = nullptr;
@@ -165,7 +168,7 @@ namespace rsql
         if (!c_j->leaf)
         {
             c_i_size = c_i->size + 1;
-            for (int i = 0; i < c_j->size + 1; i++)
+            for (uint32_t i = 0; i < c_j->size + 1; i++)
             {
                 c_i->children[c_i_size++] = c_j->children[i];
             }
@@ -191,7 +194,7 @@ namespace rsql
     }
     void BNode::delete_row_2(const char *key, size_t idx)
     {
-        unsigned int c_i_num = this->children[idx];
+        uint32_t c_i_num = this->children[idx];
         std::string c_i_str = get_file_name(c_i_num);
         BNode *c_i = BNode::read_disk(this->tree, c_i_str);
         if (c_i->size >= this->tree->t)
@@ -204,7 +207,7 @@ namespace rsql
             this->del_if_not_root();
             return c_i->delete_row(key);
         }
-        unsigned int c_j_num = this->children[idx + 1];
+        uint32_t c_j_num = this->children[idx + 1];
         std::string c_j_str = get_file_name(c_j_num);
         BNode *c_j = BNode::read_disk(this->tree, c_j_str);
         if (c_j->size >= this->tree->t)
@@ -223,7 +226,7 @@ namespace rsql
     }
     void BNode::delete_row_3(const char *key, size_t idx)
     {
-        unsigned int c_i_num = this->children[idx];
+        uint32_t c_i_num = this->children[idx];
         std::string c_i_str = get_file_name(c_i_num);
         BNode *c_i = BNode::read_disk(this->tree, c_i_str);
         if (c_i->size <= this->tree->t - 1)
@@ -231,7 +234,7 @@ namespace rsql
             BNode *c_l = nullptr, *c_r = nullptr;
             if (idx > 0)
             {
-                unsigned int c_l_num = this->children[idx - 1];
+                uint32_t c_l_num = this->children[idx - 1];
                 std::string c_l_str = get_file_name(c_l_num);
                 c_l = BNode::read_disk(this->tree, c_l_str);
                 if (c_l->size >= this->tree->t)
@@ -255,7 +258,7 @@ namespace rsql
             }
             if (idx < this->size)
             {
-                unsigned int c_r_num = this->children[idx + 1];
+                uint32_t c_r_num = this->children[idx + 1];
                 std::string c_r_str = get_file_name(c_r_num);
                 c_r = BNode::read_disk(this->tree, c_r_str);
                 if (c_r->size >= this->tree->t)
@@ -312,7 +315,7 @@ namespace rsql
         this->changed = false;
         delete this;
     }
-    BNode::BNode(BTree *tree, unsigned int node_num)
+    BNode::BNode(BTree *tree, uint32_t node_num)
         : tree(tree), node_num(node_num), leaf(false), changed(true), size(0)
     {
         this->keys.reserve(2 * this->tree->t - 1);
@@ -327,7 +330,7 @@ namespace rsql
         {
             this->write_disk();
         }
-        for (int i = 0; i < this->size; i++)
+        for (uint32_t i = 0; i < this->size; i++)
         {
             delete[] this->keys[i];
         }
@@ -448,29 +451,32 @@ namespace rsql
         }
         std::string file_name = "node_" + std::to_string(this->node_num) + ".rsql";
         std::ofstream node_file(file_name, std::ios::binary);
-        int col_num = this->columns.size();
+        uint32_t col_num = this->columns.size();
         char *col_pad = reinterpret_cast<char *>(&col_num);
         node_file.write(col_pad, 4);
-        for (int i = 0 ; i < col_num ; i++){
-            unsigned int cur_col_id = this->columns[i].col_id;
+        for (uint32_t i = 0 ; i < col_num ; i++){
+            uint32_t cur_col_id = this->columns[i].col_id;
             char *col_pad = reinterpret_cast<char *>(&cur_col_id);
             node_file.write(col_pad, 4);
+
             std::string type = dt_to_str(this->columns[i].type);
             node_file.write(type.c_str(), DT_STR_LEN);
-            int width = this->columns[i].width;
+
+            uint32_t width = this->columns[i].width;
             char *w_pad = reinterpret_cast<char *>(&width);
             node_file.write(w_pad, 4);
         }
-        int this_size = (int)this->size;
+        uint32_t this_size = this->size;
         char *npad = reinterpret_cast<char *>(&this_size);
         node_file.write(npad, 4);
-        for (int i = 0; i < this->size; i++)
+
+        for (uint32_t i = 0; i < this->size; i++)
         {
             node_file.write(this->keys[i], this->tree->width);
         }
-        for (int i = 0; i <= this->size; i++)
+        for (uint32_t i = 0; i <= this->size; i++)
         {
-            int cur_child = this->children[i];
+            uint32_t cur_child = this->children[i];
             char *cpad = reinterpret_cast<char *>(&cur_child);
             node_file.write(cpad, 4);
         }

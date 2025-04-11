@@ -4,6 +4,7 @@
 #include <vector>
 #include <fstream>
 #include <cstring>
+#include <cstdint>
 #include "column.h"
 namespace rsql
 {
@@ -63,14 +64,16 @@ namespace rsql
         BNode *split_children(size_t idx, BNode *c_i);
 
     public:
-        BTree *tree;
         std::vector<Column> columns;
-        // except the root, minimum of t-1 keys and a maximum of 2t - 1 keys
+        uint32_t size;
         std::vector<char *> keys;
-        std::vector<unsigned int> children;
-        unsigned int node_num;
-        size_t size;
-        bool changed, leaf;
+        std::vector<uint32_t> children;
+        uint8_t leaf;
+        
+        
+        uint32_t node_num;
+        bool changed;
+        BTree *tree;
 
     public:
         /**

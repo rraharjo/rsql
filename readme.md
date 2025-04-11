@@ -24,3 +24,5 @@ Structure:
 
 
 Reference: Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, Clifford Stein Introduction to Algorithms, Third Edition  2009
+
+TODO: reduce file I/O usage -> create a large buffer
