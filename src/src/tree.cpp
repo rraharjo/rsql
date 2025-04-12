@@ -63,12 +63,10 @@ namespace rsql
         tree_file.close();
         return to_ret;
     }
-
     char *BTree::find_row(const char *key){
         this->get_root_node();
         return this->root->find(key);
     }
-
     void BTree::insert_row(const char *src)
     {
         this->get_root_node();
@@ -81,7 +79,6 @@ namespace rsql
             delete new_children;
             delete this->root;
             this->root = new_root;
-            this->root->write_disk();
             this->root->insert(src);
         }
         else{
@@ -102,9 +99,16 @@ namespace rsql
         }
     }
     void BTree::add_column(const Column c){
+        this->get_root_node();
         this->columns.push_back(c);
         this->width += c.width;
         this->columns[this->columns.size() - 1].col_id = ++this->max_col_id;
+        this->root->match_columns();
+    }
+    void BTree::remove_column(const size_t idx){
+        this->get_root_node();
+        this->columns.erase(this->columns.begin() + idx);
+        this->root->match_columns();
     }
     void BTree::write_disk()
     {

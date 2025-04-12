@@ -9,7 +9,7 @@ namespace rsql
     class BNode;
     class BTree
     {
-    private:
+    public:
         std::vector<Column> columns;
         uint32_t root_num;
         uint32_t max_node_num;
@@ -20,7 +20,6 @@ namespace rsql
         size_t width;
         
         void get_root_node();
-        BTree(const std::vector<Column>);
     public:
         static BTree *read_disk();
         BTree();
@@ -47,6 +46,7 @@ namespace rsql
          */
         void delete_row(const char *key);
         void add_column(const Column c);
+        void remove_column(const size_t idx);
         void write_disk();
         friend class BNode;
     };

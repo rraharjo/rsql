@@ -14,7 +14,7 @@ namespace rsql
 {
     class BNode
     {
-    private:
+    public:
         /**
          * @brief Compare the first k byte, where k is the size of the first column
          *
@@ -62,6 +62,11 @@ namespace rsql
          * @return a pointer to the newly created node, at position idx + 1
          */
         BNode *split_children(size_t idx, BNode *c_i);
+        /**
+         * @brief Match the column structure of the node to the tree
+         * 
+         */
+        void match_columns();
 
     public:
         std::vector<Column> columns;
@@ -84,7 +89,7 @@ namespace rsql
          * @return BNode*
          */
         static BNode *read_disk(BTree *tree, const std::string file_name);
-        BNode(BTree *tree, unsigned int node_num);
+        BNode(BTree *tree, uint32_t node_num);
         ~BNode();
         bool full();
         /**

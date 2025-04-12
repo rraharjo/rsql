@@ -16,7 +16,8 @@ namespace rsql
         DataType type;
         
         Column(unsigned int col_id, size_t width, DataType type);
-        bool operator==(const Column &other);
+        bool operator==(const Column &other) const;
+        bool operator!=(const Column &other) const;
 
         static Column pkey_column(unsigned int col_id);
         static Column int_column(unsigned int col_id, size_t width);

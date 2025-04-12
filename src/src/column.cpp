@@ -5,8 +5,12 @@ namespace rsql
     {
     }
 
-    bool Column::operator==(const Column& other){
+    bool Column::operator==(const Column& other) const {
         return this->col_id == other.col_id && this->type == other.type && this->width == other.width;
+    }
+
+    bool Column::operator!=(const Column& other) const {
+        return !(*this == other);
     }
 
     Column Column::pkey_column(unsigned int col_id)

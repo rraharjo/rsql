@@ -11,7 +11,7 @@
 template <typename T>
 void shift_right(std::vector<T> &v, size_t idx, size_t size)
 {
-    for (size_t i = size ; i > idx; i--)
+    for (size_t i = size; i > idx; i--)
     {
         v[i] = v[i - 1];
     }
@@ -30,7 +30,7 @@ void shift_left(std::vector<T> &v, size_t idx, size_t size)
     {
         throw std::invalid_argument("Can't shift left at index 0");
     }
-    for (size_t i = idx; i < size ; i++)
+    for (size_t i = idx; i < size; i++)
     {
         v[i - 1] = v[i];
     }
@@ -63,7 +63,7 @@ namespace rsql
     BNode *BNode::read_disk(BTree *tree, const std::string file_name)
     {
         unsigned int node_no = get_node_no(file_name);
-        size_t row_size = tree->width;
+        size_t cur_row_width = 0;
         std::ifstream node_file(file_name, std::ios::binary);
         if (!node_file)
         {
@@ -90,8 +90,8 @@ namespace rsql
             uint32_t col_width = *reinterpret_cast<uint32_t *>(col_width_pad);
 
             new_node->columns.push_back(Column::get_column(col_id, str_to_dt(c_type_str), (size_t)col_width));
+            cur_row_width += col_width;
         }
-        //TODO: if current node column is different than the tree columns, adjustment is needed
         char node_size_pad[sizeof(uint32_t)];
         std::memset(node_size_pad, '\0', sizeof(uint32_t));
         node_file.read(node_size_pad, 4);
@@ -99,8 +99,8 @@ namespace rsql
         new_node->size = node_size;
         for (uint32_t i = 0; i < node_size; i++)
         {
-            new_node->keys[i] = new char[new_node->tree->width];
-            node_file.read(new_node->keys[i], row_size);
+            new_node->keys[i] = new char[cur_row_width];
+            node_file.read(new_node->keys[i], cur_row_width);
         }
         for (uint32_t i = 0; i <= node_size; i++)
         {
@@ -114,6 +114,7 @@ namespace rsql
         node_file.read(&l_pad, 1);
         new_node->leaf = l_pad;
         node_file.close();
+        new_node->match_columns();
         return new_node;
     }
     int BNode::compare_key(const char *k_1, const char *k_2)
@@ -308,10 +309,7 @@ namespace rsql
     void BNode::destroy()
     {
         std::string file_name = get_file_name(this->node_num);
-        if (std::remove(file_name.c_str()))
-        {
-            throw std::invalid_argument("Error deleting file");
-        }
+        std::remove(file_name.c_str());
         this->changed = false;
         delete this;
     }
@@ -323,6 +321,53 @@ namespace rsql
         this->children.reserve(2 * this->tree->t);
         this->children.assign(this->children.capacity(), 0);
         this->columns = tree->columns;
+    }
+    void BNode::match_columns()
+    {
+        if (this->columns == this->tree->columns)
+        {
+            return;
+        }
+        std::vector<size_t> removed_col_idx;
+        size_t i = 0, j = 0;
+        while (i < this->columns.size() && j < tree->columns.size())
+        {
+            if (this->columns[i] != tree->columns[j])
+            {
+                removed_col_idx.push_back(i++);
+            }
+            else
+            {
+                i++;
+                j++;
+            }
+        }
+        while (i < this->columns.size())
+        {
+            removed_col_idx.push_back(i++);
+        }
+        for (size_t k = 0 ; k < this->size ; k++){
+            char *new_pointer = new char[this->tree->width];
+            std::memset(new_pointer, 0, this->tree->width);
+            char *new_moving_pointer = new_pointer;
+            char *old_moving_pointer = this->keys[k];
+            size_t removed_idx = 0;
+            for (size_t l = 0 ; l < this->columns.size() ; l++){
+                if (removed_idx < removed_col_idx.size() && removed_col_idx[removed_idx] == l){
+                    removed_idx++;
+                    old_moving_pointer += this->columns[l].width;
+                }
+                else{
+                    std::memcpy(new_moving_pointer, old_moving_pointer, this->columns[l].width);
+                    old_moving_pointer += this->columns[l].width;
+                    new_moving_pointer += this->columns[l].width;
+                }
+            }
+            delete[] this->keys[k];
+            this->keys[k] = new_pointer;
+        }
+        this->columns = tree->columns;
+        this->changed = true;
     }
     BNode::~BNode()
     {
@@ -454,7 +499,8 @@ namespace rsql
         uint32_t col_num = this->columns.size();
         char *col_pad = reinterpret_cast<char *>(&col_num);
         node_file.write(col_pad, 4);
-        for (uint32_t i = 0 ; i < col_num ; i++){
+        for (uint32_t i = 0; i < col_num; i++)
+        {
             uint32_t cur_col_id = this->columns[i].col_id;
             char *col_pad = reinterpret_cast<char *>(&cur_col_id);
             node_file.write(col_pad, 4);
