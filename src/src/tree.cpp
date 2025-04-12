@@ -107,6 +107,7 @@ namespace rsql
     }
     void BTree::remove_column(const size_t idx){
         this->get_root_node();
+        this->width -= this->columns[idx].width;
         this->columns.erase(this->columns.begin() + idx);
         this->root->match_columns();
     }

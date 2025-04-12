@@ -22,7 +22,9 @@ Structure:
     the last single byte determines if it's a leaf
 5. new key inserted, if the new key equal to a key k where index of k is i, the new key is inserted to child with index i
 
-
-Reference: Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, Clifford Stein Introduction to Algorithms, Third Edition  2009
+Dependencies:
+1. C++ Boost libraries: https://www.boost.org/
+Reference: 
+1. Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, Clifford Stein Introduction to Algorithms, Third Edition 2009
 
 TODO: reduce file I/O usage -> create a large buffer
