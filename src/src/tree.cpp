@@ -67,6 +67,12 @@ namespace rsql
         this->get_root_node();
         return this->root->find(key);
     }
+    std::vector<char *> BTree::find_all_row(const char *key){
+        this->get_root_node();
+        std::vector<char *> to_ret;
+        this->root->find_all(key, to_ret);
+        return to_ret;
+    }
     void BTree::insert_row(const char *src)
     {
         this->get_root_node();

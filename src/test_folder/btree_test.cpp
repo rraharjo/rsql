@@ -250,3 +250,51 @@ BOOST_AUTO_TEST_CASE(modify_column_test){
     delete tree;
     std::system("make cleandb");
 }
+
+BOOST_AUTO_TEST_CASE(find_all_test){
+    rsql::BTree *tree = new rsql::BTree();
+    tree->add_column(rsql::Column::pkey_column(0));
+    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::date_column(0));
+    tree->add_column(rsql::Column::char_column(0, 10));
+    std::vector<char *> expected;
+    char src[32 + 4 + 10 + 10 + 1] = "00000000000000000000000000000000444410101010101010101010";
+    for (int i = 0 ; i < 10 ; i++){
+        tree->insert_row(src);
+        src[PKEY_COL_W - 1]++;
+    }
+    src[PKEY_COL_W - 1] = '5';
+    char *expected_item = new char[32 + 4 + 10 + 10];
+    std::memcpy(expected_item, src, 32 + 4 + 10 + 10);
+    expected.push_back(expected_item);
+    for (int i = 0 ; i < 3 ; i++){
+        src[PKEY_COL_W]++;
+        tree->insert_row(src);
+        char *expected_i = new char[32 + 4 + 10 + 10];
+        std::memcpy(expected_i, src, 32 + 4 + 10 + 10);
+        expected.push_back(expected_i);
+    }
+    char key[PKEY_COL_W];
+    std::memcpy(key, "00000000000000000000000000000005", PKEY_COL_W);
+    std::vector<char *> alls = tree->find_all_row(key);
+    BOOST_CHECK(alls.size() == 4);
+    BOOST_CHECK(expected.size() == alls.size());
+    for (int i = 0 ; i < alls.size() ; i++){
+        bool found = false;
+        for (int j = 0 ; j < expected.size() ; j++){
+            if (strncmp(alls[i], alls[j], 32 + 4 + 10 + 10) == 0){
+                found = true;
+                break;
+            }
+        }
+        BOOST_CHECK(found);
+    }
+    for (char *single : alls){
+        delete[] single;
+    }
+    for (char *item : expected){
+        delete[] item;
+    }
+    delete tree;
+    std::system("make cleandb");
+}

@@ -16,6 +16,20 @@ namespace rsql
     {
     public:
         /**
+         * @brief return the first proper child idx
+         * 
+         * @param k 
+         * @return int 
+         */
+        int first_child_idx(const char *k);
+        /**
+         * @brief return the last proper child idx
+         * 
+         * @param k 
+         * @return int 
+         */
+        int last_child_idx(const char *k);
+        /**
          * @brief Compare the first k byte, where k is the size of the first column
          *
          * @param k_1
@@ -99,6 +113,13 @@ namespace rsql
          * @return n bytes of char dynamically allocated, where n is the width of the table. If not found it returns nullptr
          */
         char *find(const char *key);
+        /**
+         * @brief Put all matching row to res
+         * 
+         * @param key 
+         * @param res result vector
+         */
+        void find_all(const char *key, std::vector<char *>& res);
         void insert(const char *row);
         void delete_row(const char *key);
         void write_disk();

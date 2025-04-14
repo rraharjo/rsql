@@ -117,6 +117,55 @@ namespace rsql
         new_node->match_columns();
         return new_node;
     }
+    int BNode::last_child_idx(const char *k)
+    {
+        int start = 0, end = this->size - 1;
+        int mid;
+        int to_ret = -1;
+        while (start <= end)
+        {
+            mid = (start + end) / 2;
+            int comp = this->compare_key(k, this->keys[mid]);
+            if (comp < 0)
+            {
+                end = mid - 1;
+            }
+            else if (comp > 0){
+                to_ret = to_ret == -1 ? mid + 1 : std::min(to_ret, mid + 1);
+                start = mid + 1;
+            }
+            else
+            {
+                to_ret = std::max(to_ret, mid + 1);
+                start = mid + 1;
+            }
+        }
+        return to_ret == -1 ? 0 : to_ret;
+    }
+    int BNode::first_child_idx(const char *k)
+    {
+        int start = 0, end = this->size - 1;
+        int mid;
+        int to_ret = -1;
+        while (start <= end)
+        {
+            mid = (start + end) / 2;
+            int comp = this->compare_key(k, this->keys[mid]);
+            if (comp > 0){
+                start = mid + 1;
+            }
+            else if (comp < 0){
+                to_ret = std::max(to_ret, mid);
+                end = mid - 1;
+            }
+            else{
+                to_ret = to_ret == -1 ? mid : std::min(to_ret, mid);
+                end = mid - 1;
+            }
+        }
+        return to_ret == -1 ? this->size : to_ret;
+    }
+    
     int BNode::compare_key(const char *k_1, const char *k_2)
     {
         return strncmp(k_1, k_2, this->tree->columns[0].width);
@@ -346,18 +395,22 @@ namespace rsql
         {
             removed_col_idx.push_back(i++);
         }
-        for (size_t k = 0 ; k < this->size ; k++){
+        for (size_t k = 0; k < this->size; k++)
+        {
             char *new_pointer = new char[this->tree->width];
             std::memset(new_pointer, 0, this->tree->width);
             char *new_moving_pointer = new_pointer;
             char *old_moving_pointer = this->keys[k];
             size_t removed_idx = 0;
-            for (size_t l = 0 ; l < this->columns.size() ; l++){
-                if (removed_idx < removed_col_idx.size() && removed_col_idx[removed_idx] == l){
+            for (size_t l = 0; l < this->columns.size(); l++)
+            {
+                if (removed_idx < removed_col_idx.size() && removed_col_idx[removed_idx] == l)
+                {
                     removed_idx++;
                     old_moving_pointer += this->columns[l].width;
                 }
-                else{
+                else
+                {
                     std::memcpy(new_moving_pointer, old_moving_pointer, this->columns[l].width);
                     old_moving_pointer += this->columns[l].width;
                     new_moving_pointer += this->columns[l].width;
@@ -420,6 +473,24 @@ namespace rsql
             }
             return nullptr;
         }
+    }
+    void BNode::find_all(const char *key, std::vector<char *> &res)
+    {
+        int low_proper = this->first_child_idx(key);
+        int high_proper = this->last_child_idx(key);
+        for  (int i = low_proper ; i < high_proper && this->compare_key(key, this->keys[i]) == 0 ; i++){
+            char *to_add = new char[this->tree->width];
+            std::memcpy(to_add, this->keys[i], this->tree->width);
+            res.push_back(to_add);
+        }
+        if (!this->leaf){
+            for (int i = low_proper ; i <= high_proper ; i++){
+                std::string c_i_file_name = get_file_name(this->children[i]);
+                BNode *c_i = BNode::read_disk(this->tree, c_i_file_name);
+                c_i->find_all(key, res);
+            }
+        }
+        this->del_if_not_root();
     }
     void BNode::insert(const char *src)
     {
