@@ -90,9 +90,14 @@ BOOST_AUTO_TEST_CASE(delete_case_1_test){
         tree->insert_row(src);
         src[PKEY_COL_W - 1]++;
     }
-    tree->delete_row("00000000000000000000000000000009");
+    char *row = tree->delete_row("00000000000000000000000000000009");
     char *not_found = tree->find_row("00000000000000000000000000000009");
     BOOST_CHECK(not_found == nullptr);
+    BOOST_CHECK(row != nullptr);
+    if (row){
+        BOOST_CHECK(strncmp(row, "00000000000000000000000000000009444410101010101010101010", 56) == 0);
+    }
+    delete[] row;
     delete tree;
     std::system("make cleandb");
 }
@@ -108,9 +113,14 @@ BOOST_AUTO_TEST_CASE(delete_case_2_test){
         tree->insert_row(src);
         src[PKEY_COL_W - 1]++;
     }
-    tree->delete_row("00000000000000000000000000000003");
+    char *row = tree->delete_row("00000000000000000000000000000003");
     char *not_found = tree->find_row("00000000000000000000000000000003");
     BOOST_CHECK(not_found == nullptr);
+    BOOST_CHECK(row != nullptr);
+    if (row){
+        BOOST_CHECK(strncmp(row, "00000000000000000000000000000003444410101010101010101010", 56) == 0);
+    }
+    delete[] row;
     delete tree;
     std::system("make cleandb");
 }
@@ -128,10 +138,10 @@ BOOST_AUTO_TEST_CASE(delete_test){
     }
     size_t compared_bytes = 56;
     char *row_found_9 = tree->find_row("6bytes6bytes6bytes6bytes6bytes69");
-    tree->delete_row("6bytes6bytes6bytes6bytes6bytes69");
-    tree->delete_row("6bytes6bytes6bytes6bytes6bytes68");
-    tree->delete_row("6bytes6bytes6bytes6bytes6bytes61");
-    tree->delete_row("6bytes6bytes6bytes6bytes6bytes63");
+    char *del_row_9 = tree->delete_row("6bytes6bytes6bytes6bytes6bytes69");
+    char *del_row_8 = tree->delete_row("6bytes6bytes6bytes6bytes6bytes68");
+    char *del_row_1 = tree->delete_row("6bytes6bytes6bytes6bytes6bytes61");
+    char *del_row_3 = tree->delete_row("6bytes6bytes6bytes6bytes6bytes63");
     char *row_nfound_9 = tree->find_row("6bytes6bytes6bytes6bytes6bytes69");
     char *row_nfound_8 = tree->find_row("6bytes6bytes6bytes6bytes6bytes68");
     char *row_nfound_1 = tree->find_row("6bytes6bytes6bytes6bytes6bytes61");
@@ -148,10 +158,30 @@ BOOST_AUTO_TEST_CASE(delete_test){
     BOOST_CHECK(strncmp(row_found_9, "6bytes6bytes6bytes6bytes6bytes69ytes6bytes6bytes6bytes2b", compared_bytes) == 0);
     BOOST_CHECK(strncmp(row_found_5, "6bytes6bytes6bytes6bytes6bytes65ytes6bytes6bytes6bytes2b", compared_bytes) == 0);
     BOOST_CHECK(strncmp(row_found_6, "6bytes6bytes6bytes6bytes6bytes66ytes6bytes6bytes6bytes2b", compared_bytes) == 0);
+    BOOST_CHECK(del_row_9 != nullptr);
+    BOOST_CHECK(del_row_8 != nullptr);
+    BOOST_CHECK(del_row_1 != nullptr);
+    BOOST_CHECK(del_row_3 != nullptr);
+    if (del_row_9){
+        BOOST_CHECK(strncmp(del_row_9, "6bytes6bytes6bytes6bytes6bytes69ytes6bytes6bytes6bytes2b", 56) == 0);
+    }
+    if (del_row_8){
+        BOOST_CHECK(strncmp(del_row_8, "6bytes6bytes6bytes6bytes6bytes68ytes6bytes6bytes6bytes2b", 56) == 0);
+    }
+    if (del_row_1){
+        BOOST_CHECK(strncmp(del_row_1, "6bytes6bytes6bytes6bytes6bytes61ytes6bytes6bytes6bytes2b", 56) == 0);
+    }
+    if (del_row_3){
+        BOOST_CHECK(strncmp(del_row_3, "6bytes6bytes6bytes6bytes6bytes63ytes6bytes6bytes6bytes2b", 56) == 0);
+    }
     delete tree;
-    delete row_found_5;
-    delete row_found_6;
-    delete row_found_9;
+    delete[] row_found_5;
+    delete[] row_found_6;
+    delete[] row_found_9;
+    delete[] del_row_9;
+    delete[] del_row_8;
+    delete[] del_row_1;
+    delete[] del_row_3;
     std::system("make cleandb");
 }
 
@@ -352,14 +382,65 @@ BOOST_AUTO_TEST_CASE(batch_delete_test){
         }
         src[PKEY_COL_W - 1]++;
     }
-    tree->batch_delete(deleted);
+    std::vector<char *> rows = tree->batch_delete(deleted);
     for (const char *item : deleted){
         const char *res = tree->find_row(item);
         BOOST_CHECK(res == nullptr);
-        delete res;
+        delete[] res;
+    }
+    for (const char *row : rows){
+        delete[] row;
     }
     for (const char *item : deleted){
         delete[] item;
+    }
+    delete tree;
+    std::system("make cleandb");
+}
+
+BOOST_AUTO_TEST_CASE(delete_all_test){
+    rsql::BTree *tree = new rsql::BTree();
+    tree->add_column(rsql::Column::pkey_column(0));
+    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::date_column(0));
+    tree->add_column(rsql::Column::char_column(0, 10));
+    char key_3[PKEY_COL_W], key_5[PKEY_COL_W];
+    char src[32 + 4 + 10 + 10 + 1] = "00000000000000000000000000000000444410101010101010101010";
+    for (int i = 0 ; i < 10 ; i++){
+        tree->insert_row(src);
+        src[PKEY_COL_W - 1]++;
+    }
+    src[PKEY_COL_W - 1] = '5';
+    std::memcpy(key_5, src, PKEY_COL_W);
+    for (int i = 0 ; i < 3 ; i++){
+        tree->insert_row(src);
+    }
+    src[PKEY_COL_W - 1] = '3';
+    std::memcpy(key_3, src, PKEY_COL_W);
+    for (int i = 0 ; i < 2 ; i++){
+        tree->insert_row(src);
+    }
+
+    std::vector<char *> deleted_3 = tree->delete_all(key_3);
+    std::vector<char *> deleted_5 = tree->delete_all(key_5);
+
+    src[PKEY_COL_W - 1] = '3';
+    BOOST_CHECK(deleted_3.size() == 3);
+    for (int i = 0 ; i < deleted_3.size() ; i++){
+        BOOST_CHECK(strncmp(deleted_3[i], src, 32 + 4 + 10 + 10) == 0);
+    }
+    
+    src[PKEY_COL_W - 1] = '5';
+    BOOST_CHECK(deleted_5.size() == 4);
+    for (int i = 0 ; i < deleted_5.size() ; i++){
+        BOOST_CHECK(strncmp(deleted_5[i], src, 32 + 4 + 10 + 10) == 0);
+    }
+
+    for (int i = 0 ; i < deleted_3.size() ; i++){
+        delete[] deleted_3[i];
+    }
+    for (int i = 0 ; i < deleted_5.size() ; i++){
+        delete[] deleted_5[i];
     }
     delete tree;
     std::system("make cleandb");

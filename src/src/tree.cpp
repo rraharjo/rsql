@@ -5,14 +5,13 @@ namespace rsql
         : root_num(1), max_node_num(1), t(DEGREE), root(nullptr), max_col_id(0), width(0)
     {
     }
-
     BTree::~BTree()
     {
         this->write_disk();
         delete this->root;
     }
-
-    void BTree::get_root_node(){
+    void BTree::get_root_node()
+    {
         if (this->root == nullptr)
         {
             std::string root_file_name = "node_" + std::to_string(this->root_num) + ".rsql";
@@ -63,11 +62,13 @@ namespace rsql
         tree_file.close();
         return to_ret;
     }
-    char *BTree::find_row(const char *key){
+    char *BTree::find_row(const char *key)
+    {
         this->get_root_node();
         return this->root->find(key);
     }
-    std::vector<char *> BTree::find_all_row(const char *key){
+    std::vector<char *> BTree::find_all_row(const char *key)
+    {
         this->get_root_node();
         std::vector<char *> to_ret;
         this->root->find_all(key, to_ret);
@@ -76,7 +77,8 @@ namespace rsql
     void BTree::insert_row(const char *src)
     {
         this->get_root_node();
-        if (this->root->full()){
+        if (this->root->full())
+        {
             BNode *new_root = new BNode(this, ++this->max_node_num);
             this->root_num = this->max_node_num;
             new_root->leaf = false;
@@ -87,15 +89,17 @@ namespace rsql
             this->root = new_root;
             this->root->insert(src);
         }
-        else{
+        else
+        {
             this->root->insert(src);
         }
-        
     }
-    void BTree::delete_row(const char *key){
+    char *BTree::delete_row(const char *key)
+    {
         this->get_root_node();
-        this->root->delete_row(key);
-        if (this->root->size == 0){
+        char *to_ret = this->root->delete_row(key);
+        if (this->root->size == 0)
+        {
             uint32_t new_root_num = this->root->children[0];
             std::string new_root_name = "node_" + std::to_string(new_root_num) + ".rsql";
             BNode *new_root = BNode::read_disk(this, new_root_name);
@@ -103,20 +107,38 @@ namespace rsql
             this->root = new_root;
             this->root_num = this->root->node_num;
         }
+        return to_ret;
     }
-    void BTree::batch_delete(const std::vector<const char *> &keys){
-        for (int i = 0 ; i < keys.size() ; i++){
-            this->delete_row(keys[i]);
+    std::vector<char *> BTree::delete_all(const char *key){
+        char *to_add = nullptr;
+        std::vector<char *> to_ret;
+        while ((to_add = this->delete_row(key))){
+            to_ret.push_back(to_add);
+            to_add = nullptr;
         }
+        return to_ret;
     }
-    void BTree::add_column(const Column c){
+    std::vector<char *> BTree::batch_delete(const std::vector<const char *> &keys)
+    {
+        std::vector<char *> to_ret;
+        for (int i = 0; i < keys.size(); i++)
+        {
+            std::vector<char *> cur_keys = this->delete_all(keys[i]);
+            to_ret.insert(to_ret.end(), cur_keys.begin(), cur_keys.end());
+        }
+        return to_ret;
+    }
+ 
+    void BTree::add_column(const Column c)
+    {
         this->get_root_node();
         this->columns.push_back(c);
         this->width += c.width;
         this->columns[this->columns.size() - 1].col_id = ++this->max_col_id;
         this->root->match_columns();
     }
-    void BTree::remove_column(const size_t idx){
+    void BTree::remove_column(const size_t idx)
+    {
         this->get_root_node();
         this->width -= this->columns[idx].width;
         this->columns.erase(this->columns.begin() + idx);

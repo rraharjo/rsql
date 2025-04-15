@@ -15,11 +15,15 @@ int main(){
     }
     char *row = tree->find_row("6bytes6bytes6bytes6bytes6bytes69");
     std::cout.write(row, 56);
-    tree->delete_row("6bytes6bytes6bytes6bytes6bytes69");
-    tree->delete_row("6bytes6bytes6bytes6bytes6bytes68");
-    tree->delete_row("6bytes6bytes6bytes6bytes6bytes61");
-    tree->delete_row("6bytes6bytes6bytes6bytes6bytes63");
+    char *del_1 = tree->delete_row("6bytes6bytes6bytes6bytes6bytes69");
+    char *del_2 = tree->delete_row("6bytes6bytes6bytes6bytes6bytes68");
+    char *del_3 = tree->delete_row("6bytes6bytes6bytes6bytes6bytes61");
+    char *del_4 = tree->delete_row("6bytes6bytes6bytes6bytes6bytes63");
     delete[] row;
+    delete[] del_1;
+    delete[] del_2;
+    delete[] del_3;
+    delete[] del_4;
     delete tree;
     return 0;
 }

@@ -17,16 +17,16 @@ namespace rsql
     public:
         /**
          * @brief return the first proper child idx
-         * 
-         * @param k 
-         * @return int 
+         *
+         * @param k
+         * @return int
          */
         int first_child_idx(const char *k);
         /**
          * @brief return the last proper child idx
-         * 
-         * @param k 
-         * @return int 
+         *
+         * @param k
+         * @return int
          */
         int last_child_idx(const char *k);
         /**
@@ -39,21 +39,21 @@ namespace rsql
         int compare_key(const char *k_1, const char *k_2);
         /**
          * @brief merge c_j to c_i, where c_i is the children number idx and c_j is children number (idx + 1). c_j is destroyed afterward.
-         * 
-         * @param idx 
-         * @param c_i 
-         * @param c_j 
+         *
+         * @param idx
+         * @param c_i
+         * @param c_j
          */
         void merge(size_t idx, BNode *c_i, BNode *c_j);
         /**
          * @brief recuresively perform tree balancing on the left most children and remove the left most key on the left most leaf node, rooted at current node
-         * 
+         *
          * @return char* the left most key of the left most leaf node, rooted at current node
          */
         char *delete_left();
         /**
          * @brief recuresively perform tree balancing on the right most children and remove the right most key on the right most leaf node, rooted at current node
-         * 
+         *
          * @return char* the right most key of the right most leaf node, rooted at current node
          */
         char *delete_right();
@@ -62,20 +62,20 @@ namespace rsql
          *
          * @param key
          */
-        void delete_row_1(size_t idx);
+        char *delete_row_1(size_t idx);
         /**
          * @brief case 2 of deleting an item: item is in this node, and this node is not a leaf
          *
          * @param key
          */
-        void delete_row_2(const char *key, size_t idx);
+        char *delete_row_2(const char *key, size_t idx);
         /**
          * @brief case 3 of deleting an item: item is not in this node
          *
          * @param key
          * @param idx index of the child node
          */
-        void delete_row_3(const char *key, size_t idx);
+        char *delete_row_3(const char *key, size_t idx);
         void del_if_not_root();
         /**
          * @brief Delete this node along with the file
@@ -92,7 +92,7 @@ namespace rsql
         BNode *split_children(size_t idx, BNode *c_i);
         /**
          * @brief Match the column structure of the node to the tree
-         * 
+         *
          */
         void match_columns();
 
@@ -102,8 +102,7 @@ namespace rsql
         std::vector<char *> keys;
         std::vector<uint32_t> children;
         uint8_t leaf;
-        
-        
+
         uint32_t node_num;
         bool changed;
         BTree *tree;
@@ -129,13 +128,13 @@ namespace rsql
         char *find(const char *key);
         /**
          * @brief Put all matching row to res
-         * 
-         * @param key 
+         *
+         * @param key
          * @param res result vector
          */
-        void find_all(const char *key, std::vector<char *>& res);
+        void find_all(const char *key, std::vector<char *> &res);
         void insert(const char *row);
-        void delete_row(const char *key);
+        char *delete_row(const char *key);
         void write_disk();
 
         friend class BTree;

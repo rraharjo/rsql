@@ -30,14 +30,14 @@ namespace rsql
          * @brief find the first row of which key equals to the argument key
          *
          * @param key key of the row
-         * @return char* n bytes, where n is the width of the tree
+         * @return char * if found, returns a copy of the element, dynamically allocated. Otherwise nullptr is returned.
          */
         char *find_row(const char *key);
         /**
          * @brief find all the rows of which key equals to the argument key
          *
          * @param key
-         * @return std::vector<char *>  vector of n bytes of char where n is the width of the tree
+         * @return std::vector<char *>  a vector constisting copies of the found elements, dynamically allocated
          */
         std::vector<char *> find_all_row(const char *key);
 
@@ -48,12 +48,26 @@ namespace rsql
          */
         void insert_row(const char *src);
         /**
-         * @brief Delete the row of which key equal to the argument key
+         * @brief Delete the first occurence the row of which key equal to the argument key
          *
          * @param key
+         * @return char * the deleted element, dynamically allocated
          */
-        void delete_row(const char *key);
-        void batch_delete(const std::vector<const char *> &keys);
+        char *delete_row(const char *key);
+        /**
+         * @brief Delete all occurences of which keys match the key argument
+         * 
+         * @param key 
+         * @return std::vector<char *> the deleted elements, each element is dynamically allocated
+         */
+        std::vector<char *> delete_all(const char *key);
+        /**
+         * @brief Delete all occurences of all keys
+         * 
+         * @param keys 
+         * @return std::vector<char *> the deleted elements, each element is dynamically allocated
+         */
+        std::vector<char *> batch_delete(const std::vector<const char *> &keys);
         void add_column(const Column c);
         void remove_column(const size_t idx);
         void write_disk();
