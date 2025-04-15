@@ -11,6 +11,7 @@ class Table{
         rsql::BTree *primary_tree;
     public:
         Table();
+        void add_column(const std::string name, const rsql::Column col);
         ~Table();
 };
 

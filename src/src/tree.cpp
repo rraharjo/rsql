@@ -104,6 +104,11 @@ namespace rsql
             this->root_num = this->root->node_num;
         }
     }
+    void BTree::batch_delete(const std::vector<const char *> &keys){
+        for (int i = 0 ; i < keys.size() ; i++){
+            this->delete_row(keys[i]);
+        }
+    }
     void BTree::add_column(const Column c){
         this->get_root_node();
         this->columns.push_back(c);

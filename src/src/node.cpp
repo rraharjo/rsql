@@ -130,7 +130,8 @@ namespace rsql
             {
                 end = mid - 1;
             }
-            else if (comp > 0){
+            else if (comp > 0)
+            {
                 to_ret = to_ret == -1 ? mid + 1 : std::min(to_ret, mid + 1);
                 start = mid + 1;
             }
@@ -151,21 +152,24 @@ namespace rsql
         {
             mid = (start + end) / 2;
             int comp = this->compare_key(k, this->keys[mid]);
-            if (comp > 0){
+            if (comp > 0)
+            {
                 start = mid + 1;
             }
-            else if (comp < 0){
+            else if (comp < 0)
+            {
                 to_ret = std::max(to_ret, mid);
                 end = mid - 1;
             }
-            else{
+            else
+            {
                 to_ret = to_ret == -1 ? mid : std::min(to_ret, mid);
                 end = mid - 1;
             }
         }
         return to_ret == -1 ? this->size : to_ret;
     }
-    
+
     int BNode::compare_key(const char *k_1, const char *k_2)
     {
         return strncmp(k_1, k_2, this->tree->columns[0].width);
@@ -233,6 +237,92 @@ namespace rsql
         this->changed = true;
         c_j->destroy();
     }
+    char *BNode::delete_left()
+    {
+        if (this->leaf)
+        {
+            char *to_ret = this->keys[0];
+            shift_left(this->keys, 1, this->size);
+            this->keys[this->size - 1] = nullptr;
+            this->size--;
+            this->del_if_not_root();
+            return to_ret;
+        }
+        uint32_t c_zero_num = this->children[0];
+        std::string c_zero_str = get_file_name(c_zero_num);
+        BNode *c_zero = BNode::read_disk(this->tree, c_zero_str);
+        if (c_zero->size <= this->tree->t - 1)
+        {
+            uint32_t c_r_num = this->children[1];
+            std::string c_r_str = get_file_name(c_r_num);
+            BNode *c_r = BNode::read_disk(this->tree, c_r_str);
+            if (c_r->size >= this->tree->t)
+            {
+                c_zero->keys[c_zero->size] = this->keys[0];
+                this->keys[0] = c_r->keys[0];
+                c_zero->children[c_zero->size + 1] = c_r->children[0];
+                shift_left(c_r->keys, 1, c_r->size);
+                shift_left(c_r->children, 1, c_r->size + 1);
+                c_r->keys[c_r->size - 1] = nullptr;
+                c_r->children[c_r->size] = 0;
+                c_zero->size++;
+                c_r->size--;
+                c_zero->changed = true;
+                c_r->changed = true;
+                this->changed = true;
+                delete c_r;
+                this->del_if_not_root();
+                return c_zero->delete_left();
+            }
+            this->merge(0, c_zero, c_r);
+            this->del_if_not_root();
+            return c_zero->delete_left();
+        }
+        this->del_if_not_root();
+        return c_zero->delete_left();
+    }
+    char *BNode::delete_right()
+    {
+        if (this->leaf){
+            char *to_ret = this->keys[this->size - 1];
+            this->keys[this->size - 1] = nullptr;
+            this->size--;
+            this->del_if_not_root();
+            return to_ret;
+        }
+        uint32_t c_i_num = this->children[this->size];
+        std::string c_i_str = get_file_name(c_i_num);
+        BNode *c_i = BNode::read_disk(this->tree, c_i_str);
+        if (c_i->size <= this->tree->t - 1)
+        {
+            uint32_t c_l_num = this->children[this->size - 1];
+            std::string c_l_str = get_file_name(c_l_num);
+            BNode *c_l = BNode::read_disk(this->tree, c_l_str);
+            if (c_l->size >= this->tree->t)
+            {
+                shift_right(c_i->keys, 0, c_i->size);
+                shift_right(c_i->children, 0, c_i->size + 1);
+                c_i->keys[0] = this->keys[this->size - 1];
+                this->keys[this->size - 1] = c_l->keys[c_l->size - 1];
+                c_i->children[0] = c_l->children[c_l->size];
+                c_l->keys[c_l->size - 1] = nullptr;
+                c_l->children[c_l->size] = 0;
+                c_l->size--;
+                c_i->size++;
+                c_l->changed = true;
+                c_i->changed = true;
+                this->changed = true;
+                delete c_l;
+                this->del_if_not_root();
+                return c_i->delete_right();
+            }
+            this->merge(this->size - 1, c_l, c_i);
+            this->del_if_not_root();
+            return c_l->delete_right();
+        }
+        this->del_if_not_root();
+        return c_i->delete_right();
+    }
     void BNode::delete_row_1(size_t idx)
     {
         delete[] this->keys[idx];
@@ -249,26 +339,25 @@ namespace rsql
         BNode *c_i = BNode::read_disk(this->tree, c_i_str);
         if (c_i->size >= this->tree->t)
         {
-            char *temp = this->keys[idx];
-            this->keys[idx] = c_i->keys[c_i->size - 1];
-            c_i->keys[c_i->size - 1] = temp;
-            c_i->changed = true;
+            char *predecessor = c_i->delete_right();
+            delete[] this->keys[idx];
+            this->keys[idx] = predecessor;
             this->changed = true;
             this->del_if_not_root();
-            return c_i->delete_row(key);
+            return;
         }
         uint32_t c_j_num = this->children[idx + 1];
         std::string c_j_str = get_file_name(c_j_num);
         BNode *c_j = BNode::read_disk(this->tree, c_j_str);
         if (c_j->size >= this->tree->t)
         {
-            char *temp = this->keys[idx];
-            this->keys[idx] = c_j->keys[0];
-            c_j->keys[0] = temp;
-            c_j->changed = true;
+            delete c_i;
+            char *successor = c_j->delete_left();
+            delete[] this->keys[idx];
+            this->keys[idx] = successor;
             this->changed = true;
             this->del_if_not_root();
-            return c_j->delete_row(key);
+            return;
         }
         this->merge(idx, c_i, c_j);
         this->del_if_not_root();
@@ -313,9 +402,9 @@ namespace rsql
                 c_r = BNode::read_disk(this->tree, c_r_str);
                 if (c_r->size >= this->tree->t)
                 {
-                    c_i->keys[c_i->size - 1] = this->keys[idx];
+                    c_i->keys[c_i->size] = this->keys[idx];
                     this->keys[idx] = c_r->keys[0];
-                    c_i->children[c_i->size] = c_r->children[0];
+                    c_i->children[c_i->size + 1] = c_r->children[0];
                     shift_left(c_r->keys, 1, c_r->size);
                     shift_left(c_r->children, 1, c_r->size + 1);
                     c_r->keys[c_r->size - 1] = nullptr;
@@ -478,13 +567,16 @@ namespace rsql
     {
         int low_proper = this->first_child_idx(key);
         int high_proper = this->last_child_idx(key);
-        for  (int i = low_proper ; i < high_proper && this->compare_key(key, this->keys[i]) == 0 ; i++){
+        for (int i = low_proper; i < high_proper && this->compare_key(key, this->keys[i]) == 0; i++)
+        {
             char *to_add = new char[this->tree->width];
             std::memcpy(to_add, this->keys[i], this->tree->width);
             res.push_back(to_add);
         }
-        if (!this->leaf){
-            for (int i = low_proper ; i <= high_proper ; i++){
+        if (!this->leaf)
+        {
+            for (int i = low_proper; i <= high_proper; i++)
+            {
                 std::string c_i_file_name = get_file_name(this->children[i]);
                 BNode *c_i = BNode::read_disk(this->tree, c_i_file_name);
                 c_i->find_all(key, res);

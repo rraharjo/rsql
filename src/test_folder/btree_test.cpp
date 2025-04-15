@@ -1,6 +1,7 @@
 #define BOOST_TEST_MODULE MyTestModule
 #include <boost/test/included/unit_test.hpp>
 #include "tree.h"
+//Tested with degree of 2
 BOOST_AUTO_TEST_CASE(tree_write_read_disk_test){
     rsql::BTree *tree = new rsql::BTree();
     tree->add_column(rsql::Column::pkey_column(0));
@@ -76,6 +77,42 @@ BOOST_AUTO_TEST_CASE(insert_test){
     delete tree;
     delete row;
     system("make cleandb");
+}
+
+BOOST_AUTO_TEST_CASE(delete_case_1_test){
+    rsql::BTree *tree = new rsql::BTree();
+    tree->add_column(rsql::Column::pkey_column(0));
+    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::date_column(0));
+    tree->add_column(rsql::Column::char_column(0, 10));
+    char src[32 + 4 + 10 + 10 + 1] = "00000000000000000000000000000000444410101010101010101010";
+    for (int i = 0 ; i < 10 ; i++){
+        tree->insert_row(src);
+        src[PKEY_COL_W - 1]++;
+    }
+    tree->delete_row("00000000000000000000000000000009");
+    char *not_found = tree->find_row("00000000000000000000000000000009");
+    BOOST_CHECK(not_found == nullptr);
+    delete tree;
+    std::system("make cleandb");
+}
+
+BOOST_AUTO_TEST_CASE(delete_case_2_test){
+    rsql::BTree *tree = new rsql::BTree();
+    tree->add_column(rsql::Column::pkey_column(0));
+    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::date_column(0));
+    tree->add_column(rsql::Column::char_column(0, 10));
+    char src[32 + 4 + 10 + 10 + 1] = "00000000000000000000000000000000444410101010101010101010";
+    for (int i = 0 ; i < 10 ; i++){
+        tree->insert_row(src);
+        src[PKEY_COL_W - 1]++;
+    }
+    tree->delete_row("00000000000000000000000000000003");
+    char *not_found = tree->find_row("00000000000000000000000000000003");
+    BOOST_CHECK(not_found == nullptr);
+    delete tree;
+    std::system("make cleandb");
 }
 
 BOOST_AUTO_TEST_CASE(delete_test){
@@ -293,6 +330,35 @@ BOOST_AUTO_TEST_CASE(find_all_test){
         delete[] single;
     }
     for (char *item : expected){
+        delete[] item;
+    }
+    delete tree;
+    std::system("make cleandb");
+}
+BOOST_AUTO_TEST_CASE(batch_delete_test){
+    rsql::BTree *tree = new rsql::BTree();
+    tree->add_column(rsql::Column::pkey_column(0));
+    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::date_column(0));
+    tree->add_column(rsql::Column::char_column(0, 10));
+    std::vector<const char *> deleted;
+    char src[32 + 4 + 10 + 10 + 1] = "00000000000000000000000000000000444410101010101010101010";
+    for (int i = 0 ; i < 10 ; i++){
+        tree->insert_row(src);
+        if (i < 4){
+            char *del_key = new char[32 + 4 + 10 + 10];
+            std::memcpy(del_key, src, 32 + 4 + 10 + 10);
+            deleted.push_back(del_key);
+        }
+        src[PKEY_COL_W - 1]++;
+    }
+    tree->batch_delete(deleted);
+    for (const char *item : deleted){
+        const char *res = tree->find_row(item);
+        BOOST_CHECK(res == nullptr);
+        delete res;
+    }
+    for (const char *item : deleted){
         delete[] item;
     }
     delete tree;

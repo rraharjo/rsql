@@ -53,7 +53,7 @@ namespace rsql
          * @param key
          */
         void delete_row(const char *key);
-        void batch_delete(std::vector<const char *> &keys);
+        void batch_delete(const std::vector<const char *> &keys);
         void add_column(const Column c);
         void remove_column(const size_t idx);
         void write_disk();
