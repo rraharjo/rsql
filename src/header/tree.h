@@ -2,7 +2,10 @@
 #define BTREE_H
 #include "node.h"
 #include <iostream>
+#include <unistd.h>
+#include <fcntl.h>
 #define DEGREE 2
+#define STARTING_BUFFER_SZ 2048
 #define TREE_FILE "tree.rsql"
 namespace rsql
 {

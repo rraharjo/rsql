@@ -2,9 +2,10 @@
 #define BNODE_H
 #include <regex>
 #include <vector>
-#include <fstream>
 #include <cstring>
 #include <cstdint>
+#include <fcntl.h>
+#include <unistd.h>
 #include "column.h"
 namespace rsql
 {

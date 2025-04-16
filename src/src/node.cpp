@@ -62,59 +62,106 @@ namespace rsql
 {
     BNode *BNode::read_disk(BTree *tree, const std::string file_name)
     {
+        char *read_buffer = new char[STARTING_BUFFER_SZ];
+        size_t bytes_processed = 0, cur_read_bytes = 0;
+        int node_file_fd = open(file_name.c_str(), O_RDONLY);
+        if (node_file_fd < 0)
+        {
+            delete[] read_buffer;
+            throw std::invalid_argument("Fail to open node.rsql");
+        }
         unsigned int node_no = get_node_no(file_name);
         size_t cur_row_width = 0;
-        std::ifstream node_file(file_name, std::ios::binary);
-        if (!node_file)
+        if ((cur_read_bytes = read(node_file_fd, read_buffer, STARTING_BUFFER_SZ)) < 0)
         {
-            throw std::invalid_argument("Can't open node.rsql file");
-            return nullptr;
+            delete[] read_buffer;
+            throw std::invalid_argument("Fail to read node.rsql");
         }
         BNode *new_node = new BNode(tree, node_no);
         new_node->columns.clear();
         char col_size_pad[sizeof(uint32_t)];
-        node_file.read(col_size_pad, 4);
+        std::memcpy(col_size_pad, read_buffer + bytes_processed, 4);
+        bytes_processed += 4;
         uint32_t col_size = *reinterpret_cast<uint32_t *>(col_size_pad);
         for (uint32_t i = 0; i < col_size; i++)
         {
+            if (cur_read_bytes - bytes_processed < 16)
+            {
+                std::memcpy(read_buffer, read_buffer + bytes_processed, cur_read_bytes - bytes_processed);
+                bytes_processed = cur_read_bytes - bytes_processed;
+                if ((cur_read_bytes = read(node_file_fd, read_buffer + bytes_processed, STARTING_BUFFER_SZ)) < 0)
+                {
+                    delete[] read_buffer;
+                    throw std::invalid_argument("Fail to read.rsql");
+                }
+                bytes_processed = 0;
+            }
             char col_id_pad[4];
-            node_file.read(col_id_pad, 4);
+            std::memcpy(col_id_pad, read_buffer + bytes_processed, 4);
+            bytes_processed += 4;
             uint32_t col_id = *reinterpret_cast<uint32_t *>(col_id_pad);
 
             char col_type_pad[DT_STR_LEN];
-            node_file.read(col_type_pad, DT_STR_LEN);
+            std::memcpy(col_type_pad, read_buffer + bytes_processed, 4);
+            bytes_processed += 4;
             std::string c_type_str(col_type_pad, DT_STR_LEN);
 
-            char col_width_pad[sizeof(uint32_t)];
-            node_file.read(col_width_pad, 4);
+            char col_width_pad[4];
+            std::memcpy(col_width_pad, read_buffer + bytes_processed, 4);
+            bytes_processed += 4;
             uint32_t col_width = *reinterpret_cast<uint32_t *>(col_width_pad);
 
             new_node->columns.push_back(Column::get_column(col_id, str_to_dt(c_type_str), (size_t)col_width));
             cur_row_width += col_width;
         }
         char node_size_pad[sizeof(uint32_t)];
-        std::memset(node_size_pad, '\0', sizeof(uint32_t));
-        node_file.read(node_size_pad, 4);
+        std::memcpy(node_size_pad, read_buffer + bytes_processed, 4);
+        bytes_processed += 4;
         uint32_t node_size = *reinterpret_cast<uint32_t *>(node_size_pad);
         new_node->size = node_size;
         for (uint32_t i = 0; i < node_size; i++)
         {
+            if (cur_read_bytes - bytes_processed < cur_row_width)
+            {
+                std::memcpy(read_buffer, read_buffer + bytes_processed, cur_read_bytes - bytes_processed);
+                bytes_processed = cur_read_bytes - bytes_processed;
+                if ((cur_read_bytes = read(node_file_fd, read_buffer + bytes_processed, STARTING_BUFFER_SZ)) < 0)
+                {
+                    delete[] read_buffer;
+                    throw std::invalid_argument("Fail to read.rsql");
+                }
+                bytes_processed = 0;
+            }
             new_node->keys[i] = new char[cur_row_width];
-            node_file.read(new_node->keys[i], cur_row_width);
+            std::memcpy(new_node->keys[i], read_buffer + bytes_processed, cur_row_width);
+            bytes_processed += cur_row_width;
         }
         for (uint32_t i = 0; i <= node_size; i++)
         {
+            if (cur_read_bytes - bytes_processed < 5)
+            {
+                std::memcpy(read_buffer, read_buffer + bytes_processed, cur_read_bytes - bytes_processed);
+                bytes_processed = cur_read_bytes - bytes_processed;
+                if ((cur_read_bytes = read(node_file_fd, read_buffer + bytes_processed, STARTING_BUFFER_SZ)) < 0)
+                {
+                    delete[] read_buffer;
+                    throw std::invalid_argument("Fail to read.rsql");
+                }
+                bytes_processed = 0;
+            }
             char idx_pad[sizeof(uint32_t)];
-            std::memset(idx_pad, '\0', sizeof(uint32_t));
-            node_file.read(idx_pad, 4);
+            std::memcpy(idx_pad, read_buffer + bytes_processed, 4);
+            bytes_processed += 4;
             uint32_t idx = *reinterpret_cast<uint32_t *>(idx_pad);
             new_node->children[i] = idx;
         }
         char l_pad;
-        node_file.read(&l_pad, 1);
+        std::memcpy(&l_pad, read_buffer + bytes_processed, 1);
+        bytes_processed += 1;
         new_node->leaf = l_pad;
-        node_file.close();
+        close(node_file_fd);
         new_node->match_columns();
+        delete[] read_buffer;
         return new_node;
     }
     int BNode::last_child_idx(const char *k)
@@ -692,41 +739,66 @@ namespace rsql
         {
             return;
         }
+        char *write_buffer = new char[STARTING_BUFFER_SZ];
+        size_t bytes_processed = 0;
         std::string file_name = "node_" + std::to_string(this->node_num) + ".rsql";
-        std::ofstream node_file(file_name, std::ios::binary);
+        int node_file_fd = open(file_name.c_str(), O_APPEND | O_CREAT | O_TRUNC | O_WRONLY, 0644);
         uint32_t col_num = this->columns.size();
         char *col_pad = reinterpret_cast<char *>(&col_num);
-        node_file.write(col_pad, 4);
+        std::memcpy(write_buffer + bytes_processed, col_pad, 4);
+        bytes_processed += 4;
         for (uint32_t i = 0; i < col_num; i++)
         {
+            if (STARTING_BUFFER_SZ - bytes_processed < 16){
+                write(node_file_fd, write_buffer, bytes_processed);
+                bytes_processed = 0;
+            }
             uint32_t cur_col_id = this->columns[i].col_id;
-            char *col_pad = reinterpret_cast<char *>(&cur_col_id);
-            node_file.write(col_pad, 4);
+            char *col_num_pad = reinterpret_cast<char *>(&cur_col_id);
+            std::memcpy(write_buffer + bytes_processed, col_num_pad, 4);
+            bytes_processed += 4;
 
             std::string type = dt_to_str(this->columns[i].type);
-            node_file.write(type.c_str(), DT_STR_LEN);
+            std::memcpy(write_buffer + bytes_processed, type.c_str(), 4);
+            bytes_processed += 4;
 
             uint32_t width = this->columns[i].width;
             char *w_pad = reinterpret_cast<char *>(&width);
-            node_file.write(w_pad, 4);
+            std::memcpy(write_buffer + bytes_processed, w_pad, 4);
+            bytes_processed += 4;
+
         }
         uint32_t this_size = this->size;
         char *npad = reinterpret_cast<char *>(&this_size);
-        node_file.write(npad, 4);
+        std::memcpy(write_buffer + bytes_processed, npad, 4);
+        bytes_processed += 4;
 
         for (uint32_t i = 0; i < this->size; i++)
         {
-            node_file.write(this->keys[i], this->tree->width);
+            if (STARTING_BUFFER_SZ - bytes_processed < this->tree->width){
+                write(node_file_fd, write_buffer, bytes_processed);
+                bytes_processed = 0;
+            }
+            std::memcpy(write_buffer + bytes_processed, this->keys[i], this->tree->width);
+            bytes_processed += this->tree->width;
         }
         for (uint32_t i = 0; i <= this->size; i++)
         {
+            if (STARTING_BUFFER_SZ - bytes_processed < 5){
+                write(node_file_fd, write_buffer, bytes_processed);
+                bytes_processed = 0;
+            }
             uint32_t cur_child = this->children[i];
             char *cpad = reinterpret_cast<char *>(&cur_child);
-            node_file.write(cpad, 4);
+            std::memcpy(write_buffer + bytes_processed, cpad, 4);
+            bytes_processed += 4;
         }
         char *l_pad = reinterpret_cast<char *>(&this->leaf);
-        node_file.write(l_pad, 1);
-        node_file.close();
+        std::memcpy(write_buffer + bytes_processed, l_pad, 1);
+        bytes_processed += 1;
+        write(node_file_fd, write_buffer, bytes_processed);
+        close(node_file_fd);
+        delete[] write_buffer;
         this->changed = false;
     }
 }
