@@ -30,13 +30,14 @@ namespace rsql
          */
         int last_child_idx(const char *k);
         /**
-         * @brief Compare the first k byte, where k is the size of the first column
+         * @brief Compare k byte, where k is the width of column at position col_idx
          *
          * @param k_1
          * @param k_2
+         * @param col_idx
          * @return < 0 if k_1 is less than k_2 ; > 0 if k_1 is larger than k_2
          */
-        int compare_key(const char *k_1, const char *k_2);
+        int compare_key(const char *k_1, const char *k_2, size_t col_idx);
         /**
          * @brief merge c_j to c_i, where c_i is the children number idx and c_j is children number (idx + 1). c_j is destroyed afterward.
          *
@@ -76,6 +77,10 @@ namespace rsql
          * @param idx index of the child node
          */
         char *delete_row_3(const char *key, size_t idx);
+        /**
+         * @brief delete this node if this node is not a root node
+         *
+         */
         void del_if_not_root();
         /**
          * @brief Delete this node along with the file
@@ -91,7 +96,7 @@ namespace rsql
          */
         BNode *split_children(size_t idx, BNode *c_i);
         /**
-         * @brief Match the column structure of the node to the tree
+         * @brief Match the column structure of this node to the tree
          *
          */
         void match_columns();
@@ -127,12 +132,21 @@ namespace rsql
          */
         char *find(const char *key);
         /**
-         * @brief Put all matching row to res
+         * @brief find all occurences that match the key, useful when key indexes allow duplicate. When a matching row is found a copy is created
          *
-         * @param key
-         * @param res result vector
+         * @param key the key that is searched for
+         * @param alls found rows
          */
-        void find_all(const char *key, std::vector<char *> &res);
+        void find_all_indexed(const char *key, std::vector<char *> &alls);
+        /**
+         * @brief find all occurences that match the key by linear search. When a matching row is found, a copy is created
+         *
+         * @param key the key that is searched for
+         * @param col_idx the column index that should match the key
+         * @param preceding_size the sum of width of column 0 to (col_idx - 1)
+         * @param alls found rows
+         */
+        void find_all_unindexed(const char *key, size_t col_idx, size_t preceding_size, std::vector<char *> &alls);
         void insert(const char *row);
         char *delete_row(const char *key);
         void write_disk();

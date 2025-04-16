@@ -125,7 +125,7 @@ namespace rsql
         while (start <= end)
         {
             mid = (start + end) / 2;
-            int comp = this->compare_key(k, this->keys[mid]);
+            int comp = this->compare_key(k, this->keys[mid], 0);
             if (comp < 0)
             {
                 end = mid - 1;
@@ -151,7 +151,7 @@ namespace rsql
         while (start <= end)
         {
             mid = (start + end) / 2;
-            int comp = this->compare_key(k, this->keys[mid]);
+            int comp = this->compare_key(k, this->keys[mid], 0);
             if (comp > 0)
             {
                 start = mid + 1;
@@ -170,9 +170,9 @@ namespace rsql
         return to_ret == -1 ? this->size : to_ret;
     }
 
-    int BNode::compare_key(const char *k_1, const char *k_2)
+    int BNode::compare_key(const char *k_1, const char *k_2, size_t col_idx)
     {
-        return strncmp(k_1, k_2, this->tree->columns[0].width);
+        return strncmp(k_1, k_2, this->tree->columns[col_idx].width);
     }
     BNode *BNode::split_children(size_t idx, BNode *c_i)
     {
@@ -283,7 +283,8 @@ namespace rsql
     }
     char *BNode::delete_right()
     {
-        if (this->leaf){
+        if (this->leaf)
+        {
             char *to_ret = this->keys[this->size - 1];
             this->keys[this->size - 1] = nullptr;
             this->size--;
@@ -323,7 +324,7 @@ namespace rsql
         this->del_if_not_root();
         return c_i->delete_right();
     }
-    char* BNode::delete_row_1(size_t idx)
+    char *BNode::delete_row_1(size_t idx)
     {
         char *to_ret = this->keys[idx];
         shift_left(this->keys, idx + 1, this->size);
@@ -333,7 +334,7 @@ namespace rsql
         this->del_if_not_root();
         return to_ret;
     }
-    char* BNode::delete_row_2(const char *key, size_t idx)
+    char *BNode::delete_row_2(const char *key, size_t idx)
     {
         uint32_t c_i_num = this->children[idx];
         std::string c_i_str = get_file_name(c_i_num);
@@ -364,7 +365,7 @@ namespace rsql
         this->del_if_not_root();
         return c_i->delete_row(key);
     }
-    char* BNode::delete_row_3(const char *key, size_t idx)
+    char *BNode::delete_row_3(const char *key, size_t idx)
     {
         uint32_t c_i_num = this->children[idx];
         std::string c_i_str = get_file_name(c_i_num);
@@ -531,11 +532,11 @@ namespace rsql
     char *BNode::find(const char *key)
     {
         size_t cur_idx = 0;
-        while (cur_idx < this->size && this->compare_key(key, this->keys[cur_idx]) > 0)
+        while (cur_idx < this->size && this->compare_key(key, this->keys[cur_idx], 0) > 0)
         {
             cur_idx++;
         }
-        if (cur_idx < this->size && this->compare_key(key, this->keys[cur_idx]) == 0)
+        if (cur_idx < this->size && this->compare_key(key, this->keys[cur_idx], 0) == 0)
         {
             char *to_ret = new char[this->tree->width];
             std::memcpy(to_ret, this->keys[cur_idx], this->tree->width);
@@ -564,33 +565,65 @@ namespace rsql
             return nullptr;
         }
     }
-    void BNode::find_all(const char *key, std::vector<char *> &res)
+    void BNode::find_all_indexed(const char *key, std::vector<char *> &alls)
     {
         int low_proper = this->first_child_idx(key);
         int high_proper = this->last_child_idx(key);
-        for (int i = low_proper; i < high_proper && this->compare_key(key, this->keys[i]) == 0; i++)
+        for (int i = low_proper; i < high_proper && this->compare_key(key, this->keys[i], 0) == 0; i++)
         {
             char *to_add = new char[this->tree->width];
             std::memcpy(to_add, this->keys[i], this->tree->width);
-            res.push_back(to_add);
+            alls.push_back(to_add);
         }
-        if (!this->leaf)
+        if (this->leaf)
         {
-            for (int i = low_proper; i <= high_proper; i++)
+            this->del_if_not_root();
+            return;
+        }
+        std::vector<uint32_t> proper_children;
+        proper_children.insert(proper_children.end(), this->children.begin() + low_proper, this->children.begin() + high_proper + 1);
+        BTree *tree = this->tree;
+        this->del_if_not_root();
+        for (int i = 0; i < proper_children.size(); i++)
+        {
+            std::string c_i_file_name = get_file_name(proper_children[i]);
+            BNode *c_i = BNode::read_disk(tree, c_i_file_name);
+            c_i->find_all_indexed(key, alls);
+        }
+    }
+    void BNode::find_all_unindexed(const char *k, size_t col_idx, size_t preceding_size, std::vector<char *> &alls)
+    {
+        for (int i = 0; i < this->size; i++)
+        {
+            if (this->compare_key(k, this->keys[i] + preceding_size, col_idx) == 0) // use compare_key
             {
-                std::string c_i_file_name = get_file_name(this->children[i]);
-                BNode *c_i = BNode::read_disk(this->tree, c_i_file_name);
-                c_i->find_all(key, res);
+                char *to_ret = new char[this->tree->width];
+                std::memcpy(to_ret, this->keys[i], this->tree->width);
+                alls.push_back(to_ret);
             }
         }
+        if (this->leaf)
+        {
+            this->del_if_not_root();
+            return;
+        }
+        std::vector<uint32_t> this_children;
+        this_children.insert(this_children.end(), this->children.begin(), this->children.begin() + this->size + 1);
+        BTree *tree = this->tree;
         this->del_if_not_root();
+        for (int i = 0; i < this_children.size(); i++)
+        {
+            std::string c_i_str = get_file_name(this_children[i]);
+            BNode *c_i = BNode::read_disk(tree, c_i_str);
+            c_i->find_all_unindexed(k, col_idx, preceding_size, alls);
+        }
     }
     void BNode::insert(const char *src)
     {
         if (this->leaf)
         {
             size_t cur_idx = 0;
-            while (cur_idx < this->size && this->compare_key(src, this->keys[cur_idx]) > 0)
+            while (cur_idx < this->size && this->compare_key(src, this->keys[cur_idx], 0) > 0)
             {
                 cur_idx++;
             }
@@ -604,7 +637,7 @@ namespace rsql
         else
         {
             size_t cur_idx = 0;
-            while (cur_idx < this->size && this->compare_key(src, this->keys[cur_idx]) > 0)
+            while (cur_idx < this->size && this->compare_key(src, this->keys[cur_idx], 0) > 0)
             {
                 cur_idx++;
             }
@@ -614,7 +647,7 @@ namespace rsql
             if (c_i->full())
             {
                 BNode *new_node = this->split_children(cur_idx, c_i);
-                if (this->compare_key(src, this->keys[cur_idx]) > 0)
+                if (this->compare_key(src, this->keys[cur_idx], 0) > 0)
                 {
                     delete c_i;
                     c_i = new_node;
@@ -628,18 +661,18 @@ namespace rsql
             c_i->insert(src);
         }
     }
-    char* BNode::delete_row(const char *key)
+    char *BNode::delete_row(const char *key)
     {
         size_t idx = 0;
-        while (idx < this->size && this->compare_key(key, this->keys[idx]) > 0)
+        while (idx < this->size && this->compare_key(key, this->keys[idx], 0) > 0)
         {
             idx++;
         }
-        if (idx < this->size && this->compare_key(key, this->keys[idx]) == 0 && this->leaf)
+        if (idx < this->size && this->compare_key(key, this->keys[idx], 0) == 0 && this->leaf)
         {
             return this->delete_row_1(idx);
         }
-        else if (idx < this->size && this->compare_key(key, this->keys[idx]) == 0 && !this->leaf)
+        else if (idx < this->size && this->compare_key(key, this->keys[idx], 0) == 0 && !this->leaf)
         {
             return this->delete_row_2(key, idx);
         }
@@ -649,6 +682,7 @@ namespace rsql
         }
         else
         {
+            this->del_if_not_root();
             return nullptr;
         }
     }

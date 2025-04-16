@@ -67,11 +67,23 @@ namespace rsql
         this->get_root_node();
         return this->root->find(key);
     }
-    std::vector<char *> BTree::find_all_row(const char *key)
+    std::vector<char *> BTree::find_all_row(const char *key, size_t col_idx)
     {
         this->get_root_node();
         std::vector<char *> to_ret;
-        this->root->find_all(key, to_ret);
+        if (col_idx == 0)
+        {
+            this->root->find_all_indexed(key, to_ret);
+        }
+        else
+        {
+            size_t preceding_size = 0;
+            for (int i = 0; i < col_idx; i++)
+            {
+                preceding_size += this->columns[i].width;
+            }
+            this->root->find_all_unindexed(key, col_idx, preceding_size, to_ret);
+        }
         return to_ret;
     }
     void BTree::insert_row(const char *src)
@@ -109,26 +121,41 @@ namespace rsql
         }
         return to_ret;
     }
-    std::vector<char *> BTree::delete_all(const char *key){
-        char *to_add = nullptr;
+    std::vector<char *> BTree::delete_all(const char *key, size_t idx)
+    {
         std::vector<char *> to_ret;
-        while ((to_add = this->delete_row(key))){
-            to_ret.push_back(to_add);
-            to_add = nullptr;
+        if (idx == 0)
+        {
+            char *to_add = nullptr;
+            while ((to_add = this->delete_row(key)))
+            {
+                to_ret.push_back(to_add);
+                to_add = nullptr;
+            }
+        }
+        else
+        {
+            std::vector<char *> keys = this->find_all_row(key, idx);
+            std::vector<char *> rows = this->batch_delete(keys);
+            for (const char *key : keys)
+            {
+                delete[] key;
+            }
+            return rows;
         }
         return to_ret;
     }
-    std::vector<char *> BTree::batch_delete(const std::vector<const char *> &keys)
+    std::vector<char *> BTree::batch_delete(const std::vector<char *> &keys)
     {
         std::vector<char *> to_ret;
         for (int i = 0; i < keys.size(); i++)
         {
-            std::vector<char *> cur_keys = this->delete_all(keys[i]);
+            std::vector<char *> cur_keys = this->delete_all(keys[i], 0);
             to_ret.insert(to_ret.end(), cur_keys.begin(), cur_keys.end());
         }
         return to_ret;
     }
- 
+
     void BTree::add_column(const Column c)
     {
         this->get_root_node();
