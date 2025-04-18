@@ -4,10 +4,11 @@ namespace rsql
 {
     Table *Table::create_new_table(Database *db, const std::string table_name)
     {
-        std::string where = std::filesystem::path(ROOT_FOLDER) / db->db_name / table_name;
+        std::string where = std::filesystem::path(db->get_path()) / table_name;
         if (std::filesystem::exists(where))
         {
             throw std::runtime_error("Table already exists");
+            return nullptr;
         }
         Table *new_table = new Table(db, table_name);
         new_table->db = db;
@@ -68,6 +69,7 @@ namespace rsql
             new_table->col_name_indexes[std::string(col_name, COL_NAME_SIZE)] = col_idx;
         }
         new_table->db = db;
+        new_table->changed = false;
         delete[] read_buffer;
         return new_table;
     }
@@ -84,11 +86,30 @@ namespace rsql
             this->primary_tree = new BTree();
             primary_tree->table = this;
         }
-        this->add_column("_key", Column::get_column(0, DataType::PKEY, 0));
+        // this->add_column("_key", Column::get_column(0, DataType::PKEY, 0));
     }
     Table::~Table()
     {
+        if (this->changed)
+        {
+            this->write_disk();
+        }
         delete this->primary_tree;
+    }
+    size_t Table::get_width() const
+    {
+        return this->primary_tree->width;
+    }
+    size_t Table::get_col_width(const std::string name) const
+    {
+        auto it = this->col_name_indexes.find(name);
+        if (it == this->col_name_indexes.end())
+        {
+            std::string err_msg = "Table " + this->table_name + " has no column named " + name;
+            throw std::invalid_argument(err_msg);
+            return 0;
+        }
+        return this->primary_tree->columns[it->second].width;
     }
     std::string Table::get_path() const
     {
@@ -109,7 +130,9 @@ namespace rsql
         auto it = this->col_name_indexes.find(col_name);
         if (it == this->col_name_indexes.end())
         {
-            throw std::runtime_error("Column does not exist");
+            std::string err_msg = this->table_name + " does not have a column named " + col_name;
+            throw std::invalid_argument(err_msg);
+            return;
         }
         uint32_t col_idx = it->second;
         this->primary_tree->remove_column(col_idx);
@@ -122,6 +145,33 @@ namespace rsql
             }
         }
         this->changed = true;
+    }
+    void Table::insert_row_bin(const char *row)
+    {
+        this->primary_tree->insert_row(row);
+    }
+    std::vector<char *> Table::find_row(const char *key, const std::string col_name)
+    {
+        auto it = this->col_name_indexes.find(col_name);
+        if (it == this->col_name_indexes.end())
+        {
+            const std::string err_msg = this->table_name + " does not have a column named " + col_name;
+            throw err_msg;
+        }
+        size_t col_idx = (size_t)it->second;
+        if (col_idx)
+        {
+            return this->primary_tree->find_all_row(key, col_idx);
+        }
+        else
+        {
+            char *found = this->primary_tree->find_row(key);
+            std::vector<char *> to_ret;
+            if (found){
+                to_ret.push_back(found);
+            }
+            return to_ret;
+        }
     }
 
     void Table::write_disk()
@@ -175,6 +225,7 @@ namespace rsql
             throw std::runtime_error("Failed to write table");
         }
         close(fd);
+        this->changed = false;
         delete[] write_buffer;
     }
 }

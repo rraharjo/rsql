@@ -4,6 +4,7 @@ LEAK = leak_test
 BNODETEST = bnode_test
 BTREETEST = btree_test
 TABLETEST = table_test
+DBTEST = db_test
 DBFOLDER = /home/raharjo/project/database/rsql
 
 buildleak:
@@ -14,12 +15,14 @@ buildbnode:
 	g++ -g $(BNODETEST).cpp -o $(BNODETEST).exe $(INCL) $(LIB)
 buildtable:
 	g++ -g $(TABLETEST).cpp -o $(TABLETEST).exe $(INCL) $(LIB)
+builddb:
+	g++ -g $(DBTEST).cpp -o $(DBTEST).exe $(INCL) $(LIB)
 build:
-	make buildbtree buildbnode buildtable buildleak
+	make buildbtree buildbnode buildtable builddb buildleak
 
-cleandbfolder:
+cleancachefolder:
 	rm -rf $(DBFOLDER)/*
-cleandb:
+cleanthiscache:
 	rm *.rsql
 cleanleak:
 	rm $(LEAK).exe
@@ -31,8 +34,10 @@ cleanbnode:
 	rm $(BNODETEST).exe
 cleantable:
 	rm $(TABLETEST).exe
+cleandb:
+	rm $(DBTEST).exe
 clean:
-	make cleanreadtree cleanbnode cleanbtree cleandb cleandbfolder
+	make cleanreadtree cleanbnode cleanbtree cleantable cleandb cleanthiscache cleancachefolder
 
 runleak:
 	valgrind ./$(LEAK).exe
@@ -42,5 +47,7 @@ runbnode:
 	./$(BNODETEST).exe
 runtable:
 	./$(TABLETEST).exe
+rundb:
+	./$(DBTEST).exe
 run:
-	make runbtree runbnode runtable runleak
+	make runbtree runbnode runtable rundb runleak

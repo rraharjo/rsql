@@ -2,6 +2,7 @@
 #include <boost/test/included/unit_test.hpp>
 #include "tree.h"
 // Tested with degree of 2
+std::string clean_this_cache = "make cleanthiscache";
 BOOST_AUTO_TEST_CASE(tree_write_read_disk_test)
 {
     rsql::BTree *tree = new rsql::BTree();
@@ -25,7 +26,7 @@ BOOST_AUTO_TEST_CASE(tree_write_read_disk_test)
     BOOST_CHECK(tree->width == width);
     BOOST_CHECK(tree->root->node_num == root_node_num);
     delete tree;
-    system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
 
 BOOST_AUTO_TEST_CASE(find_test)
@@ -61,7 +62,7 @@ BOOST_AUTO_TEST_CASE(find_test)
     delete found_4;
     delete found_7;
     delete tree;
-    std::system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
 
 BOOST_AUTO_TEST_CASE(insert_test)
@@ -81,7 +82,7 @@ BOOST_AUTO_TEST_CASE(insert_test)
     BOOST_CHECK(strncmp(row, "6bytes6bytes6bytes6bytes6bytes69ytes6bytes6bytes6bytes2b", 56) == 0);
     delete tree;
     delete row;
-    system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
 
 BOOST_AUTO_TEST_CASE(delete_case_1_test)
@@ -107,7 +108,7 @@ BOOST_AUTO_TEST_CASE(delete_case_1_test)
     }
     delete[] row;
     delete tree;
-    std::system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
 
 BOOST_AUTO_TEST_CASE(delete_case_2_test)
@@ -133,7 +134,7 @@ BOOST_AUTO_TEST_CASE(delete_case_2_test)
     }
     delete[] row;
     delete tree;
-    std::system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
 
 BOOST_AUTO_TEST_CASE(delete_test)
@@ -199,7 +200,7 @@ BOOST_AUTO_TEST_CASE(delete_test)
     delete[] del_row_8;
     delete[] del_row_1;
     delete[] del_row_3;
-    std::system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
 
 BOOST_AUTO_TEST_CASE(add_column_test)
@@ -248,7 +249,7 @@ BOOST_AUTO_TEST_CASE(add_column_test)
     delete found_4;
     delete found_7;
     delete tree;
-    std::system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
 
 BOOST_AUTO_TEST_CASE(remove_column_test)
@@ -295,7 +296,7 @@ BOOST_AUTO_TEST_CASE(remove_column_test)
     delete found_4;
     delete found_7;
     delete tree;
-    std::system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
 
 BOOST_AUTO_TEST_CASE(modify_column_test)
@@ -347,7 +348,7 @@ BOOST_AUTO_TEST_CASE(modify_column_test)
     delete found_4;
     delete found_7;
     delete tree;
-    std::system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
 
 BOOST_AUTO_TEST_CASE(find_all_indexed_test)
@@ -403,7 +404,7 @@ BOOST_AUTO_TEST_CASE(find_all_indexed_test)
         delete[] item;
     }
     delete tree;
-    std::system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
 BOOST_AUTO_TEST_CASE(find_all_unindexed)
 {
@@ -438,7 +439,7 @@ BOOST_AUTO_TEST_CASE(find_all_unindexed)
         delete[] found[i];
     }
     delete tree;
-    std::system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
 BOOST_AUTO_TEST_CASE(batch_delete_test)
 {
@@ -476,7 +477,7 @@ BOOST_AUTO_TEST_CASE(batch_delete_test)
         delete[] item;
     }
     delete tree;
-    std::system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
 
 BOOST_AUTO_TEST_CASE(delete_all_indexed_test)
@@ -532,7 +533,7 @@ BOOST_AUTO_TEST_CASE(delete_all_indexed_test)
         delete[] deleted_5[i];
     }
     delete tree;
-    std::system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
 
 BOOST_AUTO_TEST_CASE(delete_all_unindexed_test)
@@ -606,5 +607,5 @@ BOOST_AUTO_TEST_CASE(delete_all_unindexed_test)
         delete[] deleted_9[i];
     }
     delete tree;
-    std::system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }

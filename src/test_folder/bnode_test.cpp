@@ -1,7 +1,7 @@
 #define BOOST_TEST_MODULE MyTestModule
 #include <boost/test/included/unit_test.hpp>
 #include "tree.h"
-
+std::string clean_this_cache = "make cleanthiscache";
 BOOST_AUTO_TEST_CASE(merge_node_test){
     size_t structure_1_w = PKEY_COL_W;
     std::vector<rsql::Column> structure_1;
@@ -51,7 +51,7 @@ BOOST_AUTO_TEST_CASE(merge_node_test){
     delete tree;
     delete c_1;
     delete c_3;
-    std::system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
 BOOST_AUTO_TEST_CASE(match_column_test){
     size_t structure_1_w = PKEY_COL_W + 4 + 10;
@@ -92,5 +92,5 @@ BOOST_AUTO_TEST_CASE(match_column_test){
     std::memset(match2 + 32, 'C', 10);
     BOOST_CHECK(std::strncmp(node->keys[0], match1, structure_1_w + 5 - 4) == 0);
     BOOST_CHECK(std::strncmp(node->keys[1], match2, structure_1_w + 5 - 4) == 0);
-    system("make cleandb");
+    std::system(clean_this_cache.c_str());
 }
