@@ -1,8 +1,10 @@
 #include "tree.h"
+#include "table.h"
+#include "database.h"
 namespace rsql
 {
     BTree::BTree()
-        : root_num(1), max_node_num(1), t(DEGREE), root(nullptr), max_col_id(0), width(0)
+        : root_num(1), max_node_num(1), t(DEGREE), root(nullptr), max_col_id(0), width(0), table(nullptr)
     {
     }
     BTree::~BTree()
@@ -27,20 +29,29 @@ namespace rsql
             }
         }
     }
-    BTree *BTree::read_disk()
+    BTree *BTree::read_disk(Table *table)
     {
+        std::string where;
+        if (!table){
+            where = TREE_FILE;
+        }
+        else{
+            where = std::filesystem::path(table->get_path()) / TREE_FILE;
+        }
         char *starting_buffer = new char[STARTING_BUFFER_SZ];
-        int tree_file_fd = open(TREE_FILE, O_RDONLY);
+        int tree_file_fd = open(where.c_str(), O_RDONLY);
         if (tree_file_fd < 0)
         {
             delete[] starting_buffer;
             throw std::invalid_argument("Fail to open tree.rsql");
+            return nullptr;
         }
         size_t bytes_processed = 0, cur_read_bytes = 0;
         if ((cur_read_bytes = read(tree_file_fd, starting_buffer, STARTING_BUFFER_SZ)) < 0)
         {
             delete[] starting_buffer;
             throw std::invalid_argument("Fail to read");
+            return nullptr;
         }
         BTree *to_ret = new BTree();
         char s_pad[sizeof(uint32_t)];
@@ -57,6 +68,7 @@ namespace rsql
                 {
                     delete[] starting_buffer;
                     throw std::invalid_argument("Fail to read");
+                    return nullptr;
                 }
                 bytes_processed = 0;
             }
@@ -84,6 +96,7 @@ namespace rsql
             {
                 delete[] starting_buffer;
                 throw std::invalid_argument("Fail to read");
+                return nullptr;
             }
             bytes_processed = 0;
         }
@@ -99,6 +112,7 @@ namespace rsql
         to_ret->root_num = root_num;
         to_ret->max_node_num = max_node_num;
         to_ret->max_col_id = max_col_id;
+        to_ret->table = table;
         close(tree_file_fd);
         return to_ret;
     }
@@ -196,6 +210,17 @@ namespace rsql
         return to_ret;
     }
 
+    void BTree::set_table(Table *table){
+        this->table = table;
+    }
+    std::string BTree::get_path() const {
+        if (this->table){
+            return std::filesystem::path(this->table->get_path());
+        }
+        else{
+            return "";
+        }
+    }
     void BTree::add_column(const Column c)
     {
         this->get_root_node();
@@ -213,10 +238,17 @@ namespace rsql
     }
     void BTree::write_disk()
     {
+        std::string where;
+        if (this->table == nullptr){
+            where = TREE_FILE;
+        }
+        else{
+            where = std::filesystem::path(table->get_path()) / TREE_FILE;
+        }   
         size_t num_of_col = this->columns.size();
         char *write_buffer = new char[4 * 4 + num_of_col * COLUMN_BYTES];
         size_t processed_bytes = 0;
-        int tree_file_fd = open(TREE_FILE, O_APPEND | O_CREAT | O_TRUNC | O_WRONLY, 0644);
+        int tree_file_fd = open(where.c_str(), O_APPEND | O_CREAT | O_TRUNC | O_WRONLY, 0644);
         if (tree_file_fd < 0)
         {
             throw std::invalid_argument("Can't open tree file");

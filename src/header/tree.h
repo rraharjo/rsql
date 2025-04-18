@@ -10,6 +10,7 @@
 namespace rsql
 {
     class BNode;
+    class Table;
     class BTree
     {
     public:
@@ -19,13 +20,14 @@ namespace rsql
         uint32_t max_col_id;
 
         BNode *root;
+        Table *table;
         size_t t;
         size_t width;
 
         void get_root_node();
 
     public:
-        static BTree *read_disk();
+        static BTree *read_disk(Table *table = nullptr);
         BTree();
         ~BTree();
 
@@ -84,6 +86,8 @@ namespace rsql
          * @param idx
          */
         void remove_column(const size_t idx);
+        void set_table(Table *table);
+        std::string get_path() const;
         void write_disk();
         friend class BNode;
     };

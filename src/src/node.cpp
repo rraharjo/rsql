@@ -1,5 +1,7 @@
 #include "node.h"
 #include "tree.h"
+#include "table.h"
+#include "database.h"
 
 /**
  * @brief Shift all item starting at idx (inclusive) to the right by 1 unit
@@ -64,7 +66,8 @@ namespace rsql
     {
         char *read_buffer = new char[STARTING_BUFFER_SZ];
         size_t bytes_processed = 0, cur_read_bytes = 0;
-        int node_file_fd = open(file_name.c_str(), O_RDONLY);
+        std::string where = std::filesystem::path(tree->get_path()) / file_name;
+        int node_file_fd = open(where.c_str(), O_RDONLY);
         if (node_file_fd < 0)
         {
             delete[] read_buffer;
@@ -739,10 +742,11 @@ namespace rsql
         {
             return;
         }
+        std::string where = std::filesystem::path(this->tree->get_path()) / get_file_name(this->node_num);
         char *write_buffer = new char[STARTING_BUFFER_SZ];
         size_t bytes_processed = 0;
-        std::string file_name = "node_" + std::to_string(this->node_num) + ".rsql";
-        int node_file_fd = open(file_name.c_str(), O_APPEND | O_CREAT | O_TRUNC | O_WRONLY, 0644);
+        //std::string file_name = "node_" + std::to_string(this->node_num) + ".rsql";
+        int node_file_fd = open(where.c_str(), O_APPEND | O_CREAT | O_TRUNC | O_WRONLY, 0644);
         uint32_t col_num = this->columns.size();
         char *col_pad = reinterpret_cast<char *>(&col_num);
         std::memcpy(write_buffer + bytes_processed, col_pad, 4);
