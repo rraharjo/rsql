@@ -17,7 +17,7 @@ namespace rsql
         std::string where = std::filesystem::path(ROOT_FOLDER) / db_name;
         if (std::filesystem::exists(where))
         {
-            throw std::runtime_error("Database already exists");
+            throw std::invalid_argument("Database already exists");
             return nullptr;
         }
         std::filesystem::create_directory(where);
@@ -29,7 +29,7 @@ namespace rsql
         std::string where = std::filesystem::path(ROOT_FOLDER) / db_name;
         if (!std::filesystem::exists(where))
         {
-            throw std::runtime_error("Database does not exist");
+            throw std::invalid_argument("Database does not exist");
         }
         Database *new_db = new Database(db_name);
         return new_db;
@@ -48,7 +48,8 @@ namespace rsql
         std::string where = std::filesystem::path(ROOT_FOLDER) / this->db_name / table_name;
         if (!std::filesystem::exists(where))
         {
-            throw std::runtime_error("Table does not exist");
+            throw std::invalid_argument("Table does not exist");
+            return;
         }
         std::filesystem::remove_all(where);
     }

@@ -27,7 +27,7 @@ namespace rsql
         /**
          * @brief Create a new table object.
          *
-         * @throw std::runtime_error if table already exists
+         * @throw std::invalid_argument if table already exists
          * @param db
          * @param table_name
          * @return Table*
@@ -36,7 +36,8 @@ namespace rsql
         /**
          * @brief load existing table from db
          *
-         * @throw std::runtime_error if table_name doesn't already exist
+         * @throw std::invalid_argument if table_name doesn't already exist
+         * @throw std::runtime_error if failed during system call
          * @param db
          * @param table_name
          * @return Table*

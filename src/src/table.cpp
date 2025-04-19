@@ -7,7 +7,7 @@ namespace rsql
         std::string where = std::filesystem::path(db->get_path()) / table_name;
         if (std::filesystem::exists(where))
         {
-            throw std::runtime_error("Table already exists");
+            throw std::invalid_argument("Table already exists");
             return nullptr;
         }
         Table *new_table = new Table(db, table_name);
@@ -20,7 +20,7 @@ namespace rsql
         std::string where = std::filesystem::path(ROOT_FOLDER) / db->db_name / table_name;
         if (!std::filesystem::exists(where))
         {
-            throw std::runtime_error("Table does not exist");
+            throw std::invalid_argument("Table does not exist");
             return nullptr;
         }
         std::string file_name = std::filesystem::path(where) / TABLE_FILE_NAME;
