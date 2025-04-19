@@ -192,15 +192,7 @@ namespace rsql
         this->insert_row_bin(row_bin);
         delete[] row_bin;
     }
-    std::vector<char *> Table::find_row(const char *key, const std::string col_name)
-    {
-        auto it = this->col_name_indexes.find(col_name);
-        if (it == this->col_name_indexes.end())
-        {
-            const std::string err_msg = this->table_name + " does not have a column named " + col_name;
-            throw err_msg;
-        }
-        size_t col_idx = (size_t)it->second;
+    std::vector<char *> Table::find_row(const char *key, size_t col_idx){
         if (col_idx)
         {
             return this->primary_tree->find_all_row(key, col_idx);
@@ -216,7 +208,35 @@ namespace rsql
             return to_ret;
         }
     }
-
+    std::vector<char *> Table::find_row_bin(const char *key, const std::string col_name)
+    {
+        auto it = this->col_name_indexes.find(col_name);
+        if (it == this->col_name_indexes.end())
+        {
+            const std::string err_msg = this->table_name + " does not have a column named " + col_name;
+            throw err_msg;
+        }
+        size_t col_idx = (size_t)it->second;
+        return this->find_row(key, col_idx);
+    }
+    std::vector<char *> Table::find_row_text(std::string key, const std::string col_name){
+        auto it = this->col_name_indexes.find(col_name);
+        if (it == this->col_name_indexes.end())
+        {
+            const std::string err_msg = this->table_name + " does not have a column named " + col_name;
+            throw err_msg;
+        }
+        size_t col_idx = (size_t)it->second;
+        if (this->primary_tree->columns[col_idx].type == DataType::INT){
+            boost::multiprecision::cpp_int new_key(key);
+            std::vector<char> buff;
+            export_bits(new_key, std::back_inserter(buff), 8, false);
+            buff.resize(this->primary_tree->columns[col_idx].width);
+            return this->find_row(buff.data(), col_idx);
+        }
+        key.resize(this->primary_tree->columns[col_idx].width);
+        return this->find_row(key.data(), col_idx);
+    }
     void Table::write_disk()
     {
         if (!this->changed)

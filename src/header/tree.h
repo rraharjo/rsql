@@ -33,7 +33,7 @@ namespace rsql
         ~BTree();
 
         /**
-         * @brief find the first row of which key equals to the argument key
+         * @brief find the first row of which key equals to the argument key. Will do comparison based on the first column
          *
          * @param key key of the row
          * @return char * if found, returns a copy of the element, dynamically allocated. Otherwise nullptr is returned.

@@ -23,6 +23,7 @@ namespace rsql
         bool changed;
 
         Table(const Database *db, const std::string table_name);
+        std::vector<char *> find_row(const char *key, size_t col_idx);
 
     public:
         /**
@@ -88,7 +89,8 @@ namespace rsql
          * @return std::vector<char *> all rows, dynamically allocated
          */
         void insert_row_text(const std::vector<std::string> &row);
-        std::vector<char *> find_row(const char *key, const std::string col_name);
+        std::vector<char *> find_row_bin(const char *key, const std::string col_name);
+        std::vector<char *> find_row_text(std::string key, const std::string col_name);
         void write_disk();
         friend class BTree;
         friend class BNode;
