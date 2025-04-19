@@ -4,6 +4,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <fcntl.h>
+// Can be changed to any number >= 2
 #define DEGREE 2
 #define STARTING_BUFFER_SZ 2048
 #define TREE_FILE "tree.rsql"

@@ -20,5 +20,6 @@ namespace rsql
     };
     DataType str_to_dt(std::string);
     std::string dt_to_str(DataType);
+    bool valid_date(const std::string &);
 }
 #endif

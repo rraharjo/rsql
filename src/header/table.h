@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fcntl.h>
 #include <unistd.h>
+#include <boost/multiprecision/cpp_int.hpp>
 #include "tree.h"
 #define TABLE_NAME_SIZE 256
 #define COL_NAME_SIZE 128
@@ -86,6 +87,7 @@ namespace rsql
          * @param col_name 
          * @return std::vector<char *> all rows, dynamically allocated
          */
+        void insert_row_text(const std::vector<std::string> &row);
         std::vector<char *> find_row(const char *key, const std::string col_name);
         void write_disk();
         friend class BTree;

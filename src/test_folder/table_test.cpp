@@ -15,7 +15,8 @@ BOOST_AUTO_TEST_CASE(table_create_test)
     std::system(clear_cache.c_str());
 }
 
-BOOST_AUTO_TEST_CASE(table_column_test){
+BOOST_AUTO_TEST_CASE(table_column_test)
+{
     rsql::Database *db = rsql::Database::create_new_database("test_db");
     BOOST_CHECK(db != nullptr);
     rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
@@ -32,8 +33,8 @@ BOOST_AUTO_TEST_CASE(table_column_test){
     std::system(clear_cache.c_str());
 }
 
-BOOST_AUTO_TEST_CASE(insert_row_test){
-    
+BOOST_AUTO_TEST_CASE(insert_binary_row_test)
+{
     rsql::Database *db = rsql::Database::create_new_database("test_db");
     BOOST_CHECK(db != nullptr);
     rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
@@ -44,7 +45,8 @@ BOOST_AUTO_TEST_CASE(insert_row_test){
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
 
     char row[] = "00000000000000000000000000000000abcdefghij01-01-2002";
-    for (int i = 0 ; i < 10 ; i++){
+    for (int i = 0; i < 10; i++)
+    {
         table->insert_row_bin(row);
         row[PKEY_COL_W - 1]++;
     }
@@ -53,7 +55,8 @@ BOOST_AUTO_TEST_CASE(insert_row_test){
     std::system(clear_cache.c_str());
 }
 
-BOOST_AUTO_TEST_CASE(find_row_test){
+BOOST_AUTO_TEST_CASE(find_binary_row_test)
+{
     rsql::Database *db = rsql::Database::create_new_database("test_db");
     BOOST_CHECK(db != nullptr);
     rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
@@ -65,7 +68,8 @@ BOOST_AUTO_TEST_CASE(find_row_test){
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
 
     char row[] = "00000000000000000000000000000000abcdefghij01-01-2002";
-    for (int i = 0 ; i < 10 ; i++){
+    for (int i = 0; i < 10; i++)
+    {
         table->insert_row_bin(row);
         row[PKEY_COL_W - 1]++;
     }
@@ -92,6 +96,48 @@ BOOST_AUTO_TEST_CASE(find_row_test){
     delete[] found_0[0];
     delete[] found_5[0];
     delete[] found_8[0];
+    delete table;
+    delete db;
+    std::system(clear_cache.c_str());
+}
+
+BOOST_AUTO_TEST_CASE(insert_row_text_test)
+{
+    rsql::Database *db = rsql::Database::create_new_database("test_db");
+    BOOST_CHECK(db != nullptr);
+    rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
+    BOOST_CHECK(table != nullptr);
+
+    table->add_column("key", rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
+    table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
+    table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
+    table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::INT, 32));
+
+    std::vector<std::string> row_1 = {"00000000000000000000000000000000", "abcdefghij", "01-01-2002", "1234567890"};
+    std::vector<std::string> row_2 = {"00000000000000000000000000000005", "klmnopqrst", "01-12-2002", "1000000000"};
+
+    table->insert_row_text(row_1);
+    table->insert_row_text(row_2);
+
+    std::vector<char *> vec_row_1 = table->find_row("00000000000000000000000000000000", "key");
+    std::vector<char *> vec_row_2 = table->find_row("00000000000000000000000000000005", "key");
+
+    long long int row_1_int = *reinterpret_cast<long long int *>(vec_row_1[0] + 52);
+    long long int row_2_int = *reinterpret_cast<long long int *>(vec_row_2[0] + 52);
+
+    BOOST_CHECK(vec_row_1.size() == 1);
+    BOOST_CHECK(strncmp(vec_row_1[0], row_1[0].c_str(), 32) == 0);
+    BOOST_CHECK(strncmp(vec_row_1[0] + 32, row_1[1].c_str(), 10) == 0);
+    BOOST_CHECK(strncmp(vec_row_1[0] + 42, row_1[2].c_str(), 10) == 0);
+    BOOST_CHECK(row_1_int == std::stoll(row_1[3]));
+    BOOST_CHECK(vec_row_2.size() == 1);
+    BOOST_CHECK(strncmp(vec_row_2[0], row_2[0].c_str(), 32) == 0);
+    BOOST_CHECK(strncmp(vec_row_2[0] + 32, row_2[1].c_str(), 10) == 0);
+    BOOST_CHECK(strncmp(vec_row_2[0] + 42, row_2[2].c_str(), 10) == 0);
+    BOOST_CHECK(row_2_int == std::stoll(row_2[3]));
+
+    delete[] vec_row_1[0];
+    delete[] vec_row_2[0];
     delete table;
     delete db;
     std::system(clear_cache.c_str());

@@ -150,6 +150,48 @@ namespace rsql
     {
         this->primary_tree->insert_row(row);
     }
+    void Table::insert_row_text(const std::vector<std::string> &row)
+    {
+        if (row.size() != this->col_name_indexes.size())
+        {
+            throw std::invalid_argument("Row size does not match table size");
+        }
+        char *row_bin = new char[this->get_width()];
+        std::memset(row_bin, 0, this->get_width());
+        size_t inserted_bytes = 0;
+        for (size_t i = 0; i < row.size(); i++)
+        {
+            switch (this->primary_tree->columns[i].type)
+            {
+            case DataType::DATE:
+                if (!valid_date(row[i]))
+                {
+                    std::string err_msg = row[i] + " is not a valid date";
+                    throw std::invalid_argument(err_msg);
+                }
+                std::memset(row_bin + inserted_bytes, 0, this->primary_tree->columns[i].width);
+                std::memcpy(row_bin + inserted_bytes, row[i].c_str(), row[i].size());
+                inserted_bytes += this->primary_tree->columns[i].width;
+                break;
+            case DataType::CHAR:
+            case DataType::PKEY:
+                std::memset(row_bin + inserted_bytes, 0, this->primary_tree->columns[i].width);
+                std::memcpy(row_bin + inserted_bytes, row[i].c_str(), row[i].size());
+                inserted_bytes += this->primary_tree->columns[i].width;
+                break;
+            case DataType::INT:
+                boost::multiprecision::cpp_int int_val(row[i]);
+                std::vector<unsigned char> buff;
+                // My machine is using little endian :)
+                export_bits(int_val, std::back_inserter(buff), 8, false);
+                std::memcpy(row_bin + inserted_bytes, buff.data(), std::min(this->primary_tree->columns[i].width, buff.size()));
+                inserted_bytes += this->primary_tree->columns[i].width;
+                break;
+            }
+        }
+        this->insert_row_bin(row_bin);
+        delete[] row_bin;
+    }
     std::vector<char *> Table::find_row(const char *key, const std::string col_name)
     {
         auto it = this->col_name_indexes.find(col_name);
@@ -167,7 +209,8 @@ namespace rsql
         {
             char *found = this->primary_tree->find_row(key);
             std::vector<char *> to_ret;
-            if (found){
+            if (found)
+            {
                 to_ret.push_back(found);
             }
             return to_ret;
