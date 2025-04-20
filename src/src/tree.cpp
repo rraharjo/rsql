@@ -32,13 +32,15 @@ namespace rsql
     BTree *BTree::read_disk(Table *table)
     {
         std::string where;
-        if (!table){
+        if (!table)
+        {
             where = TREE_FILE;
         }
-        else{
+        else
+        {
             where = std::filesystem::path(table->get_path()) / TREE_FILE;
         }
-        char *starting_buffer = new char[STARTING_BUFFER_SZ];
+        char *starting_buffer = new char[DISK_BUFFER_SZ];
         int tree_file_fd = open(where.c_str(), O_RDONLY);
         if (tree_file_fd < 0)
         {
@@ -47,7 +49,7 @@ namespace rsql
             return nullptr;
         }
         size_t bytes_processed = 0, cur_read_bytes = 0;
-        if ((cur_read_bytes = read(tree_file_fd, starting_buffer, STARTING_BUFFER_SZ)) < 0)
+        if ((cur_read_bytes = read(tree_file_fd, starting_buffer, DISK_BUFFER_SZ)) < 0)
         {
             delete[] starting_buffer;
             throw std::invalid_argument("Fail to read");
@@ -62,14 +64,15 @@ namespace rsql
         {
             if (cur_read_bytes - bytes_processed < 12)
             {
-                std::memcpy(starting_buffer, starting_buffer + bytes_processed, cur_read_bytes - bytes_processed);
-                bytes_processed = cur_read_bytes - bytes_processed;
-                if ((cur_read_bytes = read(tree_file_fd, starting_buffer + bytes_processed, STARTING_BUFFER_SZ - bytes_processed)) < 0)
+                size_t remaining_bytes = cur_read_bytes - bytes_processed;
+                std::memmove(starting_buffer, starting_buffer + bytes_processed, remaining_bytes);
+                if ((cur_read_bytes = read(tree_file_fd, starting_buffer + remaining_bytes, DISK_BUFFER_SZ - remaining_bytes)) < 0)
                 {
                     delete[] starting_buffer;
-                    throw std::invalid_argument("Fail to read");
+                    throw std::runtime_error("Error reading tree.rsql file");
                     return nullptr;
-                }
+                };
+                cur_read_bytes += remaining_bytes;
                 bytes_processed = 0;
             }
             char c_id[4];
@@ -90,14 +93,15 @@ namespace rsql
         }
         if (cur_read_bytes - bytes_processed < 12)
         {
-            std::memcpy(starting_buffer, starting_buffer + bytes_processed, cur_read_bytes - bytes_processed);
-            bytes_processed = cur_read_bytes - bytes_processed;
-            if ((cur_read_bytes = read(tree_file_fd, starting_buffer + bytes_processed, STARTING_BUFFER_SZ - bytes_processed)) < 0)
+            size_t remaining_bytes = cur_read_bytes - bytes_processed;
+            std::memmove(starting_buffer, starting_buffer + bytes_processed, remaining_bytes);
+            if ((cur_read_bytes = read(tree_file_fd, starting_buffer + remaining_bytes, DISK_BUFFER_SZ - remaining_bytes)) < 0)
             {
                 delete[] starting_buffer;
-                throw std::invalid_argument("Fail to read");
+                throw std::runtime_error("Error reading tree.rsql file");
                 return nullptr;
-            }
+            };
+            cur_read_bytes += remaining_bytes;
             bytes_processed = 0;
         }
         std::memcpy(s_pad, starting_buffer + bytes_processed, 4);
@@ -210,14 +214,18 @@ namespace rsql
         return to_ret;
     }
 
-    void BTree::set_table(Table *table){
+    void BTree::set_table(Table *table)
+    {
         this->table = table;
     }
-    std::string BTree::get_path() const {
-        if (this->table){
+    std::string BTree::get_path() const
+    {
+        if (this->table)
+        {
             return std::filesystem::path(this->table->get_path());
         }
-        else{
+        else
+        {
             return "";
         }
     }
@@ -239,12 +247,14 @@ namespace rsql
     void BTree::write_disk()
     {
         std::string where;
-        if (this->table == nullptr){
+        if (this->table == nullptr)
+        {
             where = TREE_FILE;
         }
-        else{
+        else
+        {
             where = std::filesystem::path(table->get_path()) / TREE_FILE;
-        }   
+        }
         size_t num_of_col = this->columns.size();
         char *write_buffer = new char[4 * 4 + num_of_col * COLUMN_BYTES];
         size_t processed_bytes = 0;

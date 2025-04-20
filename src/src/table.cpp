@@ -31,8 +31,8 @@ namespace rsql
             throw std::runtime_error("Failed to open file");
             return nullptr;
         }
-        char *read_buffer = new char[STARTING_BUFFER_SZ];
-        if (cur_read_bytes = read(fd, read_buffer, STARTING_BUFFER_SZ) < 0)
+        char *read_buffer = new char[DISK_BUFFER_SZ];
+        if (cur_read_bytes = read(fd, read_buffer, DISK_BUFFER_SZ) < 0)
         {
             throw std::runtime_error("Failed to read file");
             return nullptr;
@@ -49,14 +49,14 @@ namespace rsql
             {
                 std::memcpy(read_buffer, read_buffer + bytes_processed, cur_read_bytes - bytes_processed);
                 bytes_processed = cur_read_bytes - bytes_processed;
-                if (cur_read_bytes = read(fd, read_buffer + bytes_processed, STARTING_BUFFER_SZ - bytes_processed) < 0)
+                if (cur_read_bytes = read(fd, read_buffer + bytes_processed, DISK_BUFFER_SZ - bytes_processed) < 0)
                 {
                     delete[] read_buffer;
                     delete new_table;
                     throw std::runtime_error("Failed to read file");
                     return nullptr;
                 }
-                cur_read_bytes = read(fd, read_buffer, STARTING_BUFFER_SZ);
+                cur_read_bytes = read(fd, read_buffer, DISK_BUFFER_SZ);
                 bytes_processed = 0;
             }
             char col_name[COL_NAME_SIZE];
@@ -243,7 +243,7 @@ namespace rsql
         {
             return;
         }
-        char *write_buffer = new char[STARTING_BUFFER_SZ];
+        char *write_buffer = new char[DISK_BUFFER_SZ];
         size_t bytes_processed = 0;
         std::string where = std::filesystem::path(this->db->get_path()) / this->table_name;
         if (!std::filesystem::exists(where))
@@ -265,7 +265,7 @@ namespace rsql
         bytes_processed += 4;
         for (auto &col : this->col_name_indexes)
         {
-            if (STARTING_BUFFER_SZ - bytes_processed < COL_NAME_SIZE + 4)
+            if (DISK_BUFFER_SZ - bytes_processed < COL_NAME_SIZE + 4)
             {
                 if (write(fd, write_buffer, bytes_processed) < 0)
                 {

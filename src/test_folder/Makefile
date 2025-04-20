@@ -5,6 +5,7 @@ BNODETEST = bnode_test
 BTREETEST = btree_test
 TABLETEST = table_test
 DBTEST = db_test
+TIMETEST = time_test
 DBFOLDER = /home/raharjo/project/database/rsql
 
 buildleak:
@@ -17,6 +18,8 @@ buildtable:
 	g++ -g $(TABLETEST).cpp -o $(TABLETEST).exe $(INCL) $(LIB)
 builddb:
 	g++ -g $(DBTEST).cpp -o $(DBTEST).exe $(INCL) $(LIB)
+buildtime:
+	g++ $(TIMETEST).cpp -o $(TIMETEST).exe $(INCL) $(LIB)
 build:
 	make buildbtree buildbnode buildtable builddb buildleak
 
@@ -36,6 +39,8 @@ cleantable:
 	rm $(TABLETEST).exe
 cleandb:
 	rm $(DBTEST).exe
+cleantime:
+	rm $(TIMETEST).exe
 clean:
 	make cleanreadtree cleanbnode cleanbtree cleantable cleandb cleanthiscache cleancachefolder
 
@@ -49,5 +54,7 @@ runtable:
 	./$(TABLETEST).exe
 rundb:
 	./$(DBTEST).exe
+runtime:
+	./$(TIMETEST).exe
 run:
 	make runbtree runbnode runtable rundb runleak
