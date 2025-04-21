@@ -2,11 +2,12 @@ Project: Database engine written in C++, with BTree as the building block.
 Structure:
 1. each tree consists of multiple node, and tree information is stored inside tree.rsql file
 2. tree.rsql format:
-    the first 4 bytes = n       : how many columns there are
-    the next 12 * n             : bytes are the columns information
     the next 4 bytes            : the root node number
     the next 4 bytes            : the last node number
     the next 4 bytes            : the last column id number
+    the next 4 bytes            : the tree_num
+    the first 4 bytes = n       : how many columns there are
+    the next 12 * n             : bytes are the columns information
 3. each tree has the table structure which consists of the columns. Columns information is the following:
     first 4 bytes               : the column id
     next 4 bytes                : the type
@@ -25,6 +26,8 @@ Structure:
     first 256 bytes             : table name
     next 4 bytes                : number of column
     next n * (128 + 4) bytes    : column name and column index (n is the number of columns)
+    next 4 bytes                : primary tree num
+    next 4 bytes                : max tree num
 
 Dependencies:
 1. C++ Boost libraries: https://www.boost.org/

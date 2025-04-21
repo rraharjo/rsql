@@ -16,7 +16,6 @@ BOOST_AUTO_TEST_CASE(tree_write_read_disk_test)
     uint32_t max_col_id = tree->max_col_id;
     size_t t = tree->t;
     size_t width = tree->width;
-    uint32_t root_node_num = tree->root->node_num;
     delete tree;
     tree = rsql::BTree::read_disk();
     BOOST_CHECK(tree->root_num == root_num);
@@ -24,7 +23,6 @@ BOOST_AUTO_TEST_CASE(tree_write_read_disk_test)
     BOOST_CHECK(tree->max_col_id = max_col_id);
     BOOST_CHECK(tree->t == t);
     BOOST_CHECK(tree->width == width);
-    BOOST_CHECK(tree->root->node_num == root_node_num);
     delete tree;
     std::system(clean_this_cache.c_str());
 }

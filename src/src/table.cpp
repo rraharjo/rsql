@@ -12,7 +12,10 @@ namespace rsql
         }
         Table *new_table = new Table(db, table_name);
         new_table->db = db;
+        new_table->primary_tree->tree_num = 1;
         new_table->write_disk();
+        std::string tree_folder = std::filesystem::path(new_table->get_path()) / std::to_string(new_table->primary_tree_num);
+        std::filesystem::create_directory(tree_folder);
         return new_table;
     }
     Table *Table::load_table(Database *db, const std::string table_name)
@@ -39,7 +42,7 @@ namespace rsql
         }
         Table *new_table = new Table(db, table_name);
         bytes_processed += TABLE_NAME_SIZE;
-        new_table->table_name = table_name;
+        //new_table->table_name = table_name;
         uint32_t col_num;
         std::memcpy(&col_num, read_buffer + bytes_processed, 4);
         bytes_processed += 4;
@@ -47,16 +50,16 @@ namespace rsql
         {
             if (cur_read_bytes - bytes_processed < COL_NAME_SIZE + 4)
             {
-                std::memcpy(read_buffer, read_buffer + bytes_processed, cur_read_bytes - bytes_processed);
-                bytes_processed = cur_read_bytes - bytes_processed;
-                if (cur_read_bytes = read(fd, read_buffer + bytes_processed, DISK_BUFFER_SZ - bytes_processed) < 0)
+                size_t remaining_bytes = cur_read_bytes - bytes_processed;
+                std::memmove(read_buffer, read_buffer + bytes_processed, remaining_bytes);
+                if ((cur_read_bytes = read(fd, read_buffer + remaining_bytes, DISK_BUFFER_SZ - remaining_bytes)) < 0)
                 {
                     delete[] read_buffer;
                     delete new_table;
                     throw std::runtime_error("Failed to read file");
                     return nullptr;
                 }
-                cur_read_bytes = read(fd, read_buffer, DISK_BUFFER_SZ);
+                cur_read_bytes += remaining_bytes;
                 bytes_processed = 0;
             }
             char col_name[COL_NAME_SIZE];
@@ -64,29 +67,52 @@ namespace rsql
             std::memset(col_name, 0, COL_NAME_SIZE);
             std::memcpy(col_name, read_buffer + bytes_processed, COL_NAME_SIZE);
             bytes_processed += COL_NAME_SIZE;
+            col_name[COL_NAME_SIZE - 1] = 0;
             std::memcpy(&col_idx, read_buffer + bytes_processed, 4);
             bytes_processed += 4;
-            new_table->col_name_indexes[std::string(col_name, COL_NAME_SIZE)] = col_idx;
+            new_table->col_name_indexes[std::string(col_name)] = col_idx;
         }
+        if (cur_read_bytes - bytes_processed < 8)
+        {
+            size_t remaining_bytes = cur_read_bytes - bytes_processed;
+            std::memmove(read_buffer, read_buffer + bytes_processed, remaining_bytes);
+            if ((cur_read_bytes = read(fd, read_buffer + remaining_bytes, DISK_BUFFER_SZ - remaining_bytes)) < 0)
+            {
+                delete[] read_buffer;
+                delete new_table;
+                throw std::runtime_error("Failed to read file");
+                return nullptr;
+            }
+            cur_read_bytes += remaining_bytes;
+            bytes_processed = 0;
+        }
+        uint32_t primary_tree_num;
+        std::memcpy(&primary_tree_num, read_buffer + bytes_processed, 4);
+        bytes_processed += 4;
+        uint32_t max_tree_num;
+        std::memcpy(&max_tree_num, read_buffer + bytes_processed, 4);
+        bytes_processed += 4;
         new_table->db = db;
         new_table->changed = false;
+        new_table->primary_tree_num = primary_tree_num;
+        new_table->max_tree_num = max_tree_num;
         delete[] read_buffer;
         return new_table;
     }
 
-    Table::Table(const Database *db, const std::string table_name) : changed(true), db(db)
+    Table::Table(const Database *db, const std::string table_name) : changed(true), db(db), primary_tree_num(1), max_tree_num(1)
     {
         this->table_name = table_name;
         try
         {
-            this->primary_tree = BTree::read_disk(this);
+            this->primary_tree = BTree::read_disk(this, this->primary_tree_num);
         }
         catch (std::invalid_argument &e)
         {
             this->primary_tree = new BTree();
             primary_tree->table = this;
+            primary_tree->tree_num = 1;
         }
-        // this->add_column("_key", Column::get_column(0, DataType::PKEY, 0));
     }
     Table::~Table()
     {
@@ -117,6 +143,11 @@ namespace rsql
     }
     void Table::add_column(const std::string name, const rsql::Column col)
     {
+        if (name.length() >= COL_NAME_SIZE){
+            std::string err_msg = "Column name must be < " + std::to_string(COL_NAME_SIZE) + " in length";
+            throw std::invalid_argument(err_msg);
+            return;
+        }
         if (this->col_name_indexes.find(name) != this->col_name_indexes.end())
         {
             throw std::runtime_error("Column already exists");
@@ -192,7 +223,8 @@ namespace rsql
         this->insert_row_bin(row_bin);
         delete[] row_bin;
     }
-    std::vector<char *> Table::find_row(const char *key, size_t col_idx){
+    std::vector<char *> Table::find_row(const char *key, size_t col_idx)
+    {
         if (col_idx)
         {
             return this->primary_tree->find_all_row(key, col_idx);
@@ -219,7 +251,8 @@ namespace rsql
         size_t col_idx = (size_t)it->second;
         return this->find_row(key, col_idx);
     }
-    std::vector<char *> Table::find_row_text(std::string key, const std::string col_name){
+    std::vector<char *> Table::find_row_text(std::string key, const std::string col_name)
+    {
         auto it = this->col_name_indexes.find(col_name);
         if (it == this->col_name_indexes.end())
         {
@@ -227,7 +260,8 @@ namespace rsql
             throw err_msg;
         }
         size_t col_idx = (size_t)it->second;
-        if (this->primary_tree->columns[col_idx].type == DataType::INT){
+        if (this->primary_tree->columns[col_idx].type == DataType::INT)
+        {
             boost::multiprecision::cpp_int new_key(key);
             std::vector<char> buff;
             export_bits(new_key, std::back_inserter(buff), 8, false);
@@ -281,6 +315,20 @@ namespace rsql
             std::memcpy(write_buffer + bytes_processed, &col.second, 4);
             bytes_processed += 4;
         }
+        if (DISK_BUFFER_SZ - bytes_processed < 8)
+        {
+            if (write(fd, write_buffer, bytes_processed) < 0)
+            {
+                close(fd);
+                delete[] write_buffer;
+                throw std::runtime_error("Failed to write table");
+            };
+            bytes_processed = 0;
+        }
+        std::memcpy(write_buffer + bytes_processed, &this->primary_tree_num, 4);
+        bytes_processed += 4;
+        std::memcpy(write_buffer + bytes_processed, &this->max_tree_num, 4);
+        bytes_processed += 4;
         if (write(fd, write_buffer, bytes_processed) < 0)
         {
             close(fd);

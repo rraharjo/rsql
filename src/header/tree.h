@@ -19,6 +19,7 @@ namespace rsql
         uint32_t root_num;
         uint32_t max_node_num;
         uint32_t max_col_id;
+        uint32_t tree_num;
 
         BNode *root;
         Table *table;
@@ -28,7 +29,7 @@ namespace rsql
         void get_root_node();
 
     public:
-        static BTree *read_disk(Table *table = nullptr);
+        static BTree *read_disk(Table *table = nullptr, const uint32_t tree_num = 0);
         BTree();
         ~BTree();
 

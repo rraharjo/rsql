@@ -19,9 +19,18 @@ namespace rsql
         const Database *db;
         std::string table_name;
         std::unordered_map<std::string, uint32_t> col_name_indexes;
+        uint32_t primary_tree_num;
+        uint32_t max_tree_num;
+
         rsql::BTree *primary_tree;
         bool changed;
 
+        /**
+         * @brief Construct a new Table object, does not necessarily write it to disk. Automatically set up the primary tree, numbered 1
+         * 
+         * @param db 
+         * @param table_name 
+         */
         Table(const Database *db, const std::string table_name);
         std::vector<char *> find_row(const char *key, size_t col_idx);
 
