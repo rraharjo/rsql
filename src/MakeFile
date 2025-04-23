@@ -1,0 +1,6 @@
+INCL = -I ./header
+LIB = ./src/*.cpp
+ROUTINE = main
+
+routine:
+	g++ $(ROUTINE).cpp -o $(ROUTINE).exe $(INCL) $(LIB)

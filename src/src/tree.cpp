@@ -31,6 +31,7 @@ namespace rsql
     }
     BTree *BTree::read_disk(Table *table, const uint32_t tree_num)
     {
+        static char starting_buffer[DISK_BUFFER_SZ];
         std::string where;
         if (!table)
         {
@@ -40,18 +41,16 @@ namespace rsql
         {
             where = std::filesystem::path(table->get_path()) / std::to_string(tree_num) / TREE_FILE;
         }
-        char *starting_buffer = new char[DISK_BUFFER_SZ];
+        
         int tree_file_fd = open(where.c_str(), O_RDONLY);
         if (tree_file_fd < 0)
         {
-            delete[] starting_buffer;
             throw std::invalid_argument("Fail to open tree.rsql");
             return nullptr;
         }
         size_t bytes_processed = 0, cur_read_bytes = 0;
         if ((cur_read_bytes = read(tree_file_fd, starting_buffer, DISK_BUFFER_SZ)) < 0)
         {
-            delete[] starting_buffer;
             throw std::invalid_argument("Fail to read");
             return nullptr;
         }
@@ -89,7 +88,6 @@ namespace rsql
                 std::memmove(starting_buffer, starting_buffer + bytes_processed, remaining_bytes);
                 if ((cur_read_bytes = read(tree_file_fd, starting_buffer + remaining_bytes, DISK_BUFFER_SZ - remaining_bytes)) < 0)
                 {
-                    delete[] starting_buffer;
                     throw std::runtime_error("Error reading tree.rsql file");
                     return nullptr;
                 };
@@ -113,7 +111,6 @@ namespace rsql
             to_ret->columns.push_back(Column::get_column(col_id, str_to_dt(c_type_str), (size_t)c_width));
             to_ret->width += (size_t)c_width;
         }
-        delete[] starting_buffer;
         close(tree_file_fd);
         return to_ret;
     }

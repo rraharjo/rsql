@@ -27,6 +27,14 @@ namespace rsql{
          * @return Database*
          */
         static Database *load_database(const std::string db_name);
+        /**
+         * @brief List all the database name
+         * 
+         * @return std::vector<std::string> 
+         */
+        static std::vector<std::string> list_databases();
+        static void delete_database(const std::string db_name);
+        std::vector<std::string> list_tables();
         std::string get_path() const;
         /**
          * @brief Get the table object with matching name
