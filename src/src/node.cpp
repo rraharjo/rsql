@@ -54,11 +54,6 @@ unsigned int get_node_no(const std::string &file_name)
     }
     return node_no;
 }
-std::string get_file_name(const unsigned int no)
-{
-    std::string to_ret = "node_" + std::to_string(no) + ".rsql";
-    return to_ret;
-}
 
 namespace rsql
 {
@@ -174,6 +169,10 @@ namespace rsql
         new_node->match_columns();
         delete[] read_buffer; // Error
         return new_node;
+    }
+    inline std::string BNode::get_file_name(const uint32_t node_num){
+        std::string to_ret = "node_" + std::to_string(node_num) + ".rsql";
+        return to_ret;
     }
     int BNode::last_child_idx(const char *k)
     {
@@ -307,12 +306,12 @@ namespace rsql
             return to_ret;
         }
         uint32_t c_zero_num = this->children[0];
-        std::string c_zero_str = get_file_name(c_zero_num);
+        std::string c_zero_str = BNode::get_file_name(c_zero_num);
         BNode *c_zero = BNode::read_disk(this->tree, c_zero_str);
         if (c_zero->size <= this->tree->t - 1)
         {
             uint32_t c_r_num = this->children[1];
-            std::string c_r_str = get_file_name(c_r_num);
+            std::string c_r_str = BNode::get_file_name(c_r_num);
             BNode *c_r = BNode::read_disk(this->tree, c_r_str);
             if (c_r->size >= this->tree->t)
             {
@@ -350,12 +349,12 @@ namespace rsql
             return to_ret;
         }
         uint32_t c_i_num = this->children[this->size];
-        std::string c_i_str = get_file_name(c_i_num);
+        std::string c_i_str = BNode::get_file_name(c_i_num);
         BNode *c_i = BNode::read_disk(this->tree, c_i_str);
         if (c_i->size <= this->tree->t - 1)
         {
             uint32_t c_l_num = this->children[this->size - 1];
-            std::string c_l_str = get_file_name(c_l_num);
+            std::string c_l_str = BNode::get_file_name(c_l_num);
             BNode *c_l = BNode::read_disk(this->tree, c_l_str);
             if (c_l->size >= this->tree->t)
             {
@@ -395,7 +394,7 @@ namespace rsql
     char *BNode::delete_row_2(const char *key, size_t idx)
     {
         uint32_t c_i_num = this->children[idx];
-        std::string c_i_str = get_file_name(c_i_num);
+        std::string c_i_str = BNode::get_file_name(c_i_num);
         BNode *c_i = BNode::read_disk(this->tree, c_i_str);
         if (c_i->size >= this->tree->t)
         {
@@ -407,7 +406,7 @@ namespace rsql
             return to_ret;
         }
         uint32_t c_j_num = this->children[idx + 1];
-        std::string c_j_str = get_file_name(c_j_num);
+        std::string c_j_str = BNode::get_file_name(c_j_num);
         BNode *c_j = BNode::read_disk(this->tree, c_j_str);
         if (c_j->size >= this->tree->t)
         {
@@ -426,7 +425,7 @@ namespace rsql
     char *BNode::delete_row_3(const char *key, size_t idx)
     {
         uint32_t c_i_num = this->children[idx];
-        std::string c_i_str = get_file_name(c_i_num);
+        std::string c_i_str = BNode::get_file_name(c_i_num);
         BNode *c_i = BNode::read_disk(this->tree, c_i_str);
         if (c_i->size <= this->tree->t - 1)
         {
@@ -434,7 +433,7 @@ namespace rsql
             if (idx > 0)
             {
                 uint32_t c_l_num = this->children[idx - 1];
-                std::string c_l_str = get_file_name(c_l_num);
+                std::string c_l_str = BNode::get_file_name(c_l_num);
                 c_l = BNode::read_disk(this->tree, c_l_str);
                 if (c_l->size >= this->tree->t)
                 {
@@ -458,7 +457,7 @@ namespace rsql
             if (idx < this->size)
             {
                 uint32_t c_r_num = this->children[idx + 1];
-                std::string c_r_str = get_file_name(c_r_num);
+                std::string c_r_str = BNode::get_file_name(c_r_num);
                 c_r = BNode::read_disk(this->tree, c_r_str);
                 if (c_r->size >= this->tree->t)
                 {
@@ -506,7 +505,7 @@ namespace rsql
     }
     void BNode::destroy()
     {
-        std::string file_name = get_file_name(this->node_num);
+        std::string file_name = BNode::get_file_name(this->node_num);
         std::remove(file_name.c_str());
         this->changed = false;
         delete this;
@@ -606,7 +605,7 @@ namespace rsql
         }
         else if (!this->leaf)
         {
-            std::string c_i_file = get_file_name(this->children[cur_idx]);
+            std::string c_i_file = BNode::get_file_name(this->children[cur_idx]);
             BNode *c_i = BNode::read_disk(this->tree, c_i_file);
             if (this->tree->root_num != this->node_num)
             {
@@ -644,7 +643,7 @@ namespace rsql
         this->del_if_not_root();
         for (int i = 0; i < proper_children.size(); i++)
         {
-            std::string c_i_file_name = get_file_name(proper_children[i]);
+            std::string c_i_file_name = BNode::get_file_name(proper_children[i]);
             BNode *c_i = BNode::read_disk(tree, c_i_file_name);
             c_i->find_all_indexed(key, alls);
         }
@@ -671,7 +670,7 @@ namespace rsql
         this->del_if_not_root();
         for (int i = 0; i < this_children.size(); i++)
         {
-            std::string c_i_str = get_file_name(this_children[i]);
+            std::string c_i_str = BNode::get_file_name(this_children[i]);
             BNode *c_i = BNode::read_disk(tree, c_i_str);
             c_i->find_all_unindexed(k, col_idx, preceding_size, alls);
         }
@@ -700,7 +699,7 @@ namespace rsql
                 cur_idx++;
             }
             size_t c_num = this->children[cur_idx];
-            std::string c_i_file = get_file_name(c_num);
+            std::string c_i_file = BNode::get_file_name(c_num);
             BNode *c_i = BNode::read_disk(this->tree, c_i_file);
             if (c_i->full())
             {
@@ -751,10 +750,9 @@ namespace rsql
             return;
         }
         size_t total_written = 0;
-        std::string where = std::filesystem::path(this->tree->get_path()) / get_file_name(this->node_num);
+        std::string where = std::filesystem::path(this->tree->get_path()) / BNode::get_file_name(this->node_num);
         char *write_buffer = new char[DISK_BUFFER_SZ];
         size_t bytes_processed = 0;
-        // std::string file_name = "node_" + std::to_string(this->node_num) + ".rsql";
         int node_file_fd = open(where.c_str(), O_APPEND | O_CREAT | O_TRUNC | O_WRONLY, 0644);
         uint32_t col_num = this->columns.size();
         char *col_pad = reinterpret_cast<char *>(&col_num);

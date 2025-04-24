@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <queue>
 #include "tree.h"
 #define TABLE_NAME_SIZE 256
 #define COL_NAME_SIZE 128
@@ -18,7 +19,11 @@ namespace rsql
     private:
         const Database *db;
         std::string table_name;
-        std::unordered_map<std::string, uint32_t> col_name_indexes;
+        /**
+         * @brief pair.first is the col index, col.second is the column tree number
+         * 
+         */
+        std::unordered_map<std::string, std::pair<uint32_t, uint32_t>> col_name_indexes;
         uint32_t primary_tree_num;
         uint32_t max_tree_num;
 
@@ -100,6 +105,7 @@ namespace rsql
         void insert_row_text(const std::vector<std::string> &row);
         std::vector<char *> find_row_bin(const char *key, const std::string col_name);
         std::vector<char *> find_row_text(std::string key, const std::string col_name);
+        void index_column(const std::string col_name);
         void write_disk();
         friend class BTree;
         friend class BNode;

@@ -4,7 +4,7 @@
 namespace rsql
 {
     BTree::BTree()
-        : root_num(1), max_node_num(1), t(DEGREE), root(nullptr), max_col_id(0), width(0), table(nullptr)
+        : root_num(1), max_node_num(1), t(DEGREE), root(nullptr), max_col_id(0), width(0), table(nullptr), tree_num(0)
     {
     }
     BTree::~BTree()

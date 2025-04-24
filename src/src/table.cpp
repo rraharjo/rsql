@@ -42,13 +42,13 @@ namespace rsql
         }
         Table *new_table = new Table(db, table_name);
         bytes_processed += TABLE_NAME_SIZE;
-        //new_table->table_name = table_name;
+        // new_table->table_name = table_name;
         uint32_t col_num;
         std::memcpy(&col_num, read_buffer + bytes_processed, 4);
         bytes_processed += 4;
         for (uint32_t i = 0; i < col_num; i++)
         {
-            if (cur_read_bytes - bytes_processed < COL_NAME_SIZE + 4)
+            if (cur_read_bytes - bytes_processed < COL_NAME_SIZE + 8)
             {
                 size_t remaining_bytes = cur_read_bytes - bytes_processed;
                 std::memmove(read_buffer, read_buffer + bytes_processed, remaining_bytes);
@@ -64,13 +64,16 @@ namespace rsql
             }
             char col_name[COL_NAME_SIZE];
             uint32_t col_idx;
+            uint32_t tree_num;
             std::memset(col_name, 0, COL_NAME_SIZE);
             std::memcpy(col_name, read_buffer + bytes_processed, COL_NAME_SIZE);
             bytes_processed += COL_NAME_SIZE;
             col_name[COL_NAME_SIZE - 1] = 0;
             std::memcpy(&col_idx, read_buffer + bytes_processed, 4);
             bytes_processed += 4;
-            new_table->col_name_indexes[std::string(col_name)] = col_idx;
+            std::memcpy(&tree_num, read_buffer + bytes_processed, 4);
+            bytes_processed += 4;
+            new_table->col_name_indexes[std::string(col_name)] = std::make_pair(col_idx, tree_num);
         }
         if (cur_read_bytes - bytes_processed < 8)
         {
@@ -135,7 +138,7 @@ namespace rsql
             throw std::invalid_argument(err_msg);
             return 0;
         }
-        return this->primary_tree->columns[it->second].width;
+        return this->primary_tree->columns[it->second.first].width;
     }
     std::string Table::get_path() const
     {
@@ -143,7 +146,8 @@ namespace rsql
     }
     void Table::add_column(const std::string name, const rsql::Column col)
     {
-        if (name.length() >= COL_NAME_SIZE){
+        if (name.length() >= COL_NAME_SIZE)
+        {
             std::string err_msg = "Column name must be < " + std::to_string(COL_NAME_SIZE) + " in length";
             throw std::invalid_argument(err_msg);
             return;
@@ -153,7 +157,7 @@ namespace rsql
             throw std::runtime_error("Column already exists");
         }
         this->primary_tree->add_column(col);
-        this->col_name_indexes[name] = this->primary_tree->columns.size() - 1;
+        this->col_name_indexes[name] = std::make_pair(this->primary_tree->columns.size() - 1, 0);
         this->changed = true;
     }
     void Table::remove_column(const std::string col_name)
@@ -165,14 +169,14 @@ namespace rsql
             throw std::invalid_argument(err_msg);
             return;
         }
-        uint32_t col_idx = it->second;
+        uint32_t col_idx = it->second.first;
         this->primary_tree->remove_column(col_idx);
         this->col_name_indexes.erase(it);
         for (auto &pair : this->col_name_indexes)
         {
-            if (pair.second > col_idx)
+            if (pair.second.first > col_idx)
             {
-                pair.second--;
+                pair.second.first--;
             }
         }
         this->changed = true;
@@ -248,7 +252,7 @@ namespace rsql
             const std::string err_msg = this->table_name + " does not have a column named " + col_name;
             throw err_msg;
         }
-        size_t col_idx = (size_t)it->second;
+        size_t col_idx = (size_t)it->second.first;
         return this->find_row(key, col_idx);
     }
     std::vector<char *> Table::find_row_text(std::string key, const std::string col_name)
@@ -259,7 +263,7 @@ namespace rsql
             const std::string err_msg = this->table_name + " does not have a column named " + col_name;
             throw err_msg;
         }
-        size_t col_idx = (size_t)it->second;
+        size_t col_idx = (size_t)it->second.first;
         if (this->primary_tree->columns[col_idx].type == DataType::INT)
         {
             boost::multiprecision::cpp_int new_key(key);
@@ -270,6 +274,68 @@ namespace rsql
         }
         key.resize(this->primary_tree->columns[col_idx].width);
         return this->find_row(key.data(), col_idx);
+    }
+    void Table::index_column(const std::string col_name)
+    {
+        auto it = this->col_name_indexes.find(col_name);
+        if (it == this->col_name_indexes.end())
+        {
+            throw std::invalid_argument("Can't index column that doesn't exist");
+            return;
+        }
+        if (it->second.second != 0)
+        {
+            throw std::invalid_argument("Can't index indexed column");
+            return;
+        }
+        BTree *new_tree = new BTree();
+        size_t preceding_size = 0;
+        size_t indexed_col_index = it->second.first;
+        Column indexed_col = this->primary_tree->columns[indexed_col_index];
+        Column primary_col = this->primary_tree->columns[0];
+        new_tree->table = this;
+        new_tree->tree_num = ++this->max_tree_num;
+        this->col_name_indexes[col_name].second = new_tree->tree_num;
+        new_tree->add_column(indexed_col);
+        new_tree->add_column(primary_col);
+        for (int i = 0; i < indexed_col_index; i++)
+        {
+            preceding_size += this->primary_tree->columns[i].width;
+        }
+
+        char *new_row = new char[new_tree->width];
+        std::queue<uint32_t> children;
+        for (int i = 0; i < this->primary_tree->root->size; i++)
+        {
+            std::memcpy(new_row, this->primary_tree->root->keys[i] + preceding_size, indexed_col.width);
+            std::memcpy(new_row + indexed_col.width, this->primary_tree->root->keys[i], primary_col.width);
+            new_tree->insert_row(new_row);
+            children.push(this->primary_tree->root->children[i]);
+        }
+        children.push(this->primary_tree->root->children[this->primary_tree->root->size]);
+        while (!children.empty())
+        {
+            uint32_t this_child = children.front();
+            children.pop();
+            std::string cur_node_name = BNode::get_file_name(this_child);
+            BNode *cur_node = BNode::read_disk(this->primary_tree, cur_node_name);
+            cur_node->match_columns();
+            for (int i = 0; i < cur_node->size; i++)
+            {
+                std::memcpy(new_row, cur_node->keys[i] + preceding_size, indexed_col.width);
+                std::memcpy(new_row + indexed_col.width, cur_node->keys[i], primary_col.width);
+                new_tree->insert_row(new_row);
+            }
+            if (!cur_node->leaf){
+                for (int i = 0 ; i <= cur_node->size ; i++){
+                    children.push(cur_node->children[i]);
+                }
+            }
+            delete cur_node;
+        }
+        this->changed = true;
+        delete[] new_row;
+        delete new_tree;
     }
     void Table::write_disk()
     {
@@ -299,7 +365,7 @@ namespace rsql
         bytes_processed += 4;
         for (auto &col : this->col_name_indexes)
         {
-            if (DISK_BUFFER_SZ - bytes_processed < COL_NAME_SIZE + 4)
+            if (DISK_BUFFER_SZ - bytes_processed < COL_NAME_SIZE + 8)
             {
                 if (write(fd, write_buffer, bytes_processed) < 0)
                 {
@@ -312,7 +378,9 @@ namespace rsql
             std::memset(write_buffer + bytes_processed, 0, COL_NAME_SIZE);
             std::memcpy(write_buffer + bytes_processed, col.first.c_str(), col.first.size());
             bytes_processed += COL_NAME_SIZE;
-            std::memcpy(write_buffer + bytes_processed, &col.second, 4);
+            std::memcpy(write_buffer + bytes_processed, &col.second.first, 4);
+            bytes_processed += 4;
+            std::memcpy(write_buffer + bytes_processed, &col.second.second, 4);
             bytes_processed += 4;
         }
         if (DISK_BUFFER_SZ - bytes_processed < 8)

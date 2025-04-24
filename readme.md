@@ -23,11 +23,11 @@ Structure:
     the last single byte        : determines whether the node is a leaf
 5. new key inserted, if the new key equal to a key k where index of k is i, the new key is inserted to child with index i
 6. table.rsql format
-    first 256 bytes             : table name
-    next 4 bytes                : number of column
-    next n * (128 + 4) bytes    : column name and column index (n is the number of columns)
-    next 4 bytes                : primary tree num
-    next 4 bytes                : max tree num
+    first 256 bytes                 : table name
+    next 4 bytes                    : number of column
+    next n * (128 + 4 + 4) bytes    : column name and column index and tree number(n is the number of columns)
+    next 4 bytes                    : primary tree num
+    next 4 bytes                    : max tree num
 
 Dependencies:
 1. C++ Boost libraries: https://www.boost.org/
