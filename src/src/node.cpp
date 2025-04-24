@@ -256,7 +256,7 @@ namespace rsql
         if (!c_i->leaf)
         {
             size_t c_i_idx = this->tree->t;
-            for (int j = 0; j < this->tree->t; j++)
+            for (size_t j = 0; j < this->tree->t; j++)
             {
                 new_node->children[j] = c_i->children[c_i_idx];
                 c_i->children[c_i_idx++] = 0;
@@ -641,7 +641,7 @@ namespace rsql
         proper_children.insert(proper_children.end(), this->children.begin() + low_proper, this->children.begin() + high_proper + 1);
         BTree *tree = this->tree;
         this->del_if_not_root();
-        for (int i = 0; i < proper_children.size(); i++)
+        for (size_t i = 0; i < proper_children.size(); i++)
         {
             std::string c_i_file_name = BNode::get_file_name(proper_children[i]);
             BNode *c_i = BNode::read_disk(tree, c_i_file_name);
@@ -650,7 +650,7 @@ namespace rsql
     }
     void BNode::find_all_unindexed(const char *k, size_t col_idx, size_t preceding_size, std::vector<char *> &alls)
     {
-        for (int i = 0; i < this->size; i++)
+        for (size_t i = 0; i < this->size; i++)
         {
             if (this->compare_key(k, this->keys[i] + preceding_size, col_idx) == 0) // use compare_key
             {
@@ -668,7 +668,7 @@ namespace rsql
         this_children.insert(this_children.end(), this->children.begin(), this->children.begin() + this->size + 1);
         BTree *tree = this->tree;
         this->del_if_not_root();
-        for (int i = 0; i < this_children.size(); i++)
+        for (size_t i = 0; i < this_children.size(); i++)
         {
             std::string c_i_str = BNode::get_file_name(this_children[i]);
             BNode *c_i = BNode::read_disk(tree, c_i_str);
@@ -752,7 +752,7 @@ namespace rsql
         size_t total_written = 0;
         std::string where = std::filesystem::path(this->tree->get_path()) / BNode::get_file_name(this->node_num);
         char *write_buffer = new char[DISK_BUFFER_SZ];
-        size_t bytes_processed = 0;
+        ssize_t bytes_processed = 0;
         int node_file_fd = open(where.c_str(), O_APPEND | O_CREAT | O_TRUNC | O_WRONLY, 0644);
         uint32_t col_num = this->columns.size();
         char *col_pad = reinterpret_cast<char *>(&col_num);
@@ -793,7 +793,7 @@ namespace rsql
 
         for (uint32_t i = 0; i < this->size; i++)
         {
-            if (DISK_BUFFER_SZ - bytes_processed < this->tree->width)
+            if (DISK_BUFFER_SZ - (size_t) bytes_processed < this->tree->width)
             {
                 if (write(node_file_fd, write_buffer, bytes_processed) != bytes_processed)
                 {

@@ -130,7 +130,7 @@ namespace rsql
         else
         {
             size_t preceding_size = 0;
-            for (int i = 0; i < col_idx; i++)
+            for (size_t i = 0; i < col_idx; i++)
             {
                 preceding_size += this->columns[i].width;
             }
@@ -200,7 +200,7 @@ namespace rsql
     std::vector<char *> BTree::batch_delete(const std::vector<char *> &keys)
     {
         std::vector<char *> to_ret;
-        for (int i = 0; i < keys.size(); i++)
+        for (size_t i = 0; i < keys.size(); i++)
         {
             std::vector<char *> cur_keys = this->delete_all(keys[i], 0);
             to_ret.insert(to_ret.end(), cur_keys.begin(), cur_keys.end());

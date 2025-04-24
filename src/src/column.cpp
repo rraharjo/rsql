@@ -1,7 +1,7 @@
 #include "column.h"
 namespace rsql
 {
-    Column::Column(unsigned int col_id, size_t width, DataType type) : width(width), type(type), col_id(col_id)
+    Column::Column(unsigned int col_id, size_t width, DataType type) : col_id(col_id), width(width), type(type)
     {
     }
 

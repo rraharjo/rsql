@@ -2,7 +2,7 @@
 #include <boost/test/included/unit_test.hpp>
 #include "tree.h"
 // Tested with degree of 2
-std::string clean_this_cache = "make cleanthiscache";
+std::string clean_this_cache = "make cleancache";
 BOOST_AUTO_TEST_CASE(tree_write_read_disk_test)
 {
     rsql::BTree *tree = new rsql::BTree();

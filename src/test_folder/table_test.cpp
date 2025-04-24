@@ -2,7 +2,7 @@
 #include <boost/test/included/unit_test.hpp>
 #include "database.h"
 
-std::string clear_cache = "make cleancachefolder";
+std::string clear_cache = "make cleancache";
 
 BOOST_AUTO_TEST_CASE(table_create_test)
 {

@@ -1,7 +1,7 @@
 #define BOOST_TEST_MODULE MyTestModule
 #include <boost/test/included/unit_test.hpp>
 #include "database.h"
-std::string clear_cache = "make cleancachefolder";
+std::string clear_cache = "make cleancache";
 BOOST_AUTO_TEST_CASE(create_database_test)
 {
     rsql::Database *db = rsql::Database::create_new_database("test_db");

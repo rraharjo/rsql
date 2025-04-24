@@ -1,7 +1,7 @@
 #define BOOST_TEST_MODULE MyTestModule
 #include <boost/test/included/unit_test.hpp>
 #include "tree.h"
-std::string clean_this_cache = "make cleanthiscache";
+std::string clean_this_cache = "make cleancache";
 BOOST_AUTO_TEST_CASE(merge_node_test){
     size_t structure_1_w = PKEY_COL_W;
     std::vector<rsql::Column> structure_1;

@@ -35,7 +35,7 @@ namespace rsql
             return nullptr;
         }
         char *read_buffer = new char[DISK_BUFFER_SZ];
-        if (cur_read_bytes = read(fd, read_buffer, DISK_BUFFER_SZ) < 0)
+        if ((cur_read_bytes = read(fd, read_buffer, DISK_BUFFER_SZ)) < 0)
         {
             throw std::runtime_error("Failed to read file");
             return nullptr;
@@ -298,14 +298,14 @@ namespace rsql
         this->col_name_indexes[col_name].second = new_tree->tree_num;
         new_tree->add_column(indexed_col);
         new_tree->add_column(primary_col);
-        for (int i = 0; i < indexed_col_index; i++)
+        for (size_t i = 0; i < indexed_col_index; i++)
         {
             preceding_size += this->primary_tree->columns[i].width;
         }
 
         char *new_row = new char[new_tree->width];
         std::queue<uint32_t> children;
-        for (int i = 0; i < this->primary_tree->root->size; i++)
+        for (size_t i = 0; i < this->primary_tree->root->size; i++)
         {
             std::memcpy(new_row, this->primary_tree->root->keys[i] + preceding_size, indexed_col.width);
             std::memcpy(new_row + indexed_col.width, this->primary_tree->root->keys[i], primary_col.width);
@@ -320,14 +320,14 @@ namespace rsql
             std::string cur_node_name = BNode::get_file_name(this_child);
             BNode *cur_node = BNode::read_disk(this->primary_tree, cur_node_name);
             cur_node->match_columns();
-            for (int i = 0; i < cur_node->size; i++)
+            for (size_t i = 0; i < cur_node->size; i++)
             {
                 std::memcpy(new_row, cur_node->keys[i] + preceding_size, indexed_col.width);
                 std::memcpy(new_row + indexed_col.width, cur_node->keys[i], primary_col.width);
                 new_tree->insert_row(new_row);
             }
             if (!cur_node->leaf){
-                for (int i = 0 ; i <= cur_node->size ; i++){
+                for (size_t i = 0 ; i <= cur_node->size ; i++){
                     children.push(cur_node->children[i]);
                 }
             }
