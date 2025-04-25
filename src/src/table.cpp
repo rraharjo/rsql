@@ -255,7 +255,7 @@ namespace rsql
                 for (char *op_key : optional_keys)
                 {
                     to_ret.push_back(this->primary_tree->find_row(op_key + optional_first_col_length));
-                    delete op_key;
+                    delete[] op_key;
                 }
                 return to_ret;
             }
