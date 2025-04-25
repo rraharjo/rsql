@@ -158,6 +158,9 @@ namespace rsql
         }
         this->primary_tree->add_column(col);
         this->col_name_indexes[name] = std::make_pair(this->primary_tree->columns.size() - 1, 0);
+        if (this->col_name_indexes.size() == 1){
+            this->col_name_indexes[name].second = 1;
+        }
         this->changed = true;
     }
     void Table::remove_column(const std::string col_name)
@@ -227,21 +230,39 @@ namespace rsql
         this->insert_row_bin(row_bin);
         delete[] row_bin;
     }
-    std::vector<char *> Table::find_row(const char *key, size_t col_idx)
+    std::vector<char *> Table::find_row(const char *key, size_t col_idx, uint32_t tree_num)
     {
-        if (col_idx)
+        if (tree_num != 0)
         {
-            return this->primary_tree->find_all_row(key, col_idx);
+            if (col_idx == 0)
+            {
+                char *found = this->primary_tree->find_row(key);
+                std::vector<char *> to_ret;
+                if (found)
+                {
+                    to_ret.push_back(found);
+                }
+                return to_ret;
+            }
+            else
+            {
+                // If this fails, program should terminate
+                BTree *optional_tree = BTree::read_disk(this, tree_num);
+                size_t optional_first_col_length = optional_tree->columns[0].width;
+                std::vector<char *> optional_keys = optional_tree->find_all_row(key, 0);
+                std::vector<char *> to_ret;
+                delete optional_tree;
+                for (char *op_key : optional_keys)
+                {
+                    to_ret.push_back(this->primary_tree->find_row(op_key + optional_first_col_length));
+                    delete op_key;
+                }
+                return to_ret;
+            }
         }
         else
         {
-            char *found = this->primary_tree->find_row(key);
-            std::vector<char *> to_ret;
-            if (found)
-            {
-                to_ret.push_back(found);
-            }
-            return to_ret;
+            return this->primary_tree->find_all_row(key, col_idx);
         }
     }
     std::vector<char *> Table::find_row_bin(const char *key, const std::string col_name)
@@ -253,7 +274,8 @@ namespace rsql
             throw err_msg;
         }
         size_t col_idx = (size_t)it->second.first;
-        return this->find_row(key, col_idx);
+        uint32_t tree_num = it->second.second;
+        return this->find_row(key, col_idx, tree_num);
     }
     std::vector<char *> Table::find_row_text(std::string key, const std::string col_name)
     {
@@ -264,16 +286,17 @@ namespace rsql
             throw err_msg;
         }
         size_t col_idx = (size_t)it->second.first;
+        uint32_t tree_num = it->second.second;
         if (this->primary_tree->columns[col_idx].type == DataType::INT)
         {
             boost::multiprecision::cpp_int new_key(key);
             std::vector<char> buff;
             export_bits(new_key, std::back_inserter(buff), 8, false);
             buff.resize(this->primary_tree->columns[col_idx].width);
-            return this->find_row(buff.data(), col_idx);
+            return this->find_row(buff.data(), col_idx, tree_num);
         }
         key.resize(this->primary_tree->columns[col_idx].width);
-        return this->find_row(key.data(), col_idx);
+        return this->find_row(key.data(), col_idx, tree_num);
     }
     void Table::index_column(const std::string col_name)
     {
@@ -296,6 +319,8 @@ namespace rsql
         new_tree->table = this;
         new_tree->tree_num = ++this->max_tree_num;
         this->col_name_indexes[col_name].second = new_tree->tree_num;
+        std::string where = std::filesystem::path(this->get_path()) / std::to_string(new_tree->tree_num);
+        std::filesystem::create_directories(where);
         new_tree->add_column(indexed_col);
         new_tree->add_column(primary_col);
         for (size_t i = 0; i < indexed_col_index; i++)
@@ -310,9 +335,14 @@ namespace rsql
             std::memcpy(new_row, this->primary_tree->root->keys[i] + preceding_size, indexed_col.width);
             std::memcpy(new_row + indexed_col.width, this->primary_tree->root->keys[i], primary_col.width);
             new_tree->insert_row(new_row);
-            children.push(this->primary_tree->root->children[i]);
         }
-        children.push(this->primary_tree->root->children[this->primary_tree->root->size]);
+        if (!this->primary_tree->root->leaf)
+        {
+            for (size_t i = 0; i <= this->primary_tree->root->size; i++)
+            {
+                children.push(this->primary_tree->root->children[i]);
+            }
+        }
         while (!children.empty())
         {
             uint32_t this_child = children.front();
@@ -326,8 +356,10 @@ namespace rsql
                 std::memcpy(new_row + indexed_col.width, cur_node->keys[i], primary_col.width);
                 new_tree->insert_row(new_row);
             }
-            if (!cur_node->leaf){
-                for (size_t i = 0 ; i <= cur_node->size ; i++){
+            if (!cur_node->leaf)
+            {
+                for (size_t i = 0; i <= cur_node->size; i++)
+                {
                     children.push(cur_node->children[i]);
                 }
             }

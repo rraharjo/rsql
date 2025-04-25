@@ -225,3 +225,37 @@ BOOST_AUTO_TEST_CASE(load_table_test)
     delete db;
     std::system(clear_cache.c_str());
 }
+
+BOOST_AUTO_TEST_CASE(optional_indexing_build_test){
+    rsql::Database *db = rsql::Database::create_new_database("test_db");
+    BOOST_CHECK(db != nullptr);
+    rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
+    BOOST_CHECK(table != nullptr);
+
+    std::string first_column = "key";
+    table->add_column(first_column, rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
+    table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::INT, 10));
+    table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
+    table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::INT, 4));
+    std::string key = "00000000000000000000000000000000";
+    boost::multiprecision::cpp_int num_1 = 100000;
+    std::string date = "10/02/2002";
+    uint32_t num_2 = 0;
+    char row[32 + 10 + 10 + 4];
+    std::memcpy(row, key.data(), 32);
+    std::memset(row + 32, 0, 10);
+    boost::multiprecision::export_bits(num_1, row + 32, 8, false);
+    std::memcpy(row + 42, date.data(), 10);
+    std::memcpy(row + 52, &num_2, 4);
+    for (size_t i = 0 ; i < 50 ; i++){
+        table->insert_row_bin(row);
+        num_2++;
+        key[PKEY_COL_W - 1]++;
+        std::memcpy(row, key.data(), 32);
+        std::memcpy(row + 52, &num_2, 4);
+    }
+    table->index_column("col_3");
+    delete table;
+    delete db;
+    std::system(clear_cache.c_str());
+}

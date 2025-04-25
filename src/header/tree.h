@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 // Can be changed to any number >= 2
-#define DEGREE 256
+#define DEGREE 2
 #define DISK_BUFFER_SZ 4096
 #define TREE_FILE "tree.rsql"
 namespace rsql
@@ -29,6 +29,15 @@ namespace rsql
         void get_root_node();
 
     public:
+        /**
+         * @brief load a tree.rsql file to the disk
+         * 
+         * @throw std::runtime_error if there's an error during reading file
+         * @throw std::invalid_argument if file of the tree_num doesn't exist
+         * @param table 
+         * @param tree_num 
+         * @return BTree* 
+         */
         static BTree *read_disk(Table *table = nullptr, const uint32_t tree_num = 0);
         BTree();
         ~BTree();

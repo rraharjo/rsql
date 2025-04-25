@@ -34,3 +34,8 @@ Dependencies:
 
 Reference: 
 1. Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, Clifford Stein Introduction to Algorithms, Third Edition 2009
+
+TODO:
+    test optional index tree
+    create a static function for tree: create_new_tree and load_existing_tree -> make constructor private
+    modify constructor for table to receive columns, add new method to set primary key

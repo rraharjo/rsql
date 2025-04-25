@@ -20,7 +20,7 @@ namespace rsql
         const Database *db;
         std::string table_name;
         /**
-         * @brief pair.first is the col index, col.second is the column tree number
+         * @brief Each column has an array index and a tree. pair::first denotes the column index, while pair::second denotes the tree number
          * 
          */
         std::unordered_map<std::string, std::pair<uint32_t, uint32_t>> col_name_indexes;
@@ -37,7 +37,7 @@ namespace rsql
          * @param table_name 
          */
         Table(const Database *db, const std::string table_name);
-        std::vector<char *> find_row(const char *key, size_t col_idx);
+        std::vector<char *> find_row(const char *key, size_t col_idx, uint32_t tree_num);
 
     public:
         /**
