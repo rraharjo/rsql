@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 // Can be changed to any number >= 2
-#define DEGREE 2
+#define DEGREE 128
 #define DISK_BUFFER_SZ 4096
 #define TREE_FILE "tree.rsql"
 namespace rsql
@@ -25,7 +25,7 @@ namespace rsql
         Table *table;
         size_t t;
         size_t width;
-
+        BTree();
         void get_root_node();
 
     public:
@@ -39,7 +39,7 @@ namespace rsql
          * @return BTree* 
          */
         static BTree *read_disk(Table *table = nullptr, const uint32_t tree_num = 0);
-        BTree();
+        static BTree *create_new_tree(Table *table = nullptr, const uint32_t tree_num = 0);
         ~BTree();
 
         /**

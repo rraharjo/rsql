@@ -12,10 +12,11 @@ namespace rsql
         }
         Table *new_table = new Table(db, table_name);
         new_table->db = db;
-        new_table->primary_tree->tree_num = 1;
-        new_table->write_disk();
+        std::filesystem::create_directories(where);
         std::string tree_folder = std::filesystem::path(new_table->get_path()) / std::to_string(new_table->primary_tree_num);
         std::filesystem::create_directory(tree_folder);
+        new_table->primary_tree = BTree::create_new_tree(new_table, new_table->primary_tree_num);
+        new_table->write_disk();
         return new_table;
     }
     Table *Table::load_table(Database *db, const std::string table_name)
@@ -42,7 +43,6 @@ namespace rsql
         }
         Table *new_table = new Table(db, table_name);
         bytes_processed += TABLE_NAME_SIZE;
-        // new_table->table_name = table_name;
         uint32_t col_num;
         std::memcpy(&col_num, read_buffer + bytes_processed, 4);
         bytes_processed += 4;
@@ -99,23 +99,22 @@ namespace rsql
         new_table->changed = false;
         new_table->primary_tree_num = primary_tree_num;
         new_table->max_tree_num = max_tree_num;
+        new_table->primary_tree = BTree::read_disk(new_table, new_table->primary_tree_num);
         delete[] read_buffer;
         return new_table;
     }
 
-    Table::Table(const Database *db, const std::string table_name) : changed(true), db(db), primary_tree_num(1), max_tree_num(1)
+    Table::Table(const Database *db, const std::string table_name)
+        : max_tree_num(1), primary_tree_num(1), changed(true), db(db), table_name(table_name)
     {
-        this->table_name = table_name;
-        try
-        {
-            this->primary_tree = BTree::read_disk(this, this->primary_tree_num);
-        }
-        catch (std::invalid_argument &e)
-        {
-            this->primary_tree = new BTree();
-            primary_tree->table = this;
-            primary_tree->tree_num = 1;
-        }
+        // try
+        // {
+        //     this->primary_tree = BTree::read_disk(this, this->primary_tree_num);
+        // }
+        // catch (std::invalid_argument &e)
+        // {
+        //     this->primary_tree = BTree::create_new_tree(this, this->max_tree_num);
+        // }
     }
     Table::~Table()
     {
@@ -158,7 +157,8 @@ namespace rsql
         }
         this->primary_tree->add_column(col);
         this->col_name_indexes[name] = std::make_pair(this->primary_tree->columns.size() - 1, 0);
-        if (this->col_name_indexes.size() == 1){
+        if (this->col_name_indexes.size() == 1)
+        {
             this->col_name_indexes[name].second = 1;
         }
         this->changed = true;
@@ -375,7 +375,7 @@ namespace rsql
         {
             return;
         }
-        char *write_buffer = new char[DISK_BUFFER_SZ];
+        static char write_buffer[DISK_BUFFER_SZ];
         size_t bytes_processed = 0;
         std::string where = std::filesystem::path(this->db->get_path()) / this->table_name;
         if (!std::filesystem::exists(where))
@@ -386,7 +386,6 @@ namespace rsql
         int fd = open(file_name.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0644);
         if (fd < 0)
         {
-            delete[] write_buffer;
             throw std::runtime_error("Failed to open file");
         }
         std::memset(write_buffer, 0, TABLE_NAME_SIZE);
@@ -402,7 +401,6 @@ namespace rsql
                 if (write(fd, write_buffer, bytes_processed) < 0)
                 {
                     close(fd);
-                    delete[] write_buffer;
                     throw std::runtime_error("Failed to write table");
                 };
                 bytes_processed = 0;
@@ -420,7 +418,6 @@ namespace rsql
             if (write(fd, write_buffer, bytes_processed) < 0)
             {
                 close(fd);
-                delete[] write_buffer;
                 throw std::runtime_error("Failed to write table");
             };
             bytes_processed = 0;
@@ -432,11 +429,9 @@ namespace rsql
         if (write(fd, write_buffer, bytes_processed) < 0)
         {
             close(fd);
-            delete[] write_buffer;
             throw std::runtime_error("Failed to write table");
         }
         close(fd);
         this->changed = false;
-        delete[] write_buffer;
     }
 }

@@ -41,7 +41,7 @@ namespace rsql
         {
             where = std::filesystem::path(table->get_path()) / std::to_string(tree_num) / TREE_FILE;
         }
-        
+
         int tree_file_fd = open(where.c_str(), O_RDONLY);
         if (tree_file_fd < 0)
         {
@@ -112,6 +112,13 @@ namespace rsql
             to_ret->width += (size_t)c_width;
         }
         close(tree_file_fd);
+        return to_ret;
+    }
+    BTree *BTree::create_new_tree(Table *table, const uint32_t tree_num)
+    {
+        BTree *to_ret = new BTree();
+        to_ret->table = table;
+        to_ret->tree_num = tree_num;
         return to_ret;
     }
     char *BTree::find_row(const char *key)

@@ -59,13 +59,12 @@ namespace rsql
 {
     BNode *BNode::read_disk(BTree *tree, const std::string file_name)
     {
-        char *read_buffer = new char[DISK_BUFFER_SZ];
+        static char read_buffer[DISK_BUFFER_SZ];
         size_t bytes_processed = 0, cur_read_bytes = 0;
         std::string where = std::filesystem::path(tree->get_path()) / file_name;
         int node_file_fd = open(where.c_str(), O_RDONLY);
         if (node_file_fd < 0)
         {
-            delete[] read_buffer;
             throw std::invalid_argument("Fail to open node.rsql");
             return nullptr;
         }
@@ -73,7 +72,6 @@ namespace rsql
         size_t cur_row_width = 0;
         if ((cur_read_bytes = read(node_file_fd, read_buffer, DISK_BUFFER_SZ)) < 0)
         {
-            delete[] read_buffer;
             throw std::invalid_argument("Fail to read node.rsql");
             return nullptr;
         }
@@ -91,7 +89,6 @@ namespace rsql
                 std::memmove(read_buffer, read_buffer + bytes_processed, remaining_bytes);
                 if ((cur_read_bytes = read(node_file_fd, read_buffer + remaining_bytes, DISK_BUFFER_SZ - remaining_bytes)) < 0)
                 {
-                    delete[] read_buffer;
                     throw std::runtime_error("Error reading node.rsql file");
                     return nullptr;
                 };
@@ -129,7 +126,6 @@ namespace rsql
                 std::memmove(read_buffer, read_buffer + bytes_processed, remaining_bytes);
                 if ((cur_read_bytes = read(node_file_fd, read_buffer + remaining_bytes, DISK_BUFFER_SZ - remaining_bytes)) < 0)
                 {
-                    delete[] read_buffer;
                     throw std::runtime_error("Error reading node.rsql file");
                     return nullptr;
                 };
@@ -148,7 +144,6 @@ namespace rsql
                 std::memmove(read_buffer, read_buffer + bytes_processed, remaining_bytes);
                 if ((cur_read_bytes = read(node_file_fd, read_buffer + remaining_bytes, DISK_BUFFER_SZ - remaining_bytes)) < 0)
                 {
-                    delete[] read_buffer;
                     throw std::runtime_error("Error reading node.rsql file");
                     return nullptr;
                 };
@@ -167,7 +162,6 @@ namespace rsql
         new_node->leaf = l_pad;
         close(node_file_fd);
         new_node->match_columns();
-        delete[] read_buffer; // Error
         return new_node;
     }
     inline std::string BNode::get_file_name(const uint32_t node_num){
@@ -751,7 +745,7 @@ namespace rsql
         }
         size_t total_written = 0;
         std::string where = std::filesystem::path(this->tree->get_path()) / BNode::get_file_name(this->node_num);
-        char *write_buffer = new char[DISK_BUFFER_SZ];
+        static char write_buffer[DISK_BUFFER_SZ];
         ssize_t bytes_processed = 0;
         int node_file_fd = open(where.c_str(), O_APPEND | O_CREAT | O_TRUNC | O_WRONLY, 0644);
         uint32_t col_num = this->columns.size();
@@ -833,7 +827,6 @@ namespace rsql
             return;
         };
         close(node_file_fd);
-        delete[] write_buffer;
         this->changed = false;
     }
 }
