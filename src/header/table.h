@@ -46,9 +46,11 @@ namespace rsql
          * @throw std::invalid_argument if table already exists
          * @param db
          * @param table_name
+         * @param col_names
+         * @param columns
          * @return Table*
          */
-        static Table *create_new_table(Database *db, const std::string table_name);
+        static Table *create_new_table(Database *db, const std::string table_name, std::vector<std::string> col_names = {}, std::vector<Column> columns = {});
         /**
          * @brief load existing table from db
          *

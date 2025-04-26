@@ -5,7 +5,7 @@ std::string clean_this_cache = "make cleancache";
 BOOST_AUTO_TEST_CASE(merge_node_test){
     std::vector<rsql::Column> structure_1;
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
-    rsql::BTree *tree = new rsql::BTree();
+    rsql::BTree *tree = rsql::BTree::create_new_tree();
     for (rsql::Column &c : structure_1){
         tree->add_column(c);
     }
@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE(match_column_test){
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::INT, 4));
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
-    rsql::BTree *tree = new rsql::BTree();
+    rsql::BTree *tree = rsql::BTree::create_new_tree();
     for (rsql::Column &c : structure_1){
         tree->add_column(c);
     }

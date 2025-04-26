@@ -15,6 +15,22 @@ BOOST_AUTO_TEST_CASE(table_create_test)
     std::system(clear_cache.c_str());
 }
 
+BOOST_AUTO_TEST_CASE(table_create_test_with_columns_test){
+    std::vector<std::string> col_names = {"col_0", "col_1", "col_2"};
+    std::vector<rsql::Column> columns;
+    columns.push_back(rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
+    columns.push_back(rsql::Column::get_column(0, rsql::DataType::CHAR, 100));
+    columns.push_back(rsql::Column::get_column(0, rsql::DataType::DATE, 0));
+    rsql::Database *db = rsql::Database::create_new_database("test_db");
+    BOOST_CHECK(db != nullptr);
+    rsql::Table *table = rsql::Table::create_new_table(db, "test_table", col_names, columns);
+    BOOST_CHECK(table != nullptr);
+    BOOST_CHECK(table->get_width() == 142);
+    delete table;
+    delete db;
+    std::system(clear_cache.c_str());
+}
+
 BOOST_AUTO_TEST_CASE(table_column_test)
 {
     rsql::Database *db = rsql::Database::create_new_database("test_db");

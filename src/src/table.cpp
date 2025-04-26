@@ -2,20 +2,34 @@
 #include "database.h"
 namespace rsql
 {
-    Table *Table::create_new_table(Database *db, const std::string table_name)
+    Table *Table::create_new_table(Database *db, const std::string table_name, std::vector<std::string> col_names, std::vector<Column> columns)
     {
+        if (col_names.size() != columns.size())
+        {
+            throw std::invalid_argument("Column names and column vector are not the same size");
+            return nullptr;
+        }
+
         std::string where = std::filesystem::path(db->get_path()) / table_name;
         if (std::filesystem::exists(where))
         {
             throw std::invalid_argument("Table already exists");
             return nullptr;
         }
+
         Table *new_table = new Table(db, table_name);
-        new_table->db = db;
+
         std::filesystem::create_directories(where);
         std::string tree_folder = std::filesystem::path(new_table->get_path()) / std::to_string(new_table->primary_tree_num);
+
         std::filesystem::create_directory(tree_folder);
         new_table->primary_tree = BTree::create_new_tree(new_table, new_table->primary_tree_num);
+
+        for (size_t i = 0; i < col_names.size(); i++)
+        {
+            new_table->add_column(col_names[i], columns[i]);
+        }
+
         new_table->write_disk();
         return new_table;
     }
@@ -308,13 +322,11 @@ namespace rsql
             throw std::invalid_argument("Can't index indexed column");
             return;
         }
-        BTree *new_tree = new BTree();
+        BTree *new_tree = rsql::BTree::create_new_tree(this, ++this->max_tree_num);
         size_t preceding_size = 0;
         size_t indexed_col_index = it->second.first;
         Column indexed_col = this->primary_tree->columns[indexed_col_index];
         Column primary_col = this->primary_tree->columns[0];
-        new_tree->table = this;
-        new_tree->tree_num = ++this->max_tree_num;
         this->col_name_indexes[col_name].second = new_tree->tree_num;
         std::string where = std::filesystem::path(this->get_path()) / std::to_string(new_tree->tree_num);
         std::filesystem::create_directories(where);
