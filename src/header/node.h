@@ -46,7 +46,7 @@ namespace rsql
          * @param c_i
          * @param c_j
          */
-        void merge(size_t idx, BNode *c_i, BNode *c_j);
+        void merge(const size_t idx, BNode *c_i, BNode *c_j);
         /**
          * @brief recuresively perform tree balancing on the left most children and remove the left most key on the left most leaf node, rooted at current node
          *
@@ -64,20 +64,20 @@ namespace rsql
          *
          * @param key
          */
-        char *delete_row_1(size_t idx);
+        char *delete_row_1(const size_t idx);
         /**
          * @brief case 2 of deleting an item: item is in this node, and this node is not a leaf
          *
          * @param key
          */
-        char *delete_row_2(const char *key, size_t idx);
+        char *delete_row_2(const char *key, const size_t idx);
         /**
          * @brief case 3 of deleting an item: item is not in this node
          *
          * @param key
          * @param idx index of the child node
          */
-        char *delete_row_3(const char *key, size_t idx);
+        char *delete_row_3(const char *key, const size_t idx);
         /**
          * @brief delete this node if this node is not a root node
          *
@@ -95,7 +95,7 @@ namespace rsql
          * @param c_i a pointer to the child node (c_i has to be in index idx)
          * @return a pointer to the newly created node, at position idx + 1
          */
-        BNode *split_children(size_t idx, BNode *c_i);
+        BNode *split_children(const size_t idx, BNode *c_i);
         /**
          * @brief Match the column structure of this node to the tree
          *
@@ -123,7 +123,7 @@ namespace rsql
          */
         static BNode *read_disk(BTree *tree, const std::string file_name);
         static std::string get_file_name(const uint32_t node_num);
-        BNode(BTree *tree, uint32_t node_num);
+        BNode(BTree *tree, const uint32_t node_num);
         ~BNode();
         bool full();
         /**
@@ -148,7 +148,7 @@ namespace rsql
          * @param preceding_size the sum of width of column 0 to (col_idx - 1)
          * @param alls found rows
          */
-        void find_all_unindexed(const char *key, size_t col_idx, size_t preceding_size, std::vector<char *> &alls);
+        void find_all_unindexed(const char *key, const size_t col_idx, const size_t preceding_size, std::vector<char *> &alls);
         void insert(const char *row);
         char *delete_row(const char *key);
         void write_disk();

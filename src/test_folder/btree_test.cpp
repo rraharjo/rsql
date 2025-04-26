@@ -380,10 +380,10 @@ BOOST_AUTO_TEST_CASE(find_all_indexed_test)
     std::vector<char *> alls = tree->find_all_row(key, 0);
     BOOST_CHECK(alls.size() == 4);
     BOOST_CHECK(expected.size() == alls.size());
-    for (int i = 0; i < alls.size(); i++)
+    for (size_t i = 0; i < alls.size(); i++)
     {
         bool found = false;
-        for (int j = 0; j < expected.size(); j++)
+        for (size_t j = 0; j < expected.size(); j++)
         {
             if (strncmp(alls[i], alls[j], 32 + 4 + 10 + 10) == 0)
             {
@@ -422,17 +422,16 @@ BOOST_AUTO_TEST_CASE(find_all_unindexed)
     for (int i = 0; i < 3; i++)
     {
         tree->insert_row(src);
-        src[PKEY_COL_W - 1];
     }
     std::vector<char *> found = tree->find_all_row("4424", 1);
     BOOST_CHECK(found.size() == 3);
-    for (int i = 0; i < found.size(); i++)
+    for (size_t i = 0; i < found.size(); i++)
     {
         bool correct_id = found[i][PKEY_COL_W - 1] == '7' || found[i][PKEY_COL_W - 1] == '8' || found[i][PKEY_COL_W - 1] == '9';
         BOOST_CHECK(correct_id);
         BOOST_CHECK(strncmp(found[i] + PKEY_COL_W, "4424", 4) == 0);
     }
-    for (int i = 0; i < found.size(); i++)
+    for (size_t i = 0; i < found.size(); i++)
     {
         delete[] found[i];
     }
@@ -510,23 +509,23 @@ BOOST_AUTO_TEST_CASE(delete_all_indexed_test)
 
     src[PKEY_COL_W - 1] = '3';
     BOOST_CHECK(deleted_3.size() == 3);
-    for (int i = 0; i < deleted_3.size(); i++)
+    for (size_t i = 0; i < deleted_3.size(); i++)
     {
         BOOST_CHECK(strncmp(deleted_3[i], src, 32 + 4 + 10 + 10) == 0);
     }
 
     src[PKEY_COL_W - 1] = '5';
     BOOST_CHECK(deleted_5.size() == 4);
-    for (int i = 0; i < deleted_5.size(); i++)
+    for (size_t i = 0; i < deleted_5.size(); i++)
     {
         BOOST_CHECK(strncmp(deleted_5[i], src, 32 + 4 + 10 + 10) == 0);
     }
 
-    for (int i = 0; i < deleted_3.size(); i++)
+    for (size_t i = 0; i < deleted_3.size(); i++)
     {
         delete[] deleted_3[i];
     }
-    for (int i = 0; i < deleted_5.size(); i++)
+    for (size_t i = 0; i < deleted_5.size(); i++)
     {
         delete[] deleted_5[i];
     }
@@ -568,7 +567,7 @@ BOOST_AUTO_TEST_CASE(delete_all_unindexed_test)
     std::vector<char *> deleted_9 = tree->delete_all(key_9, 1);
 
     BOOST_CHECK(deleted_1.size() == 3);
-    for (int i = 0; i < deleted_1.size(); i++)
+    for (size_t i = 0; i < deleted_1.size(); i++)
     {
         bool correct_id = deleted_1[i][PKEY_COL_W - 1] == '5' || deleted_1[i][PKEY_COL_W - 1] == '6' || deleted_1[i][PKEY_COL_W - 1] == '7';
         BOOST_CHECK(deleted_1[i][34] == '1');
@@ -576,7 +575,7 @@ BOOST_AUTO_TEST_CASE(delete_all_unindexed_test)
     }
 
     BOOST_CHECK(deleted_9.size() == 2);
-    for (int i = 0; i < deleted_9.size(); i++)
+    for (size_t i = 0; i < deleted_9.size(); i++)
     {
         bool correct_id = deleted_9[i][PKEY_COL_W - 1] == '8' || deleted_9[i][PKEY_COL_W - 1] == '9';
         BOOST_CHECK(deleted_9[i][34] == '9');
@@ -584,7 +583,7 @@ BOOST_AUTO_TEST_CASE(delete_all_unindexed_test)
     }
 
     std::memcpy(src, "00000000000000000000000000000000444410101010101010101010", 56);
-    for (int i = 0; i < 5; i++)
+    for (size_t i = 0; i < 5; i++)
     {
         char *not_deleted = tree->find_row(src);
         BOOST_CHECK(not_deleted != nullptr);
@@ -596,11 +595,11 @@ BOOST_AUTO_TEST_CASE(delete_all_unindexed_test)
         src[PKEY_COL_W - 1]++;
     }
 
-    for (int i = 0; i < deleted_1.size(); i++)
+    for (size_t i = 0; i < deleted_1.size(); i++)
     {
         delete[] deleted_1[i];
     }
-    for (int i = 0; i < deleted_9.size(); i++)
+    for (size_t i = 0; i < deleted_9.size(); i++)
     {
         delete[] deleted_9[i];
     }

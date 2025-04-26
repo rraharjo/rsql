@@ -35,7 +35,7 @@ namespace rsql
             throw std::runtime_error("Failed to open file");
             return nullptr;
         }
-        char *read_buffer = new char[DISK_BUFFER_SZ];
+        static char read_buffer[DISK_BUFFER_SZ];
         if ((cur_read_bytes = read(fd, read_buffer, DISK_BUFFER_SZ)) < 0)
         {
             throw std::runtime_error("Failed to read file");
@@ -46,6 +46,9 @@ namespace rsql
         uint32_t col_num;
         std::memcpy(&col_num, read_buffer + bytes_processed, 4);
         bytes_processed += 4;
+        char col_name[COL_NAME_SIZE];
+        uint32_t col_idx;
+        uint32_t tree_num;
         for (uint32_t i = 0; i < col_num; i++)
         {
             if (cur_read_bytes - bytes_processed < COL_NAME_SIZE + 8)
@@ -54,7 +57,6 @@ namespace rsql
                 std::memmove(read_buffer, read_buffer + bytes_processed, remaining_bytes);
                 if ((cur_read_bytes = read(fd, read_buffer + remaining_bytes, DISK_BUFFER_SZ - remaining_bytes)) < 0)
                 {
-                    delete[] read_buffer;
                     delete new_table;
                     throw std::runtime_error("Failed to read file");
                     return nullptr;
@@ -62,9 +64,6 @@ namespace rsql
                 cur_read_bytes += remaining_bytes;
                 bytes_processed = 0;
             }
-            char col_name[COL_NAME_SIZE];
-            uint32_t col_idx;
-            uint32_t tree_num;
             std::memset(col_name, 0, COL_NAME_SIZE);
             std::memcpy(col_name, read_buffer + bytes_processed, COL_NAME_SIZE);
             bytes_processed += COL_NAME_SIZE;
@@ -81,7 +80,6 @@ namespace rsql
             std::memmove(read_buffer, read_buffer + bytes_processed, remaining_bytes);
             if ((cur_read_bytes = read(fd, read_buffer + remaining_bytes, DISK_BUFFER_SZ - remaining_bytes)) < 0)
             {
-                delete[] read_buffer;
                 delete new_table;
                 throw std::runtime_error("Failed to read file");
                 return nullptr;
@@ -100,7 +98,6 @@ namespace rsql
         new_table->primary_tree_num = primary_tree_num;
         new_table->max_tree_num = max_tree_num;
         new_table->primary_tree = BTree::read_disk(new_table, new_table->primary_tree_num);
-        delete[] read_buffer;
         return new_table;
     }
 

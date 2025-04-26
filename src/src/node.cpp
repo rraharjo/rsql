@@ -11,13 +11,7 @@
  * @param idx
  */
 template <typename T>
-void shift_right(std::vector<T> &v, size_t idx, size_t size)
-{
-    for (size_t i = size; i > idx; i--)
-    {
-        v[i] = v[i - 1];
-    }
-}
+void shift_right(std::vector<T> &v, const size_t idx, const size_t size);
 /**
  * @brief Shift all item starting at idx (inclusive) to the left by 1 unit
  *
@@ -26,34 +20,8 @@ void shift_right(std::vector<T> &v, size_t idx, size_t size)
  * @param idx
  */
 template <typename T>
-void shift_left(std::vector<T> &v, size_t idx, size_t size)
-{
-    if (idx == 0)
-    {
-        throw std::invalid_argument("Can't shift left at index 0");
-    }
-    for (size_t i = idx; i < size; i++)
-    {
-        v[i - 1] = v[i];
-    }
-}
-unsigned int get_node_no(const std::string &file_name)
-{
-    std::regex pattern(".*_([0-9]+)\\.rsql");
-    std::smatch match;
-    unsigned int node_no = 0;
-    if (std::regex_match(file_name, match, pattern))
-    {
-        // match[1] contains the first captured group, which is the number
-        std::string extracted_number = match[1];
-        node_no = std::stoi(extracted_number);
-    }
-    else
-    {
-        throw std::invalid_argument("File name is in the wrong format");
-    }
-    return node_no;
-}
+void shift_left(std::vector<T> &v, const size_t idx, const size_t size);
+unsigned int get_node_no(const std::string &file_name);
 
 namespace rsql
 {
@@ -77,10 +45,13 @@ namespace rsql
         }
         BNode *new_node = new BNode(tree, node_no);
         new_node->columns.clear();
-        char col_size_pad[4];
-        std::memcpy(col_size_pad, read_buffer + bytes_processed, 4);
+        uint32_t col_size;
+        std::memcpy(&col_size, read_buffer + bytes_processed, 4);
         bytes_processed += 4;
-        uint32_t col_size = *reinterpret_cast<uint32_t *>(col_size_pad);
+        uint32_t col_id;
+        std::string c_type_str;
+        c_type_str.resize(4);
+        uint32_t col_width;
         for (uint32_t i = 0; i < col_size; i++)
         {
             if (cur_read_bytes - bytes_processed < 16)
@@ -95,28 +66,22 @@ namespace rsql
                 cur_read_bytes += remaining_bytes;
                 bytes_processed = 0;
             }
-            char col_id_pad[4];
-            std::memcpy(col_id_pad, read_buffer + bytes_processed, 4);
+            std::memcpy(&col_id, read_buffer + bytes_processed, 4);
             bytes_processed += 4;
-            uint32_t col_id = *reinterpret_cast<uint32_t *>(col_id_pad);
 
-            char col_type_pad[4];
-            std::memcpy(col_type_pad, read_buffer + bytes_processed, 4);
+            std::memcpy(c_type_str.data(), read_buffer + bytes_processed, 4);
             bytes_processed += 4;
-            std::string c_type_str(col_type_pad, 4);
 
-            char col_width_pad[4];
-            std::memcpy(col_width_pad, read_buffer + bytes_processed, 4);
+            std::memcpy(&col_width, read_buffer + bytes_processed, 4);
             bytes_processed += 4;
-            uint32_t col_width = *reinterpret_cast<uint32_t *>(col_width_pad);
 
             new_node->columns.push_back(Column::get_column(col_id, str_to_dt(c_type_str), (size_t)col_width));
             cur_row_width += col_width;
         }
-        char node_size_pad[sizeof(uint32_t)];
-        std::memcpy(node_size_pad, read_buffer + bytes_processed, 4);
+        uint32_t node_size;
+        std::memcpy(&node_size, read_buffer + bytes_processed, 4);
         bytes_processed += 4;
-        uint32_t node_size = *reinterpret_cast<uint32_t *>(node_size_pad);
+
         new_node->size = node_size;
         for (uint32_t i = 0; i < node_size; i++)
         {
@@ -150,16 +115,15 @@ namespace rsql
                 cur_read_bytes += remaining_bytes;
                 bytes_processed = 0;
             }
-            char idx_pad[4];
-            std::memcpy(idx_pad, read_buffer + bytes_processed, 4);
+            uint32_t idx;
+            std::memcpy(&idx, read_buffer + bytes_processed, 4);
             bytes_processed += 4;
-            uint32_t idx = *reinterpret_cast<uint32_t *>(idx_pad);
             new_node->children[i] = idx;
         }
-        char l_pad;
-        std::memcpy(&l_pad, read_buffer + bytes_processed, 1);
+        char is_leaf;
+        std::memcpy(&is_leaf, read_buffer + bytes_processed, 1);
         bytes_processed += 1;
-        new_node->leaf = l_pad;
+        new_node->leaf = is_leaf;
         close(node_file_fd);
         new_node->match_columns();
         return new_node;
@@ -221,11 +185,11 @@ namespace rsql
         return to_ret == -1 ? this->size : to_ret;
     }
 
-    int BNode::compare_key(const char *k_1, const char *k_2, size_t col_idx)
+    inline int BNode::compare_key(const char *k_1, const char *k_2, size_t col_idx)
     {
         return strncmp(k_1, k_2, this->tree->columns[col_idx].width);
     }
-    BNode *BNode::split_children(size_t idx, BNode *c_i)
+    BNode *BNode::split_children(const size_t idx, BNode *c_i)
     {
         if (!c_i->full())
         {
@@ -261,7 +225,7 @@ namespace rsql
         new_node->changed = true;
         return new_node;
     }
-    void BNode::merge(size_t idx, BNode *c_i, BNode *c_j)
+    void BNode::merge(const size_t idx, BNode *c_i, BNode *c_j)
     {
         size_t c_i_size = c_i->size;
         c_i->keys[c_i_size++] = this->keys[idx];
@@ -375,7 +339,7 @@ namespace rsql
         this->del_if_not_root();
         return c_i->delete_right();
     }
-    char *BNode::delete_row_1(size_t idx)
+    inline char *BNode::delete_row_1(const size_t idx)
     {
         char *to_ret = this->keys[idx];
         shift_left(this->keys, idx + 1, this->size);
@@ -385,7 +349,7 @@ namespace rsql
         this->del_if_not_root();
         return to_ret;
     }
-    char *BNode::delete_row_2(const char *key, size_t idx)
+    char *BNode::delete_row_2(const char *key, const size_t idx)
     {
         uint32_t c_i_num = this->children[idx];
         std::string c_i_str = BNode::get_file_name(c_i_num);
@@ -416,7 +380,7 @@ namespace rsql
         this->del_if_not_root();
         return c_i->delete_row(key);
     }
-    char *BNode::delete_row_3(const char *key, size_t idx)
+    char *BNode::delete_row_3(const char *key, const size_t idx)
     {
         uint32_t c_i_num = this->children[idx];
         std::string c_i_str = BNode::get_file_name(c_i_num);
@@ -490,21 +454,21 @@ namespace rsql
         this->del_if_not_root();
         return c_i->delete_row(key);
     }
-    void BNode::del_if_not_root()
+    inline void BNode::del_if_not_root()
     {
         if (this->node_num != this->tree->root_num)
         {
             delete this;
         }
     }
-    void BNode::destroy()
+    inline void BNode::destroy()
     {
         std::string file_name = BNode::get_file_name(this->node_num);
         std::remove(file_name.c_str());
         this->changed = false;
         delete this;
     }
-    BNode::BNode(BTree *tree, uint32_t node_num)
+    BNode::BNode(BTree *tree, const uint32_t node_num)
         : tree(tree), node_num(node_num), leaf(false), changed(true), size(0)
     {
         this->keys.reserve(2 * this->tree->t - 1);
@@ -576,7 +540,7 @@ namespace rsql
         }
     }
 
-    bool BNode::full()
+    inline bool BNode::full()
     {
         return this->size == this->keys.capacity();
     }
@@ -642,7 +606,7 @@ namespace rsql
             c_i->find_all_indexed(key, alls);
         }
     }
-    void BNode::find_all_unindexed(const char *k, size_t col_idx, size_t preceding_size, std::vector<char *> &alls)
+    void BNode::find_all_unindexed(const char *k, const size_t col_idx, const size_t preceding_size, std::vector<char *> &alls)
     {
         for (size_t i = 0; i < this->size; i++)
         {
@@ -829,4 +793,45 @@ namespace rsql
         close(node_file_fd);
         this->changed = false;
     }
+}
+
+template <typename T>
+inline void shift_right(std::vector<T> &v, const size_t idx, const size_t size)
+{
+    for (size_t i = size; i > idx; i--)
+    {
+        v[i] = v[i - 1];
+    }
+}
+
+template <typename T>
+inline void shift_left(std::vector<T> &v, const size_t idx, const size_t size)
+{
+    if (idx == 0)
+    {
+        throw std::invalid_argument("Can't shift left at index 0");
+        return;
+    }
+    for (size_t i = idx; i < size; i++)
+    {
+        v[i - 1] = v[i];
+    }
+}
+
+unsigned int get_node_no(const std::string &file_name)
+{
+    std::regex pattern(".*_([0-9]+)\\.rsql");
+    std::smatch match;
+    unsigned int node_no = 0;
+    if (std::regex_match(file_name, match, pattern))
+    {
+        // match[1] contains the first captured group, which is the number
+        std::string extracted_number = match[1];
+        node_no = std::stoi(extracted_number);
+    }
+    else
+    {
+        throw std::invalid_argument("File name is in the wrong format");
+    }
+    return node_no;
 }

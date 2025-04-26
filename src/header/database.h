@@ -8,7 +8,7 @@ namespace rsql{
     class BTree;
     class Database{
     private:
-        std::string db_name;
+        const std::string db_name;
         Database(const std::string db_name);
     public:
         /**

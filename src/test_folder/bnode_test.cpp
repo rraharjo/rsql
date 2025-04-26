@@ -3,7 +3,6 @@
 #include "tree.h"
 std::string clean_this_cache = "make cleancache";
 BOOST_AUTO_TEST_CASE(merge_node_test){
-    size_t structure_1_w = PKEY_COL_W;
     std::vector<rsql::Column> structure_1;
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
     rsql::BTree *tree = new rsql::BTree();

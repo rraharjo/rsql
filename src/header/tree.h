@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 // Can be changed to any number >= 2
-#define DEGREE 128
+#define DEGREE 2
 #define DISK_BUFFER_SZ 4096
 #define TREE_FILE "tree.rsql"
 namespace rsql
@@ -22,10 +22,10 @@ namespace rsql
         uint32_t tree_num;
 
         BNode *root;
-        Table *table;
-        size_t t;
+        const Table *table;
+        const size_t t;
         size_t width;
-        BTree();
+        BTree(Table *table = nullptr);
         void get_root_node();
 
     public:
@@ -56,7 +56,7 @@ namespace rsql
          * @param col_idx column index
          * @return std::vector<char *> a vector constisting copies of the found elements, dynamically allocated
          */
-        std::vector<char *> find_all_row(const char *key, size_t col_idx);
+        std::vector<char *> find_all_row(const char *key, const size_t col_idx);
         /**
          * @brief insert src to the tree. Only n bytes of src will be inserted, where n is the width of the tree
          *
@@ -77,7 +77,7 @@ namespace rsql
          * @param col_idx column index. If this value is 0 (indexed), a btree search is performed, otherwise linear search is performed
          * @return std::vector<char *> the deleted elements, each element is dynamically allocated
          */
-        std::vector<char *> delete_all(const char *key, size_t col_idx);
+        std::vector<char *> delete_all(const char *key, const size_t col_idx);
         /**
          * @brief Delete all occurences of all keys. Keys have to be the first column
          *
@@ -97,7 +97,6 @@ namespace rsql
          * @param idx
          */
         void remove_column(const size_t idx);
-        void set_table(Table *table);
         std::string get_path() const;
         void write_disk();
         friend class BNode;
