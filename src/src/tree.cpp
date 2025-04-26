@@ -25,7 +25,7 @@ namespace rsql
             {
                 this->root = new BNode(this, this->root_num);
                 this->root->changed = true;
-                this->root->leaf = true;
+                this->root->leaf = 1;
             }
         }
     }
@@ -72,6 +72,10 @@ namespace rsql
         std::memcpy(&this_tree_num, starting_buffer + bytes_processed, 4);
         bytes_processed += 4;
 
+        uint8_t this_unique;
+        std::memcpy(&this_unique, starting_buffer + bytes_processed, 1);
+        bytes_processed += 1;
+
         uint32_t col_size;
         std::memcpy(&col_size, starting_buffer + bytes_processed, 4);
         bytes_processed += 4;
@@ -80,6 +84,7 @@ namespace rsql
         to_ret->max_node_num = max_node_num;
         to_ret->max_col_id = max_col_id;
         to_ret->tree_num = this_tree_num;
+        to_ret->unique_key = (bool)this_unique;
 
         uint32_t col_id;
         std::string col_type_str;
@@ -115,23 +120,31 @@ namespace rsql
         to_ret->get_root_node();
         return to_ret;
     }
-    BTree *BTree::create_new_tree(Table *table, const uint32_t tree_num)
+    BTree *BTree::create_new_tree(Table *table, const uint32_t tree_num, bool unique_key)
     {
         BTree *to_ret = new BTree(table);
         to_ret->tree_num = tree_num;
+        to_ret->unique_key = unique_key;
         to_ret->get_root_node();
         return to_ret;
-    }
-    char *BTree::find_row(const char *key)
-    {
-        return this->root->find(key);
     }
     std::vector<char *> BTree::find_all_row(const char *key, const size_t col_idx)
     {
         std::vector<char *> to_ret;
         if (col_idx == 0)
         {
-            this->root->find_all_indexed(key, to_ret);
+            if (this->unique_key)
+            {
+                char *res = this->root->find(key);
+                if (res)
+                {
+                    to_ret.push_back(res);
+                }
+            }
+            else
+            {
+                this->root->find_all_indexed(key, to_ret);
+            }
         }
         else
         {
@@ -247,50 +260,60 @@ namespace rsql
         {
             where = std::filesystem::path(table->get_path()) / std::to_string(this->tree_num) / TREE_FILE;
         }
-        size_t num_of_col = this->columns.size();
-        char *write_buffer = new char[5 * 4 + num_of_col * COLUMN_BYTES];
-        size_t processed_bytes = 0;
+        static char write_buffer[DISK_BUFFER_SZ];
+        ssize_t bytes_processed = 0;
         int tree_file_fd = open(where.c_str(), O_APPEND | O_CREAT | O_TRUNC | O_WRONLY, 0644);
         if (tree_file_fd < 0)
         {
             throw std::invalid_argument("Can't open tree file");
         }
-        std::memcpy(write_buffer + processed_bytes, &this->root_num, 4);
-        processed_bytes += 4;
+        std::memcpy(write_buffer + bytes_processed, &this->root_num, 4);
+        bytes_processed += 4;
 
-        std::memcpy(write_buffer + processed_bytes, &this->max_node_num, 4);
-        processed_bytes += 4;
+        std::memcpy(write_buffer + bytes_processed, &this->max_node_num, 4);
+        bytes_processed += 4;
 
-        std::memcpy(write_buffer + processed_bytes, &this->max_col_id, 4);
-        processed_bytes += 4;
+        std::memcpy(write_buffer + bytes_processed, &this->max_col_id, 4);
+        bytes_processed += 4;
 
-        std::memcpy(write_buffer + processed_bytes, &this->tree_num, 4);
-        processed_bytes += 4;
+        std::memcpy(write_buffer + bytes_processed, &this->tree_num, 4);
+        bytes_processed += 4;
+
+        std::memcpy(write_buffer + bytes_processed, &this->unique_key, 1);
+        bytes_processed += 1;
 
         uint32_t col_size = this->columns.size();
-        std::memcpy(write_buffer + processed_bytes, &col_size, 4);
-        processed_bytes += 4;
+        std::memcpy(write_buffer + bytes_processed, &col_size, 4);
+        bytes_processed += 4;
 
         uint32_t cur_col_id;
         std::string type;
+        type.resize(4);
         uint32_t width;
         for (uint32_t i = 0; i < col_size; i++)
         {
+            if (DISK_BUFFER_SZ - bytes_processed < 12)
+            {
+                if (write(tree_file_fd, write_buffer, bytes_processed) != bytes_processed)
+                {
+                    throw std::runtime_error("Failed to write to file");
+                    return;
+                };
+                bytes_processed = 0;
+            }
             cur_col_id = this->columns[i].col_id;
-            std::memcpy(write_buffer + processed_bytes, &cur_col_id, 4);
-            processed_bytes += 4;
+            std::memcpy(write_buffer + bytes_processed, &cur_col_id, 4);
+            bytes_processed += 4;
 
             type = dt_to_str(this->columns[i].type);
-            std::memcpy(write_buffer + processed_bytes, type.data(), 4);
-            processed_bytes += 4;
+            std::memcpy(write_buffer + bytes_processed, type.data(), 4);
+            bytes_processed += 4;
 
             width = this->columns[i].width;
-            std::memcpy(write_buffer + processed_bytes, &width, 4);
-            processed_bytes += 4;
+            std::memcpy(write_buffer + bytes_processed, &width, 4);
+            bytes_processed += 4;
         }
-
-        write(tree_file_fd, write_buffer, processed_bytes);
+        write(tree_file_fd, write_buffer, bytes_processed);
         close(tree_file_fd);
-        delete[] write_buffer;
     }
 }

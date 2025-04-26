@@ -20,6 +20,7 @@ namespace rsql
         uint32_t max_node_num;
         uint32_t max_col_id;
         uint32_t tree_num;
+        bool unique_key;
 
         BNode *root;
         const Table *table;
@@ -39,16 +40,9 @@ namespace rsql
          * @return BTree* 
          */
         static BTree *read_disk(Table *table = nullptr, const uint32_t tree_num = 0);
-        static BTree *create_new_tree(Table *table = nullptr, const uint32_t tree_num = 0);
+        static BTree *create_new_tree(Table *table = nullptr, const uint32_t tree_num = 0, bool unique_key = true);
         ~BTree();
 
-        /**
-         * @brief find the first row of which key equals to the argument key. Will do comparison based on the first column
-         *
-         * @param key key of the row
-         * @return char * if found, returns a copy of the element, dynamically allocated. Otherwise nullptr is returned.
-         */
-        char *find_row(const char *key);
         /**
          * @brief find all the rows of which value at column col_idx equals to the argument key. If col_idx is not 0 (not indexed), a linear search will be performed
          *

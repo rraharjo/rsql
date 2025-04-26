@@ -40,9 +40,9 @@ BOOST_AUTO_TEST_CASE(find_test)
         tree->insert_row(src);
         src[PKEY_COL_W - 1]++;
     }
-    char *found_0 = tree->find_row("00000000000000000000000000000000");
-    char *found_4 = tree->find_row("00000000000000000000000000000004");
-    char *found_7 = tree->find_row("00000000000000000000000000000007");
+    std::vector<char *> found_0 = tree->find_all_row("00000000000000000000000000000000", 0);
+    std::vector<char *> found_4 = tree->find_all_row("00000000000000000000000000000004", 0);
+    std::vector<char *> found_7 = tree->find_all_row("00000000000000000000000000000007", 0);
     char expected_0[32 + 4 + 10 + 10], expected_4[32 + 4 + 10 + 10], expected_7[32 + 4 + 10 + 10];
     std::memcpy(expected_0, "00000000000000000000000000000000", 32);
     std::memcpy(expected_4, "00000000000000000000000000000004", 32);
@@ -50,15 +50,18 @@ BOOST_AUTO_TEST_CASE(find_test)
     std::memcpy(expected_0 + 32, "444410101010101010101010", 24);
     std::memcpy(expected_4 + 32, "444410101010101010101010", 24);
     std::memcpy(expected_7 + 32, "444410101010101010101010", 24);
-    BOOST_CHECK(found_0 != nullptr);
-    BOOST_CHECK(found_4 != nullptr);
-    BOOST_CHECK(found_7 != nullptr);
-    BOOST_CHECK(std::strncmp(found_0, expected_0, 56) == 0);
-    BOOST_CHECK(std::strncmp(found_4, expected_4, 56) == 0);
-    BOOST_CHECK(std::strncmp(found_7, expected_7, 56) == 0);
-    delete found_0;
-    delete found_4;
-    delete found_7;
+    BOOST_CHECK(found_0.size() == 1);
+    BOOST_CHECK(found_4.size() == 1);
+    BOOST_CHECK(found_7.size() == 1);
+    BOOST_CHECK(found_0[0] != nullptr);
+    BOOST_CHECK(found_4[0] != nullptr);
+    BOOST_CHECK(found_7[0] != nullptr);
+    BOOST_CHECK(std::strncmp(found_0[0], expected_0, 56) == 0);
+    BOOST_CHECK(std::strncmp(found_4[0], expected_4, 56) == 0);
+    BOOST_CHECK(std::strncmp(found_7[0], expected_7, 56) == 0);
+    delete found_0[0];
+    delete found_4[0];
+    delete found_7[0];
     delete tree;
     std::system(clean_this_cache.c_str());
 }
@@ -76,10 +79,12 @@ BOOST_AUTO_TEST_CASE(insert_test)
         tree->insert_row(src);
         src[PKEY_COL_W - 1]++;
     }
-    char *row = tree->find_row("6bytes6bytes6bytes6bytes6bytes69");
-    BOOST_CHECK(strncmp(row, "6bytes6bytes6bytes6bytes6bytes69ytes6bytes6bytes6bytes2b", 56) == 0);
+    std::vector<char *>row = tree->find_all_row("6bytes6bytes6bytes6bytes6bytes69", 0);
+    BOOST_CHECK(row.size() == 1);
+    BOOST_CHECK(row[0] != nullptr);
+    BOOST_CHECK(strncmp(row[0], "6bytes6bytes6bytes6bytes6bytes69ytes6bytes6bytes6bytes2b", 56) == 0);
     delete tree;
-    delete row;
+    delete row[0];
     std::system(clean_this_cache.c_str());
 }
 
@@ -97,8 +102,8 @@ BOOST_AUTO_TEST_CASE(delete_case_1_test)
         src[PKEY_COL_W - 1]++;
     }
     char *row = tree->delete_row("00000000000000000000000000000009");
-    char *not_found = tree->find_row("00000000000000000000000000000009");
-    BOOST_CHECK(not_found == nullptr);
+    std::vector<char *> not_found = tree->find_all_row("00000000000000000000000000000009", 0);
+    BOOST_CHECK(not_found.size() == 0);
     BOOST_CHECK(row != nullptr);
     if (row)
     {
@@ -123,8 +128,8 @@ BOOST_AUTO_TEST_CASE(delete_case_2_test)
         src[PKEY_COL_W - 1]++;
     }
     char *row = tree->delete_row("00000000000000000000000000000003");
-    char *not_found = tree->find_row("00000000000000000000000000000003");
-    BOOST_CHECK(not_found == nullptr);
+    std::vector<char *> not_found = tree->find_all_row("00000000000000000000000000000003", 0);
+    BOOST_CHECK(not_found.size() == 0);
     BOOST_CHECK(row != nullptr);
     if (row)
     {
@@ -149,27 +154,30 @@ BOOST_AUTO_TEST_CASE(delete_test)
         src[PKEY_COL_W - 1]++;
     }
     size_t compared_bytes = 56;
-    char *row_found_9 = tree->find_row("6bytes6bytes6bytes6bytes6bytes69");
+    std::vector<char *> row_found_9 = tree->find_all_row("6bytes6bytes6bytes6bytes6bytes69", 0);
     char *del_row_9 = tree->delete_row("6bytes6bytes6bytes6bytes6bytes69");
     char *del_row_8 = tree->delete_row("6bytes6bytes6bytes6bytes6bytes68");
     char *del_row_1 = tree->delete_row("6bytes6bytes6bytes6bytes6bytes61");
     char *del_row_3 = tree->delete_row("6bytes6bytes6bytes6bytes6bytes63");
-    char *row_nfound_9 = tree->find_row("6bytes6bytes6bytes6bytes6bytes69");
-    char *row_nfound_8 = tree->find_row("6bytes6bytes6bytes6bytes6bytes68");
-    char *row_nfound_1 = tree->find_row("6bytes6bytes6bytes6bytes6bytes61");
-    char *row_nfound_3 = tree->find_row("6bytes6bytes6bytes6bytes6bytes63");
-    char *row_found_5 = tree->find_row("6bytes6bytes6bytes6bytes6bytes65");
-    char *row_found_6 = tree->find_row("6bytes6bytes6bytes6bytes6bytes66");
-    BOOST_CHECK(row_nfound_9 == nullptr);
-    BOOST_CHECK(row_nfound_8 == nullptr);
-    BOOST_CHECK(row_nfound_1 == nullptr);
-    BOOST_CHECK(row_nfound_3 == nullptr);
-    BOOST_CHECK(row_found_9 != nullptr);
-    BOOST_CHECK(row_found_5 != nullptr);
-    BOOST_CHECK(row_found_6 != nullptr);
-    BOOST_CHECK(strncmp(row_found_9, "6bytes6bytes6bytes6bytes6bytes69ytes6bytes6bytes6bytes2b", compared_bytes) == 0);
-    BOOST_CHECK(strncmp(row_found_5, "6bytes6bytes6bytes6bytes6bytes65ytes6bytes6bytes6bytes2b", compared_bytes) == 0);
-    BOOST_CHECK(strncmp(row_found_6, "6bytes6bytes6bytes6bytes6bytes66ytes6bytes6bytes6bytes2b", compared_bytes) == 0);
+    std::vector<char *> row_nfound_9 = tree->find_all_row("6bytes6bytes6bytes6bytes6bytes69", 0);
+    std::vector<char *> row_nfound_8 = tree->find_all_row("6bytes6bytes6bytes6bytes6bytes68", 0);
+    std::vector<char *> row_nfound_1 = tree->find_all_row("6bytes6bytes6bytes6bytes6bytes61", 0);
+    std::vector<char *> row_nfound_3 = tree->find_all_row("6bytes6bytes6bytes6bytes6bytes63", 0);
+    std::vector<char *> row_found_5 = tree->find_all_row("6bytes6bytes6bytes6bytes6bytes65", 0);
+    std::vector<char *> row_found_6 = tree->find_all_row("6bytes6bytes6bytes6bytes6bytes66", 0);
+    BOOST_CHECK(row_nfound_9.size() == 0);
+    BOOST_CHECK(row_nfound_8.size() == 0);
+    BOOST_CHECK(row_nfound_1.size() == 0);
+    BOOST_CHECK(row_nfound_3.size() == 0);
+    BOOST_CHECK(row_found_9.size() == 1);
+    BOOST_CHECK(row_found_5.size() == 1);
+    BOOST_CHECK(row_found_6.size() == 1);
+    BOOST_CHECK(row_found_9[0] != nullptr);
+    BOOST_CHECK(row_found_5[0] != nullptr);
+    BOOST_CHECK(row_found_6[0] != nullptr);
+    BOOST_CHECK(strncmp(row_found_9[0], "6bytes6bytes6bytes6bytes6bytes69ytes6bytes6bytes6bytes2b", compared_bytes) == 0);
+    BOOST_CHECK(strncmp(row_found_5[0], "6bytes6bytes6bytes6bytes6bytes65ytes6bytes6bytes6bytes2b", compared_bytes) == 0);
+    BOOST_CHECK(strncmp(row_found_6[0], "6bytes6bytes6bytes6bytes6bytes66ytes6bytes6bytes6bytes2b", compared_bytes) == 0);
     BOOST_CHECK(del_row_9 != nullptr);
     BOOST_CHECK(del_row_8 != nullptr);
     BOOST_CHECK(del_row_1 != nullptr);
@@ -191,9 +199,9 @@ BOOST_AUTO_TEST_CASE(delete_test)
         BOOST_CHECK(strncmp(del_row_3, "6bytes6bytes6bytes6bytes6bytes63ytes6bytes6bytes6bytes2b", 56) == 0);
     }
     delete tree;
-    delete[] row_found_5;
-    delete[] row_found_6;
-    delete[] row_found_9;
+    delete[] row_found_5[0];
+    delete[] row_found_6[0];
+    delete[] row_found_9[0];
     delete[] del_row_9;
     delete[] del_row_8;
     delete[] del_row_1;
@@ -215,9 +223,9 @@ BOOST_AUTO_TEST_CASE(add_column_test)
         src[PKEY_COL_W - 1]++;
     }
     tree->add_column(rsql::Column::char_column(0, 5));
-    char *found_0 = tree->find_row("00000000000000000000000000000000");
-    char *found_4 = tree->find_row("00000000000000000000000000000004");
-    char *found_7 = tree->find_row("00000000000000000000000000000007");
+    std::vector<char *> found_0 = tree->find_all_row("00000000000000000000000000000000", 0);
+    std::vector<char *> found_4 = tree->find_all_row("00000000000000000000000000000004", 0);
+    std::vector<char *> found_7 = tree->find_all_row("00000000000000000000000000000007", 0);
     char expected_0[32 + 4 + 10 + 10 + 5], expected_4[32 + 4 + 10 + 10 + 5], expected_7[32 + 4 + 10 + 10 + 5];
     std::memcpy(expected_0, "00000000000000000000000000000000", 32);
     std::memcpy(expected_4, "00000000000000000000000000000004", 32);
@@ -228,24 +236,18 @@ BOOST_AUTO_TEST_CASE(add_column_test)
     std::memset(expected_0 + 56, 0, 5);
     std::memset(expected_4 + 56, 0, 5);
     std::memset(expected_7 + 56, 0, 5);
-    BOOST_CHECK(found_0 != nullptr);
-    BOOST_CHECK(found_4 != nullptr);
-    BOOST_CHECK(found_7 != nullptr);
-    if (found_0)
-    {
-        BOOST_CHECK(std::strncmp(found_0, expected_0, 61) == 0);
-    }
-    if (found_4)
-    {
-        BOOST_CHECK(std::strncmp(found_4, expected_4, 61) == 0);
-    }
-    if (found_7)
-    {
-        BOOST_CHECK(std::strncmp(found_7, expected_7, 61) == 0);
-    }
-    delete found_0;
-    delete found_4;
-    delete found_7;
+    BOOST_CHECK(found_0.size() == 1);
+    BOOST_CHECK(found_4.size() == 1);
+    BOOST_CHECK(found_7.size() == 1);
+    BOOST_CHECK(found_0[0] != nullptr);
+    BOOST_CHECK(found_4[0] != nullptr);
+    BOOST_CHECK(found_7[0] != nullptr);
+    BOOST_CHECK(std::strncmp(found_0[0], expected_0, 61) == 0);
+    BOOST_CHECK(std::strncmp(found_4[0], expected_4, 61) == 0);
+    BOOST_CHECK(std::strncmp(found_7[0], expected_7, 61) == 0);
+    delete found_0[0];
+    delete found_4[0];
+    delete found_7[0];
     delete tree;
     std::system(clean_this_cache.c_str());
 }
@@ -265,9 +267,9 @@ BOOST_AUTO_TEST_CASE(remove_column_test)
     }
     tree->remove_column(1);
     tree->remove_column(1);
-    char *found_0 = tree->find_row("00000000000000000000000000000000");
-    char *found_4 = tree->find_row("00000000000000000000000000000004");
-    char *found_7 = tree->find_row("00000000000000000000000000000007");
+    std::vector<char *> found_0 = tree->find_all_row("00000000000000000000000000000000", 0);
+    std::vector<char *> found_4 = tree->find_all_row("00000000000000000000000000000004", 0);
+    std::vector<char *> found_7 = tree->find_all_row("00000000000000000000000000000007", 0);
     char expected_0[32 + 10], expected_4[32 + 10], expected_7[32 + 10];
     std::memcpy(expected_0, "00000000000000000000000000000000", 32);
     std::memcpy(expected_4, "00000000000000000000000000000004", 32);
@@ -275,24 +277,19 @@ BOOST_AUTO_TEST_CASE(remove_column_test)
     std::memcpy(expected_0 + 32, "1010101010", 10);
     std::memcpy(expected_4 + 32, "1010101010", 10);
     std::memcpy(expected_7 + 32, "1010101010", 10);
-    BOOST_CHECK(found_0 != nullptr);
-    BOOST_CHECK(found_4 != nullptr);
-    BOOST_CHECK(found_7 != nullptr);
-    if (found_0)
-    {
-        BOOST_CHECK(std::strncmp(found_0, expected_0, 42) == 0);
-    }
-    if (found_4)
-    {
-        BOOST_CHECK(std::strncmp(found_4, expected_4, 42) == 0);
-    }
-    if (found_7)
-    {
-        BOOST_CHECK(std::strncmp(found_7, expected_7, 42) == 0);
-    }
-    delete found_0;
-    delete found_4;
-    delete found_7;
+    BOOST_CHECK(found_0.size() == 1);
+    BOOST_CHECK(found_4.size() == 1);
+    BOOST_CHECK(found_7.size() == 1);
+    BOOST_CHECK(found_0[0] != nullptr);
+    BOOST_CHECK(found_4[0] != nullptr);
+    BOOST_CHECK(found_7[0] != nullptr);
+
+    BOOST_CHECK(std::strncmp(found_0[0], expected_0, 42) == 0);
+    BOOST_CHECK(std::strncmp(found_4[0], expected_4, 42) == 0);
+    BOOST_CHECK(std::strncmp(found_7[0], expected_7, 42) == 0);
+    delete found_0[0];
+    delete found_4[0];
+    delete found_7[0];
     delete tree;
     std::system(clean_this_cache.c_str());
 }
@@ -314,9 +311,9 @@ BOOST_AUTO_TEST_CASE(modify_column_test)
     tree->add_column(rsql::Column::date_column(0));
     tree->remove_column(1);
     tree->add_column(rsql::Column::char_column(0, 10));
-    char *found_0 = tree->find_row("00000000000000000000000000000000");
-    char *found_4 = tree->find_row("00000000000000000000000000000004");
-    char *found_7 = tree->find_row("00000000000000000000000000000007");
+    std::vector<char *> found_0 = tree->find_all_row("00000000000000000000000000000000", 0);
+    std::vector<char *> found_4 = tree->find_all_row("00000000000000000000000000000004", 0);
+    std::vector<char *> found_7 = tree->find_all_row("00000000000000000000000000000007", 0);
     char expected_0[32 + 10 + 10 + 10], expected_4[32 + 10 + 10 + 10], expected_7[32 + 10 + 10 + 10];
     std::memcpy(expected_0, "00000000000000000000000000000000", 32);
     std::memcpy(expected_4, "00000000000000000000000000000004", 32);
@@ -327,31 +324,25 @@ BOOST_AUTO_TEST_CASE(modify_column_test)
     std::memset(expected_0 + 42, 0, 20);
     std::memset(expected_4 + 42, 0, 20);
     std::memset(expected_7 + 42, 0, 20);
-    BOOST_CHECK(found_0 != nullptr);
-    BOOST_CHECK(found_4 != nullptr);
-    BOOST_CHECK(found_7 != nullptr);
-    if (found_0)
-    {
-        BOOST_CHECK(std::strncmp(found_0, expected_0, 62) == 0);
-    }
-    if (found_4)
-    {
-        BOOST_CHECK(std::strncmp(found_4, expected_4, 62) == 0);
-    }
-    if (found_7)
-    {
-        BOOST_CHECK(std::strncmp(found_7, expected_7, 62) == 0);
-    }
-    delete found_0;
-    delete found_4;
-    delete found_7;
+    BOOST_CHECK(found_0.size() == 1);
+    BOOST_CHECK(found_4.size() == 1);
+    BOOST_CHECK(found_7.size() == 1);
+    BOOST_CHECK(found_0[0] != nullptr);
+    BOOST_CHECK(found_4[0] != nullptr);
+    BOOST_CHECK(found_7[0] != nullptr);
+    BOOST_CHECK(std::strncmp(found_0[0], expected_0, 62) == 0);
+    BOOST_CHECK(std::strncmp(found_4[0], expected_4, 62) == 0);
+    BOOST_CHECK(std::strncmp(found_7[0], expected_7, 62) == 0);
+    delete found_0[0];
+    delete found_4[0];
+    delete found_7[0];
     delete tree;
     std::system(clean_this_cache.c_str());
 }
 
 BOOST_AUTO_TEST_CASE(find_all_indexed_test)
 {
-    rsql::BTree *tree = rsql::BTree::create_new_tree();
+    rsql::BTree *tree = rsql::BTree::create_new_tree(nullptr, 0, false);
     tree->add_column(rsql::Column::pkey_column(0));
     tree->add_column(rsql::Column::int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
@@ -461,9 +452,8 @@ BOOST_AUTO_TEST_CASE(batch_delete_test)
     std::vector<char *> rows = tree->batch_delete(deleted);
     for (const char *item : deleted)
     {
-        const char *res = tree->find_row(item);
-        BOOST_CHECK(res == nullptr);
-        delete[] res;
+        std::vector<char *> res = tree->find_all_row(item, 0);
+        BOOST_CHECK(res.size()== 0);
     }
     for (const char *row : rows)
     {
@@ -585,13 +575,11 @@ BOOST_AUTO_TEST_CASE(delete_all_unindexed_test)
     std::memcpy(src, "00000000000000000000000000000000444410101010101010101010", 56);
     for (size_t i = 0; i < 5; i++)
     {
-        char *not_deleted = tree->find_row(src);
-        BOOST_CHECK(not_deleted != nullptr);
-        if (not_deleted)
-        {
-            BOOST_CHECK(strncmp(not_deleted, src, 56) == 0);
-        }
-        delete[] not_deleted;
+        std::vector<char *>not_deleted = tree->find_all_row(src, 0);
+        BOOST_CHECK(not_deleted.size() == 1);
+        BOOST_CHECK(not_deleted[0] != nullptr);
+        BOOST_CHECK(strncmp(not_deleted[0], src, 56) == 0);
+        delete[] not_deleted[0];
         src[PKEY_COL_W - 1]++;
     }
 

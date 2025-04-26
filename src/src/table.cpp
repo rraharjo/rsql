@@ -247,13 +247,7 @@ namespace rsql
         {
             if (col_idx == 0)
             {
-                char *found = this->primary_tree->find_row(key);
-                std::vector<char *> to_ret;
-                if (found)
-                {
-                    to_ret.push_back(found);
-                }
-                return to_ret;
+                return this->primary_tree->find_all_row(key, 0);
             }
             else
             {
@@ -263,9 +257,10 @@ namespace rsql
                 std::vector<char *> optional_keys = optional_tree->find_all_row(key, 0);
                 std::vector<char *> to_ret;
                 delete optional_tree;
-                for (char *op_key : optional_keys)
+                for (const char *op_key : optional_keys)
                 {
-                    to_ret.push_back(this->primary_tree->find_row(op_key + optional_first_col_length));
+                    std::vector<char *> individual_result = this->primary_tree->find_all_row(op_key + optional_first_col_length, 0);
+                    to_ret.insert(to_ret.end(), individual_result.begin(), individual_result.end());
                     delete[] op_key;
                 }
                 return to_ret;
@@ -322,7 +317,7 @@ namespace rsql
             throw std::invalid_argument("Can't index indexed column");
             return;
         }
-        BTree *new_tree = rsql::BTree::create_new_tree(this, ++this->max_tree_num);
+        BTree *new_tree = rsql::BTree::create_new_tree(this, ++this->max_tree_num, false);
         size_t preceding_size = 0;
         size_t indexed_col_index = it->second.first;
         Column indexed_col = this->primary_tree->columns[indexed_col_index];

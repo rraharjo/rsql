@@ -76,12 +76,6 @@ namespace rsql
          * @return size_t
          */
         size_t get_col_width(const std::string col_name) const;
-        /**
-         * @brief Get the path, where this table is stored
-         *
-         * @return std::string the path
-         */
-        std::string get_path() const;
         void add_column(const std::string name, const rsql::Column col);
         /**
          * @brief remove a column named col_name
@@ -108,6 +102,12 @@ namespace rsql
         std::vector<char *> find_row_bin(const char *key, const std::string col_name);
         std::vector<char *> find_row_text(std::string key, const std::string col_name);
         void index_column(const std::string col_name);
+        /**
+         * @brief Get the path, where this table is stored
+         *
+         * @return std::string the path
+         */
+        std::string get_path() const;
         void write_disk();
         friend class BTree;
         friend class BNode;

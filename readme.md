@@ -6,6 +6,7 @@ Structure:
     the next 4 bytes            : the last node number
     the next 4 bytes            : the last column id number
     the next 4 bytes            : the tree_num
+    the next 1 byte             : determine if the key is unique
     the first 4 bytes = n       : how many columns there are
     the next 12 * n             : bytes are the columns information
 3. each tree has the table structure which consists of the columns. Columns information is the following:

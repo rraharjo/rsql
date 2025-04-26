@@ -13,13 +13,13 @@ int main(){
         tree->insert_row(src);
         src[PKEY_COL_W - 1]++;
     }
-    char *row = tree->find_row("00000000000000000000000000000009");
-    std::cout.write(row, 56);
+    std::vector<char *>row = tree->find_all_row("00000000000000000000000000000009", 0);
+    std::cout.write(row[0], 56);
     char *del_1 = tree->delete_row("00000000000000000000000000000009");
     char *del_2 = tree->delete_row("00000000000000000000000000000008");
     char *del_3 = tree->delete_row("00000000000000000000000000000001");
     char *del_4 = tree->delete_row("00000000000000000000000000000003");
-    delete[] row;
+    delete[] row[0];
     delete[] del_1;
     delete[] del_2;
     delete[] del_3;
