@@ -229,11 +229,9 @@ namespace rsql
                 inserted_bytes += this->primary_tree->columns[i].width;
                 break;
             case DataType::INT:
-                boost::multiprecision::cpp_int int_val(row[i]);
-                std::vector<unsigned char> buff;
-                // My machine is using little endian :)
-                export_bits(int_val, std::back_inserter(buff), 8, false);
-                std::memcpy(row_bin + inserted_bytes, buff.data(), std::min(this->primary_tree->columns[i].width, buff.size()));
+                static boost::multiprecision::uint1024_t placeholder;
+                placeholder.assign(row[i]);
+                std::memcpy(row_bin + inserted_bytes, &placeholder, this->primary_tree->columns[i].width);
                 inserted_bytes += this->primary_tree->columns[i].width;
                 break;
             }
@@ -295,10 +293,11 @@ namespace rsql
         uint32_t tree_num = it->second.second;
         if (this->primary_tree->columns[col_idx].type == DataType::INT)
         {
-            boost::multiprecision::cpp_int new_key(key);
+            static boost::multiprecision::uint1024_t placeholder;
+            placeholder.assign(key);
             std::vector<char> buff;
-            export_bits(new_key, std::back_inserter(buff), 8, false);
             buff.resize(this->primary_tree->columns[col_idx].width);
+            std::memcpy(buff.data(), &placeholder, this->primary_tree->columns[col_idx].width);
             return this->find_row(buff.data(), col_idx, tree_num);
         }
         key.resize(this->primary_tree->columns[col_idx].width);
@@ -373,6 +372,7 @@ namespace rsql
         delete[] new_row;
         delete new_tree;
     }
+
     void Table::write_disk()
     {
         if (!this->changed)

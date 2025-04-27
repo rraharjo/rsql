@@ -99,9 +99,35 @@ namespace rsql
          * @return std::vector<char *> all rows, dynamically allocated
          */
         void insert_row_text(const std::vector<std::string> &row);
+        /**
+         * @brief Find all occurence of key in binary
+         * 
+         * @param key 
+         * @param col_name 
+         * @return std::vector<char *> 
+         */
         std::vector<char *> find_row_bin(const char *key, const std::string col_name);
+        /**
+         * @brief Find all occurence of key
+         * 
+         * @param key 
+         * @param col_name 
+         * @return std::vector<char *> 
+         */
         std::vector<char *> find_row_text(std::string key, const std::string col_name);
+        /**
+         * @brief Create an index tree for the column
+         * 
+         * @param col_name 
+         */
         void index_column(const std::string col_name);
+        /**
+         * @brief Create new index tree for composite column A and B. Key is represented as A - B in integer format (what endiannes???????)
+         * 
+         * @param col_A 
+         * @param col_B 
+         */
+        void index_composite_columns(const std::string col_name_1, const std::string col_name_2);
         /**
          * @brief Get the path, where this table is stored
          *

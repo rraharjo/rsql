@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE(insert_binary_row_test)
     table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
 
-    char row[] = "00000000000000000000000000000000abcdefghij01-01-2002";
+    char row[] = "00000000000000000000000000000000abcdefghij2002-01-01";
     for (int i = 0; i < 10; i++)
     {
         table->insert_row_bin(row);
@@ -83,8 +83,8 @@ BOOST_AUTO_TEST_CASE(insert_row_text_test)
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
     table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::INT, 32));
 
-    std::vector<std::string> row_1 = {"00000000000000000000000000000000", "abcdefghij", "01-01-2002", "1234567890"};
-    std::vector<std::string> row_2 = {"00000000000000000000000000000005", "klmnopqrst", "01-12-2002", "1000000000"};
+    std::vector<std::string> row_1 = {"00000000000000000000000000000000", "abcdefghij", "2002-01-01", "1234567890"};
+    std::vector<std::string> row_2 = {"00000000000000000000000000000005", "klmnopqrst", "2002-01-01", "1000000000"};
 
     table->insert_row_text(row_1);
     table->insert_row_text(row_2);
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE(find_binary_row_test)
     table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
 
-    char row[] = "00000000000000000000000000000000abcdefghij01-01-2002";
+    char row[] = "00000000000000000000000000000000abcdefghij2002-01-01";
     for (int i = 0; i < 10; i++)
     {
         table->insert_row_bin(row);
@@ -172,7 +172,7 @@ BOOST_AUTO_TEST_CASE(find_text_row_test)
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
     std::string key = "00000000000000000000000000000000";
     std::string num = "10";
-    std::vector<std::string> row = {key, num, "01-01-2002"};
+    std::vector<std::string> row = {key, num, "2002-01-01"};
     for (int i = 0; i < 5; i++)
     {
         table->insert_row_text(row);
@@ -196,7 +196,7 @@ BOOST_AUTO_TEST_CASE(find_text_row_test)
         BOOST_CHECK(strncmp(rows[i], key.c_str(), PKEY_COL_W - 1) == 0);
         BOOST_CHECK(rows[i][PKEY_COL_W - 1] >= '0' && rows[i][PKEY_COL_W - 1] < '5');
         BOOST_CHECK(num == 10);
-        BOOST_CHECK(strncmp(rows[i] + 42, "01-01-2002", 10) == 0);
+        BOOST_CHECK(strncmp(rows[i] + 48, "2002-01-01", 10) == 0);
     }
     for (size_t i = 0; i < rows.size(); i++)
     {
@@ -220,7 +220,7 @@ BOOST_AUTO_TEST_CASE(load_table_test)
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
     std::string key = "00000000000000000000000000000000";
     std::string num = "10";
-    std::vector<std::string> row = {key, num, "01-01-2002"};
+    std::vector<std::string> row = {key, num, "2002-01-01"};
     for (int i = 0; i < 5; i++)
     {
         table->insert_row_text(row);
@@ -235,7 +235,7 @@ BOOST_AUTO_TEST_CASE(load_table_test)
     BOOST_CHECK(rows.size() == 1);
     BOOST_CHECK(strncmp(rows[0], key.c_str(), PKEY_COL_W) == 0);
     BOOST_CHECK(row_num == 10);
-    BOOST_CHECK(strncmp(rows[0] + 42, "01-01-2002", 10) == 0);
+    BOOST_CHECK(strncmp(rows[0] + 48, "2002-01-01", 10) == 0);
     delete rows[0];
     delete table;
     delete db;
@@ -258,19 +258,19 @@ BOOST_AUTO_TEST_CASE(optional_indexing_build_test)
     boost::multiprecision::cpp_int num_1 = 100000;
     std::string date = "10/02/2002";
     uint32_t num_2 = 0;
-    char row[32 + 10 + 10 + 4];
+    char row[32 + 16 + 10 + 4];
     std::memcpy(row, key.data(), 32);
-    std::memset(row + 32, 0, 10);
+    std::memset(row + 32, 0, 16);
     boost::multiprecision::export_bits(num_1, row + 32, 8, false);
-    std::memcpy(row + 42, date.data(), 10);
-    std::memcpy(row + 52, &num_2, 4);
+    std::memcpy(row + 48, date.data(), 10);
+    std::memcpy(row + 58, &num_2, 4);
     for (size_t i = 0; i < 50; i++)
     {
         table->insert_row_bin(row);
         num_2++;
         key[PKEY_COL_W - 1]++;
         std::memcpy(row, key.data(), 32);
-        std::memcpy(row + 52, &num_2, 4);
+        std::memcpy(row + 58, &num_2, 4);
     }
     table->index_column("col_3");
     delete table;
@@ -294,12 +294,12 @@ BOOST_AUTO_TEST_CASE(optional_indexing_find_quality_test)
     boost::multiprecision::cpp_int num_1 = 100000;
     std::string date = "10/02/2002";
     uint32_t num_2 = 0;
-    char row[32 + 10 + 10 + 4];
+    char row[32 + 16 + 10 + 4];
     std::memcpy(row, key.data(), 32);
-    std::memset(row + 32, 0, 10);
+    std::memset(row + 32, 0, 16);
     boost::multiprecision::export_bits(num_1, row + 32, 8, false);
-    std::memcpy(row + 42, date.data(), 10);
-    std::memcpy(row + 52, &num_2, 4);
+    std::memcpy(row + 48, date.data(), 10);
+    std::memcpy(row + 58, &num_2, 4);
     for (size_t i = 0; i < 50; i++)
     {
         table->insert_row_bin(row);
@@ -309,21 +309,21 @@ BOOST_AUTO_TEST_CASE(optional_indexing_find_quality_test)
         }
         key[PKEY_COL_W - 1]++;
         std::memcpy(row, key.data(), 32);
-        std::memcpy(row + 52, &num_2, 4);
+        std::memcpy(row + 58, &num_2, 4);
     }
     table->index_column("col_3");
     std::vector<char *> rows = table->find_row_text("1", "col_3");
     key = "00000000000000000000000000000001";
     uint32_t target_col_val = 1;
     std::memcpy(row, key.data(), 32);
-    std::memset(row + 32, 0, 10);
+    std::memset(row + 32, 0, 16);
     boost::multiprecision::export_bits(num_1, row + 32, 8, false);
-    std::memcpy(row + 42, date.data(), 10);
-    std::memcpy(row + 52, &target_col_val, 4);
+    std::memcpy(row + 48, date.data(), 10);
+    std::memcpy(row + 58, &target_col_val, 4);
     BOOST_CHECK(rows.size() == 5);
     for (size_t i = 0; i < rows.size(); i++)
     {
-        BOOST_CHECK(std::strncmp(rows[i] + 32, row + 32, 24) == 0);
+        BOOST_CHECK(std::strncmp(rows[i] + 32, row + 32, 30) == 0);
         BOOST_CHECK(rows[i][PKEY_COL_W - 1] >= '1');
         BOOST_CHECK(rows[i][PKEY_COL_W - 1] <= '5');
         std::memcpy(row, key.data(), 32);
@@ -350,12 +350,12 @@ BOOST_AUTO_TEST_CASE(optional_indexing_find_quantity_test)
     boost::multiprecision::cpp_int num_1 = 100000;
     std::string date = "10/02/2002";
     uint32_t num_2 = 0;
-    char row[32 + 10 + 10 + 4];
+    char row[32 + 16 + 10 + 4];
     std::memcpy(row, key.data(), 32);
-    std::memset(row + 32, 0, 10);
+    std::memset(row + 32, 0, 16);
     boost::multiprecision::export_bits(num_1, row + 32, 8, false);
-    std::memcpy(row + 42, date.data(), 10);
-    std::memcpy(row + 52, &num_2, 4);
+    std::memcpy(row + 48, date.data(), 10);
+    std::memcpy(row + 58, &num_2, 4);
     for (size_t i = 0; i < 50; i++)
     {
         table->insert_row_bin(row);
@@ -365,12 +365,12 @@ BOOST_AUTO_TEST_CASE(optional_indexing_find_quantity_test)
     table->index_column("col_3");
     std::vector<char *> rows = table->find_row_text("0", "col_3");
     std::sort(rows.begin(), rows.end(), [](const char *r1, const char *r2)
-              { return std::strncmp(r1, r2, 56) < 0; });
+              { return std::strncmp(r1, r2, 62) < 0; });
     row[PKEY_COL_W - 1] = '0';
     BOOST_CHECK(rows.size() == 50);
     for (size_t i = 0; i < rows.size(); i++)
     {
-        BOOST_CHECK(std::strncmp(row, rows[i], 56) == 0);
+        BOOST_CHECK(std::strncmp(row, rows[i], 62) == 0);
         row[PKEY_COL_W - 1]++;
         delete[] rows[i];
     }

@@ -2,10 +2,8 @@
 #include <cstring>
 
 int main(int argc, char **argv){
-    int j = 0;
-    for (int i = 0 ; i < 100000 ; i++){
-        j++;
-    }
-    std::cout << j << std::endl;
+    char s1[] = "abcdefg";
+    char s2[] = "abccefg";
+    std::cout << strncmp(s1, s2, 7) << std::endl;
     return 0;
 }

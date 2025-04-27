@@ -28,6 +28,13 @@ namespace rsql
         size_t width;
         BTree(Table *table = nullptr);
         void get_root_node();
+        /**
+         * @brief Delete the first occurence the row of which key equal to the argument key. Only compare the first column.
+         *
+         * @param key
+         * @return char * the deleted element, dynamically allocated
+         */
+        char *delete_row(const char *key);
 
     public:
         /**
@@ -57,13 +64,6 @@ namespace rsql
          * @param src pointer that contains the row information
          */
         void insert_row(const char *src);
-        /**
-         * @brief Delete the first occurence the row of which key equal to the argument key. Only compare the first column.
-         *
-         * @param key
-         * @return char * the deleted element, dynamically allocated
-         */
-        char *delete_row(const char *key);
         /**
          * @brief Delete all occurences of which value at column indexed col_idx equals to the argument key
          *

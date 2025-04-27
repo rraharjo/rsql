@@ -1,4 +1,5 @@
 #include "column.h"
+size_t round_up_int_width(const size_t width);
 namespace rsql
 {
     Column::Column(unsigned int col_id, size_t width, DataType type) : col_id(col_id), width(width), type(type)
@@ -19,7 +20,7 @@ namespace rsql
     }
     Column Column::int_column(unsigned int col_id, size_t width)
     {
-        return Column(col_id, width, DataType::INT);
+        return Column(col_id, round_up_int_width(width), DataType::INT);
     }
     Column Column::char_column(unsigned int col_id, size_t width)
     {
@@ -52,4 +53,14 @@ namespace rsql
             throw std::invalid_argument("Unknown DataType");
         }
     }
+}
+
+inline size_t round_up_int_width(const size_t width){
+    for (size_t i = 1 ; i <= 128 ; i *= 2){
+        if (width <= i){
+            return i;
+        }
+    }
+    throw std::invalid_argument("Can't create an larger than 128 bytes");
+    return 0;
 }

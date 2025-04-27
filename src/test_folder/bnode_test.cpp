@@ -81,15 +81,15 @@ BOOST_AUTO_TEST_CASE(match_column_test){
     tree->add_column(added);
     tree->remove_column(1);
     node->match_columns();
-    char match1[structure_1_w + 5 - 4];
-    std::memset(match1, 0, structure_1_w + 5 - 4);
+    char match1[structure_1_w + 8 - 4];
+    std::memset(match1, 0, structure_1_w + 8 - 4);
     std::memset(match1, 'p', 32);
     std::memset(match1 + 32, 'c', 10);
-    char match2[structure_1_w + 5 - 4];
-    std::memset(match2, 0, structure_1_w + 5 - 4);
+    char match2[structure_1_w + 8 - 4];
+    std::memset(match2, 0, structure_1_w + 8 - 4);
     std::memset(match2, 'p', 32);
     std::memset(match2 + 32, 'C', 10);
-    BOOST_CHECK(std::strncmp(node->keys[0], match1, structure_1_w + 5 - 4) == 0);
-    BOOST_CHECK(std::strncmp(node->keys[1], match2, structure_1_w + 5 - 4) == 0);
+    BOOST_CHECK(std::strncmp(node->keys[0], match1, structure_1_w + 8 - 4) == 0);
+    BOOST_CHECK(std::strncmp(node->keys[1], match2, structure_1_w + 8 - 4) == 0);
     std::system(clean_this_cache.c_str());
 }

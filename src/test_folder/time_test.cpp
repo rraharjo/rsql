@@ -9,7 +9,7 @@ int main()
     table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
     table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::INT, 4));
-    char row[] = "00000000000000000000000000000000abcdefghij01-01-2002aaaa";
+    char row[] = "00000000000000000000000000000000abcdefghij2002-01-01aaaa";
     for (int i = 0; i < ITEMSNUM; i++)
     {
         // std::cout << i << std::endl;
