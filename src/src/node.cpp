@@ -2,7 +2,7 @@
 #include "tree.h"
 #include "table.h"
 #include "database.h"
-
+typedef boost::multiprecision::cpp_int cpp_int;
 /**
  * @brief Shift all item starting at idx (inclusive) to the right by 1 unit
  *
@@ -128,7 +128,8 @@ namespace rsql
         new_node->match_columns();
         return new_node;
     }
-    inline std::string BNode::get_file_name(const uint32_t node_num){
+    inline std::string BNode::get_file_name(const uint32_t node_num)
+    {
         std::string to_ret = "node_" + std::to_string(node_num) + ".rsql";
         return to_ret;
     }
@@ -144,11 +145,6 @@ namespace rsql
             if (comp < 0)
             {
                 end = mid - 1;
-            }
-            else if (comp > 0)
-            {
-                to_ret = to_ret == -1 ? mid + 1 : std::min(to_ret, mid + 1);
-                start = mid + 1;
             }
             else
             {
@@ -171,11 +167,6 @@ namespace rsql
             {
                 start = mid + 1;
             }
-            else if (comp < 0)
-            {
-                to_ret = std::max(to_ret, mid);
-                end = mid - 1;
-            }
             else
             {
                 to_ret = to_ret == -1 ? mid : std::min(to_ret, mid);
@@ -187,6 +178,25 @@ namespace rsql
 
     inline int BNode::compare_key(const char *k_1, const char *k_2, size_t col_idx)
     {
+        if (this->columns[col_idx].type == DataType::INT)
+        {
+            size_t this_col_width = this->tree->columns[col_idx].width;
+            cpp_int c_1, c_2;
+            boost::multiprecision::import_bits(c_1, k_1, k_1 + this_col_width, 8, false);
+            boost::multiprecision::import_bits(c_2, k_2, k_2 + this_col_width, 8, false);
+            if (c_1 < c_2)
+            {
+                return -1;
+            }
+            else if (c_1 > c_2)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
         return strncmp(k_1, k_2, this->tree->columns[col_idx].width);
     }
     BNode *BNode::split_children(const size_t idx, BNode *c_i)
@@ -751,7 +761,7 @@ namespace rsql
 
         for (uint32_t i = 0; i < this->size; i++)
         {
-            if (DISK_BUFFER_SZ - (size_t) bytes_processed < this->tree->width)
+            if (DISK_BUFFER_SZ - (size_t)bytes_processed < this->tree->width)
             {
                 if (write(node_file_fd, write_buffer, bytes_processed) != bytes_processed)
                 {

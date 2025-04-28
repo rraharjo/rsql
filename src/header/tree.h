@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 // Can be changed to any number >= 2
-#define DEGREE 2
+#define DEGREE 128
 #define DISK_BUFFER_SZ 4096
 #define TREE_FILE "tree.rsql"
 namespace rsql

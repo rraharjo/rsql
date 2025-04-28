@@ -298,7 +298,7 @@ namespace rsql
             boost::multiprecision::cpp_int new_key(key);
             std::vector<char> buff;
             export_bits(new_key, std::back_inserter(buff), 8, false);
-            buff.resize(this->primary_tree->columns[col_idx].width);
+            buff.resize(this->primary_tree->columns[col_idx].width, 0);
             return this->find_row(buff.data(), col_idx, tree_num);
         }
         key.resize(this->primary_tree->columns[col_idx].width);

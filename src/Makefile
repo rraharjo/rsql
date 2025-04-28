@@ -72,7 +72,7 @@ $(DBTARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(TEST_DIR)/$(DBTEST).cpp -o $@.exe $^
 
 $(TIMETARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(TEST_DIR)/$(TIMETEST).cpp -o $@.exe $^
+	$(CXX) -std=c++17 -I$(INC_DIR) $(TEST_DIR)/$(TIMETEST).cpp -o $@.exe $^
 
 $(LEAKTARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(TEST_DIR)/$(LEAKTEST).cpp -o $@.exe $^
