@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE(insert_row_text_test)
     boost::multiprecision::import_bits(signed_int_2, vec_row_2[0] + 85, vec_row_2[0] + 92, 8, false);
     signed_int_1 *= sign_1;
     signed_int_2 *= sign_2;
-    std::cout << signed_int_1 << " " << signed_int_2 << std::endl;
+
     BOOST_CHECK(vec_row_1.size() == 1);
     BOOST_CHECK(strncmp(vec_row_1[0], row_1[0].c_str(), 32) == 0);
     BOOST_CHECK(strncmp(vec_row_1[0] + 32, row_1[1].c_str(), 10) == 0);
@@ -125,6 +125,46 @@ BOOST_AUTO_TEST_CASE(insert_row_text_test)
     std::system(clear_cache.c_str());
 }
 
+BOOST_AUTO_TEST_CASE(insert_row_exceeding_column_size_test)
+{
+    rsql::Database *db = rsql::Database::create_new_database("test_db");
+    BOOST_CHECK(db != nullptr);
+    rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
+    BOOST_CHECK(table != nullptr);
+
+    table->add_column("key", rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
+    table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
+    table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
+    table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::UINT, 32));
+    table->add_column("col_4", rsql::Column::get_column(0, rsql::DataType::SINT, 4));
+
+    std::vector<std::string> row_1 = {"00000000000000000000000000000000", "abcdefghij", "01-01-2002", "1234567890", "-16777216"};//0x01 00 00 00
+    std::vector<std::string> row_2 = {"00000000000000000000000000000005", "klmnopqrst", "01-12-2002", "1000000000", "-16777215"};//0xff ff ff
+
+    BOOST_CHECK_THROW(table->insert_row_text(row_1), std::invalid_argument);
+    table->insert_row_text(row_2);
+
+    std::vector<char *> vec_row_1 = table->find_row_bin("00000000000000000000000000000000", "key");
+    std::vector<char *> vec_row_2 = table->find_row_bin("00000000000000000000000000000005", "key");
+
+    unsigned long long int row_2_int = *reinterpret_cast<long long int *>(vec_row_2[0] + 52);
+    char sign_byte_2 = *(vec_row_2[0] + 84);
+    int sign_2 = (int) sign_byte_2;
+    cpp_int signed_int_2;
+    boost::multiprecision::import_bits(signed_int_2, vec_row_2[0] + 85, vec_row_2[0] + 88, 8, false);
+    signed_int_2 *= sign_2;
+    BOOST_CHECK(vec_row_1.size() == 0);
+    BOOST_CHECK(vec_row_2.size() == 1);
+    BOOST_CHECK(strncmp(vec_row_2[0], row_2[0].c_str(), 32) == 0);
+    BOOST_CHECK(strncmp(vec_row_2[0] + 32, row_2[1].c_str(), 10) == 0);
+    BOOST_CHECK(strncmp(vec_row_2[0] + 42, row_2[2].c_str(), 10) == 0);
+    BOOST_CHECK(row_2_int == std::stoull(row_2[3]));
+    BOOST_CHECK(signed_int_2 == cpp_int("-16777215"));
+    delete[] vec_row_2[0];
+    delete table;
+    delete db;
+    std::system(clear_cache.c_str());
+}
 BOOST_AUTO_TEST_CASE(find_binary_row_test)
 {
     rsql::Database *db = rsql::Database::create_new_database("test_db");

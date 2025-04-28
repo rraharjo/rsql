@@ -94,6 +94,7 @@ namespace rsql
          * @brief find all rows with where the col_name column has matching values
          * 
          * @throw std::invalid_argument if this table does not have column col_name
+         * @throw std::invalid_argument if the length of src in binary exceed the column width
          * @param key 
          * @param col_name 
          * @return std::vector<char *> all rows, dynamically allocated

@@ -17,12 +17,26 @@ namespace rsql
         unsigned int col_id;
 
         Column(unsigned int col_id, size_t width, DataType type);
+        /**
+         * @brief Process the src string (text format) into binary format and copy it to dest
+         * 
+         * @throw std::invalid_argument if the length of src in binary exceed the column width
+         * @param dest 
+         * @param src 
+         */
         void process_string(char *const dest, const std::string src);
         bool operator==(const Column &other) const;
         bool operator!=(const Column &other) const;
 
         static Column pkey_column(unsigned int col_id);
         static Column unsigned_int_column(unsigned int col_id, const size_t width);
+        /**
+         * @brief return an unsigned column. The first byte is the sign byte (-1, 0, 1). The rest (n - 1) bytes are magnitude bytes
+         * 
+         * @param col_id 
+         * @param width 
+         * @return Column 
+         */
         static Column signed_int_column(unsigned int col_id, const size_t width);
         static Column char_column(unsigned int col_id, const size_t width);
         static Column date_column(unsigned int col_id);

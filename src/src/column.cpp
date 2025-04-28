@@ -20,6 +20,10 @@ namespace rsql
             break;
         case DataType::CHAR:
         case DataType::PKEY:
+            if (src.length() > this->width){
+                throw std::invalid_argument("byte overflow");
+                return;
+            }
             std::memset(dest, 0, this->width);
             std::memcpy(dest, src.c_str(), src.length());
             break;
@@ -29,7 +33,11 @@ namespace rsql
             std::vector<unsigned char> buff;
             std::memset(dest, 0, this->width);
             export_bits(int_val, std::back_inserter(buff), 8, false);
-            std::memcpy(dest, buff.data(), std::min(this->width, buff.size()));
+            if (buff.size() > this->width){
+                throw std::invalid_argument("Byte overflow");
+                return;
+            }
+            std::memcpy(dest, buff.data(), buff.size());
             break;
         }
         case DataType::SINT:
@@ -40,7 +48,11 @@ namespace rsql
             std::memset(dest, 0, this->width);
             buff.push_back((unsigned char)sign);
             export_bits(magnitude, std::back_inserter(buff), 8, false);
-            std::memcpy(dest, buff.data(), std::min(this->width, buff.size()));
+            if (buff.size() > this->width){
+                throw std::invalid_argument("Byte overflow");
+                return;
+            }
+            std::memcpy(dest, buff.data(), buff.size());
             break;
         }
         }
@@ -66,6 +78,9 @@ namespace rsql
     }
     Column Column::signed_int_column(unsigned int col_id, const size_t width)
     {
+        if (width <= 1){
+            throw std::invalid_argument("Can't create a signed column less than 1 byte");
+        }
         return Column(col_id, width, DataType::SINT);
     }
     Column Column::char_column(unsigned int col_id, const size_t width)
