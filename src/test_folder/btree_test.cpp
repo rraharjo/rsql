@@ -7,7 +7,7 @@ BOOST_AUTO_TEST_CASE(tree_write_read_disk_test)
 {
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     std::vector<rsql::Column> columns = tree->columns;
@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_CASE(find_test)
 {
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     char src[32 + 4 + 10 + 10 + 1] = "00000000000000000000000000000000444410101010101010101010";
@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE(insert_test)
 {
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     char src[32 + 4 + 10 + 10 + 1] = "6bytes6bytes6bytes6bytes6bytes60ytes6bytes6bytes6bytes2b";
@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE(delete_case_1_test)
 {
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     char src[32 + 4 + 10 + 10 + 1] = "00000000000000000000000000000000444410101010101010101010";
@@ -118,7 +118,7 @@ BOOST_AUTO_TEST_CASE(delete_case_2_test)
 {
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     char src[32 + 4 + 10 + 10 + 1] = "00000000000000000000000000000000444410101010101010101010";
@@ -144,7 +144,7 @@ BOOST_AUTO_TEST_CASE(delete_test)
 {
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     char src[32 + 4 + 10 + 10 + 1] = "6bytes6bytes6bytes6bytes6bytes60ytes6bytes6bytes6bytes2b";
@@ -213,7 +213,7 @@ BOOST_AUTO_TEST_CASE(add_column_test)
 {
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     char src[32 + 4 + 10 + 10 + 1] = "00000000000000000000000000000000444410101010101010101010";
@@ -256,7 +256,7 @@ BOOST_AUTO_TEST_CASE(remove_column_test)
 {
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     char src[32 + 4 + 10 + 10 + 1] = "00000000000000000000000000000000444410101010101010101010";
@@ -298,7 +298,7 @@ BOOST_AUTO_TEST_CASE(modify_column_test)
 {
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     char src[32 + 4 + 10 + 10 + 1] = "00000000000000000000000000000000444410101010101010101010";
@@ -344,7 +344,7 @@ BOOST_AUTO_TEST_CASE(find_all_indexed_test)
 {
     rsql::BTree *tree = rsql::BTree::create_new_tree(nullptr, 0, false);
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     std::vector<char *> expected;
@@ -399,7 +399,7 @@ BOOST_AUTO_TEST_CASE(find_all_unindexed)
 {
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     std::vector<char *> expected;
@@ -433,7 +433,7 @@ BOOST_AUTO_TEST_CASE(batch_delete_test)
 {
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     std::vector<char *> deleted;
@@ -471,7 +471,7 @@ BOOST_AUTO_TEST_CASE(delete_all_indexed_test)
 {
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     char key_3[PKEY_COL_W], key_5[PKEY_COL_W];
@@ -527,7 +527,7 @@ BOOST_AUTO_TEST_CASE(delete_all_unindexed_test)
 {
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     char key_1[4], key_9[4];

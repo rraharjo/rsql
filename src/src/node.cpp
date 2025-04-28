@@ -178,7 +178,7 @@ namespace rsql
 
     inline int BNode::compare_key(const char *k_1, const char *k_2, size_t col_idx)
     {
-        if (this->columns[col_idx].type == DataType::INT)
+        if (this->columns[col_idx].type == DataType::UINT)
         {
             size_t this_col_width = this->tree->columns[col_idx].width;
             cpp_int c_1, c_2;

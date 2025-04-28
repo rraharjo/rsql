@@ -11,8 +11,8 @@ int main()
     table->add_column("key", rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
     table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
-    table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::INT, 4));
-    table->add_column("col_4", rsql::Column::get_column(0, rsql::DataType::INT, 4));
+    table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::UINT, 4));
+    table->add_column("col_4", rsql::Column::get_column(0, rsql::DataType::UINT, 4));
     char row[] = "00000000000000000000000000000000abcdefghij01-01-2002aaaaaaaa";
     memset(row + 52, 0, 8);
     std::cout << "Inserting " << ITEMSNUM << " items..." << std::endl;

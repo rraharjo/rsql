@@ -5,11 +5,54 @@ namespace rsql
     {
     }
 
-    bool Column::operator==(const Column& other) const {
+    void Column::process_string(char *const dest, const std::string src)
+    {
+        switch (this->type)
+        {
+        case DataType::DATE:
+            if (!valid_date(src))
+            {
+                std::string err_msg = src + " is not a valid date";
+                throw std::invalid_argument(err_msg);
+            }
+            std::memset(dest, 0, this->width);
+            std::memcpy(dest, src.c_str(), src.length());
+            break;
+        case DataType::CHAR:
+        case DataType::PKEY:
+            std::memset(dest, 0, this->width);
+            std::memcpy(dest, src.c_str(), src.length());
+            break;
+        case DataType::UINT:
+        {
+            boost::multiprecision::cpp_int int_val(src);
+            std::vector<unsigned char> buff;
+            std::memset(dest, 0, this->width);
+            export_bits(int_val, std::back_inserter(buff), 8, false);
+            std::memcpy(dest, buff.data(), std::min(this->width, buff.size()));
+            break;
+        }
+        case DataType::SINT:
+        {
+            boost::multiprecision::cpp_int magnitude(src);
+            int8_t sign = (int8_t)magnitude.sign();
+            std::vector<unsigned char> buff;
+            std::memset(dest, 0, this->width);
+            buff.push_back((unsigned char)sign);
+            export_bits(magnitude, std::back_inserter(buff), 8, false);
+            std::memcpy(dest, buff.data(), std::min(this->width, buff.size()));
+            break;
+        }
+        }
+    }
+
+    bool Column::operator==(const Column &other) const
+    {
         return this->col_id == other.col_id && this->type == other.type && this->width == other.width;
     }
 
-    bool Column::operator!=(const Column& other) const {
+    bool Column::operator!=(const Column &other) const
+    {
         return !(*this == other);
     }
 
@@ -17,11 +60,15 @@ namespace rsql
     {
         return Column(col_id, PKEY_COL_W, DataType::PKEY);
     }
-    Column Column::int_column(unsigned int col_id, size_t width)
+    Column Column::unsigned_int_column(unsigned int col_id, const size_t width)
     {
-        return Column(col_id, width, DataType::INT);
+        return Column(col_id, width, DataType::UINT);
     }
-    Column Column::char_column(unsigned int col_id, size_t width)
+    Column Column::signed_int_column(unsigned int col_id, const size_t width)
+    {
+        return Column(col_id, width, DataType::SINT);
+    }
+    Column Column::char_column(unsigned int col_id, const size_t width)
     {
         return Column(col_id, width, DataType::CHAR);
     }
@@ -31,24 +78,19 @@ namespace rsql
     }
     Column Column::get_column(unsigned int col_id, DataType type, size_t width)
     {
-        if (type == DataType::PKEY)
+        switch (type)
         {
+        case DataType::PKEY:
             return Column::pkey_column(col_id);
-        }
-        else if (type == DataType::INT)
-        {
-            return Column::int_column(col_id, width);
-        }
-        else if (type == DataType::CHAR)
-        {
+        case DataType::UINT:
+            return Column::unsigned_int_column(col_id, width);
+        case DataType::SINT:
+            return Column::signed_int_column(col_id, width);
+        case DataType::CHAR:
             return Column::char_column(col_id, width);
-        }
-        else if (type == DataType::DATE)
-        {
+        case DataType::DATE:
             return Column::date_column(col_id);
-        }
-        else
-        {
+        default:
             throw std::invalid_argument("Unknown DataType");
         }
     }

@@ -17,12 +17,14 @@ namespace rsql
         unsigned int col_id;
 
         Column(unsigned int col_id, size_t width, DataType type);
+        void process_string(char *const dest, const std::string src);
         bool operator==(const Column &other) const;
         bool operator!=(const Column &other) const;
 
         static Column pkey_column(unsigned int col_id);
-        static Column int_column(unsigned int col_id, size_t width);
-        static Column char_column(unsigned int col_id, size_t width);
+        static Column unsigned_int_column(unsigned int col_id, const size_t width);
+        static Column signed_int_column(unsigned int col_id, const size_t width);
+        static Column char_column(unsigned int col_id, const size_t width);
         static Column date_column(unsigned int col_id);
 
         static Column get_column(unsigned int col_id, DataType type, size_t width);

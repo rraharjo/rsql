@@ -210,33 +210,8 @@ namespace rsql
         size_t inserted_bytes = 0;
         for (size_t i = 0; i < row.size(); i++)
         {
-            switch (this->primary_tree->columns[i].type)
-            {
-            case DataType::DATE:
-                if (!valid_date(row[i]))
-                {
-                    std::string err_msg = row[i] + " is not a valid date";
-                    throw std::invalid_argument(err_msg);
-                }
-                std::memset(row_bin + inserted_bytes, 0, this->primary_tree->columns[i].width);
-                std::memcpy(row_bin + inserted_bytes, row[i].c_str(), row[i].size());
-                inserted_bytes += this->primary_tree->columns[i].width;
-                break;
-            case DataType::CHAR:
-            case DataType::PKEY:
-                std::memset(row_bin + inserted_bytes, 0, this->primary_tree->columns[i].width);
-                std::memcpy(row_bin + inserted_bytes, row[i].c_str(), row[i].size());
-                inserted_bytes += this->primary_tree->columns[i].width;
-                break;
-            case DataType::INT:
-                boost::multiprecision::cpp_int int_val(row[i]);
-                std::vector<unsigned char> buff;
-                // My machine is using little endian :)
-                export_bits(int_val, std::back_inserter(buff), 8, false);
-                std::memcpy(row_bin + inserted_bytes, buff.data(), std::min(this->primary_tree->columns[i].width, buff.size()));
-                inserted_bytes += this->primary_tree->columns[i].width;
-                break;
-            }
+            this->primary_tree->columns[i].process_string(row_bin + inserted_bytes, row[i]);
+            inserted_bytes += this->primary_tree->columns[i].width;
         }
         this->insert_row_bin(row_bin);
         delete[] row_bin;
@@ -293,16 +268,10 @@ namespace rsql
         }
         size_t col_idx = (size_t)it->second.first;
         uint32_t tree_num = it->second.second;
-        if (this->primary_tree->columns[col_idx].type == DataType::INT)
-        {
-            boost::multiprecision::cpp_int new_key(key);
-            std::vector<char> buff;
-            export_bits(new_key, std::back_inserter(buff), 8, false);
-            buff.resize(this->primary_tree->columns[col_idx].width, 0);
-            return this->find_row(buff.data(), col_idx, tree_num);
-        }
-        key.resize(this->primary_tree->columns[col_idx].width);
-        return this->find_row(key.data(), col_idx, tree_num);
+        std::string new_key;
+        new_key.resize(this->primary_tree->columns[col_idx].width, 0);
+        this->primary_tree->columns[col_idx].process_string(new_key.data(), key);
+        return this->find_row(new_key.data(), col_idx, tree_num);
     }
     void Table::index_column(const std::string col_name)
     {

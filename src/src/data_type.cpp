@@ -6,9 +6,13 @@ rsql::DataType rsql::str_to_dt(std::string string_repr)
     {
         return rsql::DataType::PKEY;
     }
-    else if (string_repr.compare(INT_STR) == 0)
+    else if (string_repr.compare(UINT_STR) == 0)
     {
-        return rsql::DataType::INT;
+        return rsql::DataType::UINT;
+    }
+    else if (string_repr.compare(SINT_STR) == 0)
+    {
+        return rsql::DataType::SINT;
     }
     else if (string_repr.compare(CHAR_STR) == 0)
     {
@@ -20,29 +24,24 @@ rsql::DataType rsql::str_to_dt(std::string string_repr)
     }
     else
     {
-        throw std::invalid_argument(string_repr + " does not specify any data type");
+        throw std::invalid_argument(string_repr + " does not represent any data type");
     }
 }
 std::string rsql::dt_to_str(rsql::DataType type)
 {
-    if (type == rsql::DataType::PKEY)
+    switch (type)
     {
+    case rsql::DataType::PKEY:
         return PKEY_STR;
-    }
-    else if (type == rsql::DataType::INT)
-    {
-        return INT_STR;
-    }
-    else if (type == rsql::DataType::CHAR)
-    {
+    case rsql::DataType::UINT:
+        return UINT_STR;
+    case rsql::DataType::SINT:
+        return SINT_STR;
+    case rsql::DataType::CHAR:
         return CHAR_STR;
-    }
-    else if (type == rsql::DataType::DATE)
-    {
+    case rsql::DataType::DATE:
         return DATE_STR;
-    }
-    else
-    {
+    default:
         throw std::invalid_argument("Unknown type");
     }
 }
@@ -118,7 +117,7 @@ namespace rsql
         case DataType::DATE:
             return strncmp(this->src, other.src, this->len) == 0;
             break;
-        case DataType::INT:
+        case DataType::UINT:
         {
             boost::multiprecision::cpp_int this_int, other_int;
             boost::multiprecision::import_bits(this_int, this->src, this->src + this->len, 8, false);
@@ -144,7 +143,7 @@ namespace rsql
         case DataType::DATE:
             return strncmp(this->src, other.src, this->len) < 0;
             break;
-        case DataType::INT:
+        case DataType::UINT:
         {
             boost::multiprecision::cpp_int this_int, other_int;
             boost::multiprecision::import_bits(this_int, this->src, this->src + this->len, 8, false);
@@ -166,7 +165,7 @@ namespace rsql
         case DataType::DATE:
             return strncmp(this->src, other.src, this->len) <= 0;
             break;
-        case DataType::INT:
+        case DataType::UINT:
         {
             boost::multiprecision::cpp_int this_int, other_int;
             boost::multiprecision::import_bits(this_int, this->src, this->src + this->len, 8, false);
