@@ -67,7 +67,21 @@ namespace rsql
         case DataType::PKEY:
         case DataType::DATE:
         case DataType::CHAR:
-            return std::strncmp(k1, k2, this->width);
+        {
+            int cmp = std::strncmp(k1, k2, this->width);
+            if (cmp < 0)
+            {
+                return -1;
+            }
+            else if (cmp > 0)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
         case DataType::UINT:
         {
             boost::multiprecision::cpp_int c_int1, c_int2;

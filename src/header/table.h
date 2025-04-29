@@ -8,6 +8,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <queue>
 #include "tree.h"
+#define COMPOSITE_KEY_SIZE 2
 #define TABLE_NAME_SIZE 256
 #define COL_NAME_SIZE 128
 #define TABLE_FILE_NAME "table.rsql"
@@ -102,7 +103,20 @@ namespace rsql
         void insert_row_text(const std::vector<std::string> &row);
         std::vector<char *> find_row_bin(const char *key, const std::string col_name);
         std::vector<char *> find_row_text(std::string key, const std::string col_name);
+        /**
+         * @brief Index column
+         * 
+         * @throw std::invalid_argument if column can't be indexed
+         * @param col_name 
+         */
         void index_column(const std::string col_name);
+        /**
+         * @brief UNTESTED!!! Index two column as composite. Key is represented as (col1 - col2)
+         * 
+         * @throw std::invalid_argument if the columns can't be indexed
+         * @param col_name_1 
+         * @param col_name_2 
+         */
         void index_composite_columns(const std::string col_name_1, const std::string col_name_2);
         /**
          * @brief Get the path, where this table is stored
