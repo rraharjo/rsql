@@ -103,6 +103,7 @@ namespace rsql
         std::vector<char *> find_row_bin(const char *key, const std::string col_name);
         std::vector<char *> find_row_text(std::string key, const std::string col_name);
         void index_column(const std::string col_name);
+        void index_composite_columns(const std::string col_name_1, const std::string col_name_2);
         /**
          * @brief Get the path, where this table is stored
          *

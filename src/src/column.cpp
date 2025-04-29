@@ -20,7 +20,8 @@ namespace rsql
             break;
         case DataType::CHAR:
         case DataType::PKEY:
-            if (src.length() > this->width){
+            if (src.length() > this->width)
+            {
                 throw std::invalid_argument("byte overflow");
                 return;
             }
@@ -33,7 +34,8 @@ namespace rsql
             std::vector<unsigned char> buff;
             std::memset(dest, 0, this->width);
             export_bits(int_val, std::back_inserter(buff), 8, false);
-            if (buff.size() > this->width){
+            if (buff.size() > this->width)
+            {
                 throw std::invalid_argument("Byte overflow");
                 return;
             }
@@ -48,13 +50,68 @@ namespace rsql
             std::memset(dest, 0, this->width);
             buff.push_back((unsigned char)sign);
             export_bits(magnitude, std::back_inserter(buff), 8, false);
-            if (buff.size() > this->width){
+            if (buff.size() > this->width)
+            {
                 throw std::invalid_argument("Byte overflow");
                 return;
             }
             std::memcpy(dest, buff.data(), buff.size());
             break;
         }
+        }
+    }
+    int Column::compare_key(const char *const k1, const char *const k2)
+    {
+        switch (this->type)
+        {
+        case DataType::PKEY:
+        case DataType::DATE:
+        case DataType::CHAR:
+            return std::strncmp(k1, k2, this->width);
+        case DataType::UINT:
+        {
+            boost::multiprecision::cpp_int c_int1, c_int2;
+            boost::multiprecision::import_bits(c_int1, k1, k1 + this->width, 8, false);
+            boost::multiprecision::import_bits(c_int2, k2, k2 + this->width, 8, false);
+            if (c_int1 < c_int2)
+            {
+                return -1;
+            }
+            else if (c_int1 > c_int2)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        case DataType::SINT:
+        {
+            signed char char_sign1, char_sign2;
+            char_sign1 = *k1;
+            char_sign2 = *k2;
+            int sign1 = static_cast<int>(char_sign1), sign2 = static_cast<int>(char_sign2);
+            boost::multiprecision::cpp_int c_int1, c_int2;
+            boost::multiprecision::import_bits(c_int1, k1 + 1, k1 + this->width, 8, false);
+            boost::multiprecision::import_bits(c_int2, k2 + 1, k2 + this->width, 8, false);
+            c_int1 *= sign1;
+            c_int2 *= sign2;
+            if (c_int1 < c_int2)
+            {
+                return -1;
+            }
+            else if (c_int1 > c_int2)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        default:
+            throw std::invalid_argument("Unknown DataType");
         }
     }
 
@@ -78,7 +135,8 @@ namespace rsql
     }
     Column Column::signed_int_column(unsigned int col_id, const size_t width)
     {
-        if (width <= 1){
+        if (width <= 1)
+        {
             throw std::invalid_argument("Can't create a signed column less than 1 byte");
         }
         return Column(col_id, width, DataType::SINT);

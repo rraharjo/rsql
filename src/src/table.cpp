@@ -342,6 +342,7 @@ namespace rsql
         delete[] new_row;
         delete new_tree;
     }
+    
     void Table::write_disk()
     {
         if (!this->changed)

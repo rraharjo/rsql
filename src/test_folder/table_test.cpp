@@ -61,7 +61,7 @@ BOOST_AUTO_TEST_CASE(insert_binary_row_test)
     table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
 
-    char row[] = "00000000000000000000000000000000abcdefghij01-01-2002";
+    char row[] = "00000000000000000000000000000000abcdefghij2002-01-01";
     for (int i = 0; i < 10; i++)
     {
         table->insert_row_bin(row);
@@ -85,8 +85,8 @@ BOOST_AUTO_TEST_CASE(insert_row_text_test)
     table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::UINT, 32));
     table->add_column("col_4", rsql::Column::get_column(0, rsql::DataType::SINT, 8));
 
-    std::vector<std::string> row_1 = {"00000000000000000000000000000000", "abcdefghij", "01-01-2002", "1234567890", "-10000"};
-    std::vector<std::string> row_2 = {"00000000000000000000000000000005", "klmnopqrst", "01-12-2002", "1000000000", "20000"};
+    std::vector<std::string> row_1 = {"00000000000000000000000000000000", "abcdefghij", "2002-01-01", "1234567890", "-10000"};
+    std::vector<std::string> row_2 = {"00000000000000000000000000000005", "klmnopqrst", "2002-01-12", "1000000000", "20000"};
 
     table->insert_row_text(row_1);
     table->insert_row_text(row_2);
@@ -138,8 +138,8 @@ BOOST_AUTO_TEST_CASE(insert_row_exceeding_column_size_test)
     table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::UINT, 32));
     table->add_column("col_4", rsql::Column::get_column(0, rsql::DataType::SINT, 4));
 
-    std::vector<std::string> row_1 = {"00000000000000000000000000000000", "abcdefghij", "01-01-2002", "1234567890", "-16777216"};//0x01 00 00 00
-    std::vector<std::string> row_2 = {"00000000000000000000000000000005", "klmnopqrst", "01-12-2002", "1000000000", "-16777215"};//0xff ff ff
+    std::vector<std::string> row_1 = {"00000000000000000000000000000000", "abcdefghij", "2002-01-01", "1234567890", "-16777216"};//0x01 00 00 00
+    std::vector<std::string> row_2 = {"00000000000000000000000000000005", "klmnopqrst", "2002-01-01", "1000000000", "-16777215"};//0xff ff ff
 
     BOOST_CHECK_THROW(table->insert_row_text(row_1), std::invalid_argument);
     table->insert_row_text(row_2);
@@ -177,7 +177,7 @@ BOOST_AUTO_TEST_CASE(find_binary_row_test)
     table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
 
-    char row[] = "00000000000000000000000000000000abcdefghij01-01-2002";
+    char row[] = "00000000000000000000000000000000abcdefghij2002-01-01";
     for (int i = 0; i < 10; i++)
     {
         table->insert_row_bin(row);
@@ -224,7 +224,7 @@ BOOST_AUTO_TEST_CASE(find_text_row_test)
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
     std::string key = "00000000000000000000000000000000";
     std::string num = "10";
-    std::vector<std::string> row = {key, num, "01-01-2002"};
+    std::vector<std::string> row = {key, num, "2002-01-01"};
     for (int i = 0; i < 5; i++)
     {
         table->insert_row_text(row);
@@ -248,7 +248,7 @@ BOOST_AUTO_TEST_CASE(find_text_row_test)
         BOOST_CHECK(strncmp(rows[i], key.c_str(), PKEY_COL_W - 1) == 0);
         BOOST_CHECK(rows[i][PKEY_COL_W - 1] >= '0' && rows[i][PKEY_COL_W - 1] < '5');
         BOOST_CHECK(num == 10);
-        BOOST_CHECK(strncmp(rows[i] + 42, "01-01-2002", 10) == 0);
+        BOOST_CHECK(strncmp(rows[i] + 42, "2002-01-01", 10) == 0);
     }
     for (size_t i = 0; i < rows.size(); i++)
     {
@@ -272,7 +272,7 @@ BOOST_AUTO_TEST_CASE(load_table_test)
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
     std::string key = "00000000000000000000000000000000";
     std::string num = "10";
-    std::vector<std::string> row = {key, num, "01-01-2002"};
+    std::vector<std::string> row = {key, num, "2002-01-01"};
     for (int i = 0; i < 5; i++)
     {
         table->insert_row_text(row);
@@ -287,7 +287,7 @@ BOOST_AUTO_TEST_CASE(load_table_test)
     BOOST_CHECK(rows.size() == 1);
     BOOST_CHECK(strncmp(rows[0], key.c_str(), PKEY_COL_W) == 0);
     BOOST_CHECK(row_num == 10);
-    BOOST_CHECK(strncmp(rows[0] + 42, "01-01-2002", 10) == 0);
+    BOOST_CHECK(strncmp(rows[0] + 42, "2002-01-01", 10) == 0);
     delete rows[0];
     delete table;
     delete db;

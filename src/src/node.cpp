@@ -178,26 +178,7 @@ namespace rsql
 
     inline int BNode::compare_key(const char *k_1, const char *k_2, size_t col_idx)
     {
-        if (this->columns[col_idx].type == DataType::UINT)
-        {
-            size_t this_col_width = this->tree->columns[col_idx].width;
-            cpp_int c_1, c_2;
-            boost::multiprecision::import_bits(c_1, k_1, k_1 + this_col_width, 8, false);
-            boost::multiprecision::import_bits(c_2, k_2, k_2 + this_col_width, 8, false);
-            if (c_1 < c_2)
-            {
-                return -1;
-            }
-            else if (c_1 > c_2)
-            {
-                return 1;
-            }
-            else
-            {
-                return 0;
-            }
-        }
-        return strncmp(k_1, k_2, this->tree->columns[col_idx].width);
+        return this->columns[col_idx].compare_key(k_1, k_2);
     }
     BNode *BNode::split_children(const size_t idx, BNode *c_i)
     {
