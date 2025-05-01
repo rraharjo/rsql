@@ -101,9 +101,24 @@ namespace rsql
          * @return std::vector<char *> all rows, dynamically allocated
          */
         void insert_row_text(const std::vector<std::string> &row);
+        /**
+         * @brief Find all occurence of key in binary
+         * 
+         * @param key 
+         * @param col_name 
+         * @return std::vector<char *> 
+         */
         std::vector<char *> find_row_bin(const char *key, const std::string col_name);
+        /**
+         * @brief Find all occurence of key
+         * 
+         * @param key 
+         * @param col_name 
+         * @return std::vector<char *> 
+         */
         std::vector<char *> find_row_text(std::string key, const std::string col_name);
         /**
+
          * @brief Index column
          * 
          * @throw std::invalid_argument if column can't be indexed
