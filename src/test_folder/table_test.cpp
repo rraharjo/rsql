@@ -165,7 +165,6 @@ BOOST_AUTO_TEST_CASE(insert_row_exceeding_column_size_test)
     delete db;
     std::system(clear_cache.c_str());
 }
-
 BOOST_AUTO_TEST_CASE(find_binary_row_test)
 {
     rsql::Database *db = rsql::Database::create_new_database("test_db");
@@ -220,16 +219,16 @@ BOOST_AUTO_TEST_CASE(find_text_row_test)
     BOOST_CHECK(table != nullptr);
 
     std::string first_column = "key";
-    table->add_column(first_column, rsql::Column::get_column(0, rsql::DataType::SINT, 8));
+    table->add_column(first_column, rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
     table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::UINT, 10));
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
-    std::string key = "-10000";
+    std::string key = "00000000000000000000000000000000";
     std::string num = "10";
     std::vector<std::string> row = {key, num, "2002-01-01"};
     for (int i = 0; i < 5; i++)
     {
         table->insert_row_text(row);
-        key[5]++;
+        key[PKEY_COL_W - 1]++;
         row[0] = key;
     }
     num = "8";
@@ -237,23 +236,19 @@ BOOST_AUTO_TEST_CASE(find_text_row_test)
     for (int i = 0; i < 5; i++)
     {
         table->insert_row_text(row);
-        key[5]++;
+        key[PKEY_COL_W - 1]++;
         row[0] = key;
     }
-    key = "-10000";
+    key = "00000000000000000000000000000000";
     std::vector<char *> rows = table->find_row_text("10", "col_1");
     BOOST_CHECK(rows.size() == 5);
     for (size_t i = 0; i < rows.size(); i++)
     {
-        int sign = (int)(*rows[i]);
-        cpp_int magnitude;
-        boost::multiprecision::import_bits(magnitude, rows[i] + 1, rows[i] + 8, 8, false);
-        magnitude *= sign;
-        int num = *reinterpret_cast<int *>(rows[i] + 8);
-        BOOST_CHECK(magnitude <= -10000);
-        BOOST_CHECK(magnitude >= -10004);
+        int num = *reinterpret_cast<int *>(rows[i] + PKEY_COL_W);
+        BOOST_CHECK(strncmp(rows[i], key.c_str(), PKEY_COL_W - 1) == 0);
+        BOOST_CHECK(rows[i][PKEY_COL_W - 1] >= '0' && rows[i][PKEY_COL_W - 1] < '5');
         BOOST_CHECK(num == 10);
-        BOOST_CHECK(strncmp(rows[i] + 18, "2002-01-01", 10) == 0);
+        BOOST_CHECK(strncmp(rows[i] + 42, "2002-01-01", 10) == 0);
     }
     for (size_t i = 0; i < rows.size(); i++)
     {
