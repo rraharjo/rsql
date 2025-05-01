@@ -12,8 +12,19 @@
 #define TABLE_NAME_SIZE 256
 #define COL_NAME_SIZE 128
 #define TABLE_FILE_NAME "table.rsql"
+typedef std::pair<std::string, std::string> stringstring;
 namespace rsql
 {
+    struct PairComp
+    {
+        template <typename U, typename V>
+        size_t operator()(const std::pair<U, V> &p)
+        {
+            auto h1 = std::hash<U>{}(p.first);
+            auto h2 = std::hash<V>{}(p.second);
+            return h1 + 0x9e3779b9 + (h2 << 6) + (h2 >> 2);
+        }
+    };
     class Database;
     class Table
     {
@@ -22,23 +33,26 @@ namespace rsql
         std::string table_name;
         /**
          * @brief Each column has an array index and a tree. pair::first denotes the column index, while pair::second denotes the tree number
-         * 
+         *
          */
-        std::unordered_map<std::string, std::pair<uint32_t, uint32_t>> col_name_indexes;
+        std::unordered_map<std::string, uint32_t> col_name_indexes;
         uint32_t primary_tree_num;
         uint32_t max_tree_num;
 
         rsql::BTree *primary_tree;
+        std::unordered_map<std::string, rsql::BTree *> optional_trees;
+        std::unordered_map<stringstring, rsql::BTree *, PairComp> composite_trees;
+
         bool changed;
 
         /**
          * @brief Construct a new Table object, does not necessarily write it to disk. Automatically set up the primary tree, numbered 1
-         * 
-         * @param db 
-         * @param table_name 
+         *
+         * @param db
+         * @param table_name
          */
         Table(const Database *db, const std::string table_name);
-        std::vector<char *> find_row(const char *key, size_t col_idx, uint32_t tree_num);
+        std::vector<char *> find_row(const char *key, size_t col_idx, BTree *tree);
 
     public:
         /**
@@ -87,35 +101,36 @@ namespace rsql
         void remove_column(const std::string col_name);
         /**
          * @brief insert a new row in binary mode. Will insert the first n bytes, n being the width of the table
-         * 
-         * @param row 
+         *
+         * @param row
          */
         void insert_row_bin(const char *row);
         /**
          * @brief find all rows with where the col_name column has matching values
-         * 
+         *
          * @throw std::invalid_argument if this table does not have column col_name
          * @throw std::invalid_argument if the length of src in binary exceed the column width
-         * @param key 
-         * @param col_name 
+         * @param key
+         * @param col_name
          * @return std::vector<char *> all rows, dynamically allocated
          */
         void insert_row_text(const std::vector<std::string> &row);
         std::vector<char *> find_row_bin(const char *key, const std::string col_name);
         std::vector<char *> find_row_text(std::string key, const std::string col_name);
+        std::vector<char *> find_row_col_comparison(const std::string col_name_1, const std::string col_name_2);
         /**
          * @brief Index column
-         * 
+         *
          * @throw std::invalid_argument if column can't be indexed
-         * @param col_name 
+         * @param col_name
          */
         void index_column(const std::string col_name);
         /**
          * @brief UNTESTED!!! Index two column as composite. Key is represented as (col1 - col2)
-         * 
+         *
          * @throw std::invalid_argument if the columns can't be indexed
-         * @param col_name_1 
-         * @param col_name_2 
+         * @param col_name_1
+         * @param col_name_2
          */
         void index_composite_columns(const std::string col_name_1, const std::string col_name_2);
         /**

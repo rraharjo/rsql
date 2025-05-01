@@ -185,6 +185,7 @@ namespace rsql
         if (!c_i->full())
         {
             throw std::runtime_error("Can't split a child if it's not full");
+            return nullptr;
         }
         BNode *new_node = new BNode(this->tree, ++this->tree->max_node_num);
         new_node->leaf = c_i->leaf;

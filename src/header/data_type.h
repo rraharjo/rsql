@@ -32,11 +32,11 @@ namespace rsql
         char *src = nullptr;
         const size_t len;
         const DataType type;
-    protected: 
+
+    protected:
         Cell(const size_t len, const DataType type);
         // virtual ~Cell();
     public:
-
         bool operator==(const Cell &other) const;
         bool operator<(const Cell &other) const;
         bool operator<=(const Cell &other) const;
@@ -45,13 +45,15 @@ namespace rsql
         bool operator!=(const Cell &other) const;
     };
 
-    class ConstCell : public Cell{
-        public:
-            ConstCell(const char *src, const size_t len, const DataType type);
+    class ConstCell : public Cell
+    {
+    public:
+        ConstCell(const char *src, const size_t len, const DataType type);
     };
-    class ColumnCell : public Cell{
-        public:
-            ColumnCell(char *src, const size_t len, const DataType type);
+    class ColumnCell : public Cell
+    {
+    public:
+        ColumnCell(char *src, const size_t len, const DataType type);
     };
 }
 #endif
