@@ -210,31 +210,8 @@ namespace rsql
         size_t inserted_bytes = 0;
         for (size_t i = 0; i < row.size(); i++)
         {
-            switch (this->primary_tree->columns[i].type)
-            {
-            case DataType::DATE:
-                if (!valid_date(row[i]))
-                {
-                    std::string err_msg = row[i] + " is not a valid date";
-                    throw std::invalid_argument(err_msg);
-                }
-                std::memset(row_bin + inserted_bytes, 0, this->primary_tree->columns[i].width);
-                std::memcpy(row_bin + inserted_bytes, row[i].c_str(), row[i].size());
-                inserted_bytes += this->primary_tree->columns[i].width;
-                break;
-            case DataType::CHAR:
-            case DataType::PKEY:
-                std::memset(row_bin + inserted_bytes, 0, this->primary_tree->columns[i].width);
-                std::memcpy(row_bin + inserted_bytes, row[i].c_str(), row[i].size());
-                inserted_bytes += this->primary_tree->columns[i].width;
-                break;
-            case DataType::INT:
-                static boost::multiprecision::uint1024_t placeholder;
-                placeholder.assign(row[i]);
-                std::memcpy(row_bin + inserted_bytes, &placeholder, this->primary_tree->columns[i].width);
-                inserted_bytes += this->primary_tree->columns[i].width;
-                break;
-            }
+            this->primary_tree->columns[i].process_string(row_bin + inserted_bytes, row[i]);
+            inserted_bytes += this->primary_tree->columns[i].width;
         }
         this->insert_row_bin(row_bin);
         delete[] row_bin;
@@ -291,17 +268,10 @@ namespace rsql
         }
         size_t col_idx = (size_t)it->second.first;
         uint32_t tree_num = it->second.second;
-        if (this->primary_tree->columns[col_idx].type == DataType::INT)
-        {
-            static boost::multiprecision::uint1024_t placeholder;
-            placeholder.assign(key);
-            std::vector<char> buff;
-            buff.resize(this->primary_tree->columns[col_idx].width);
-            std::memcpy(buff.data(), &placeholder, this->primary_tree->columns[col_idx].width);
-            return this->find_row(buff.data(), col_idx, tree_num);
-        }
-        key.resize(this->primary_tree->columns[col_idx].width);
-        return this->find_row(key.data(), col_idx, tree_num);
+        std::string new_key;
+        new_key.resize(this->primary_tree->columns[col_idx].width, 0);
+        this->primary_tree->columns[col_idx].process_string(new_key.data(), key);
+        return this->find_row(new_key.data(), col_idx, tree_num);
     }
     void Table::index_column(const std::string col_name)
     {
@@ -372,7 +342,96 @@ namespace rsql
         delete[] new_row;
         delete new_tree;
     }
+    void Table::index_composite_columns(const std::string col_name_1, const std::string col_name_2)
+    {
+        auto it1 = this->col_name_indexes.find(col_name_1);
+        if (it1 == this->col_name_indexes.end())
+        {
+            throw std::invalid_argument("Can't index column - column doesn't exist");
+            return;
+        }
+        auto it2 = this->col_name_indexes.find(col_name_2);
+        if (it2 == this->col_name_indexes.end())
+        {
+            throw std::invalid_argument("Can't index column - column doesn't exist");
+            return;
+        }
+        size_t col_1_idx = it1->second.first, col_2_idx = it2->second.first;
+        if (col_1_idx == col_2_idx)
+        {
+            throw std::invalid_argument("Can't index composite columns - they are the same columns");
+            return;
+        }
+        Column col_1 = this->primary_tree->columns[col_1_idx];
+        Column col_2 = this->primary_tree->columns[col_2_idx];
+        if (col_1.type != col_2.type)
+        {
+            throw std::invalid_argument("Can't index columns - column types don't match");
+            return;
+        }
+        Column first_column = this->primary_tree->columns[0];
+        Column comparison_col = Column::get_column(0, col_1.type, std::min(col_1.width, col_2.width));
+        size_t preceding_size_1 = 0, preceding_size_2 = 0;
+        for (size_t i = 0; i < col_1_idx; i++)
+        {
+            preceding_size_1 += this->primary_tree->columns[i].width;
+        }
+        for (size_t i = 0; i < col_1_idx; i++)
+        {
+            preceding_size_1 += this->primary_tree->columns[i].width;
+        }
 
+        BTree *composite_tree = BTree::create_new_tree(this, ++this->max_tree_num, false);
+        std::string where = std::filesystem::path(this->get_path()) / std::to_string(composite_tree->tree_num);
+        std::filesystem::create_directories(where);
+        composite_tree->add_column(Column::get_column(0, DataType::SINT, COMPOSITE_KEY_SIZE));//Key is a signed int
+        composite_tree->add_column(first_column);
+
+        char *buff = new char[composite_tree->width];
+        std::queue<uint32_t> children;
+        for (size_t i = 0; i < this->primary_tree->root->size; i++)
+        {
+            char *val_1 = this->primary_tree->root->keys[i] + preceding_size_1;
+            char *val_2 = this->primary_tree->root->keys[i] + preceding_size_2;
+            int comp = comparison_col.compare_key(val_1, val_2);
+            boost::multiprecision::cpp_int boost_comp = comp;
+            int boost_sign = boost_comp.sign();
+            std::memcpy(buff, &boost_sign, 1);
+            boost::multiprecision::import_bits(boost_comp, buff + 1, buff + COMPOSITE_KEY_SIZE, 8, false);
+            std::memcpy(buff + COMPOSITE_KEY_SIZE, this->primary_tree->root->keys[i], first_column.width);
+            composite_tree->insert_row(buff);
+        }
+        if (!this->primary_tree->root->leaf){
+            for (size_t i = 0 ; i <= this->primary_tree->root->size ; i++){
+                children.push(this->primary_tree->root->children[i]);
+            }
+        }
+        while (!children.empty()){
+            uint32_t cur_node_num = children.front();
+            children.pop();
+            std::string node_file_name = BNode::get_file_name(cur_node_num);
+            BNode *cur_node = BNode::read_disk(this->primary_tree, node_file_name);
+            for (size_t i = 0; i < cur_node->size; i++)
+            {
+                char *val_1 = cur_node->keys[i] + preceding_size_1;
+                char *val_2 = cur_node->keys[i] + preceding_size_2;
+                int comp = comparison_col.compare_key(val_1, val_2);
+                boost::multiprecision::cpp_int boost_comp = comp;
+                int boost_sign = boost_comp.sign();
+                std::memcpy(buff, &boost_sign, 1);
+                boost::multiprecision::import_bits(boost_comp, buff + 1, buff + COMPOSITE_KEY_SIZE, 8, false);
+                std::memcpy(buff + COMPOSITE_KEY_SIZE, this->primary_tree->root->keys[i], first_column.width);
+                composite_tree->insert_row(buff);
+            }
+            if (!cur_node->leaf){
+                for (size_t i = 0 ; i <= cur_node->size ; i++){
+                    children.push(cur_node->children[i]);
+                }
+            }
+            delete cur_node;
+        }
+        delete[] buff;
+    }
     void Table::write_disk()
     {
         if (!this->changed)

@@ -7,7 +7,8 @@
 #include <boost/multiprecision/cpp_int.hpp>
 
 #define DT_STR_LEN 4
-#define INT_STR "INTG"
+#define UINT_STR "UINT"
+#define SINT_STR "SINT"
 #define CHAR_STR "CHAR"
 #define DATE_STR "DATE"
 #define PKEY_STR "PKEY"
@@ -16,7 +17,8 @@ namespace rsql
     enum class DataType
     {
         PKEY,
-        INT,
+        UINT,
+        SINT,
         CHAR,
         DATE
     };

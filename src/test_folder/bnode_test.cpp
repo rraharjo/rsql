@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE(match_column_test){
     size_t structure_1_w = PKEY_COL_W + 4 + 10;
     std::vector<rsql::Column> structure_1;
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
-    structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::INT, 4));
+    structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::UINT, 4));
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     for (rsql::Column &c : structure_1){
@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE(match_column_test){
     std::memcpy(node->keys[0], item1, structure_1_w);
     std::memcpy(node->keys[1], item2, structure_1_w);
     node->size = 2;
-    rsql::Column added = rsql::Column::get_column(0, rsql::DataType::INT, 5);
+    rsql::Column added = rsql::Column::get_column(0, rsql::DataType::UINT, 5);
     tree->add_column(added);
     tree->remove_column(1);
     node->match_columns();

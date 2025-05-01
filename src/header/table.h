@@ -8,6 +8,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <queue>
 #include "tree.h"
+#define COMPOSITE_KEY_SIZE 2
 #define TABLE_NAME_SIZE 256
 #define COL_NAME_SIZE 128
 #define TABLE_FILE_NAME "table.rsql"
@@ -94,6 +95,7 @@ namespace rsql
          * @brief find all rows with where the col_name column has matching values
          * 
          * @throw std::invalid_argument if this table does not have column col_name
+         * @throw std::invalid_argument if the length of src in binary exceed the column width
          * @param key 
          * @param col_name 
          * @return std::vector<char *> all rows, dynamically allocated
@@ -116,16 +118,19 @@ namespace rsql
          */
         std::vector<char *> find_row_text(std::string key, const std::string col_name);
         /**
-         * @brief Create an index tree for the column
+
+         * @brief Index column
          * 
+         * @throw std::invalid_argument if column can't be indexed
          * @param col_name 
          */
         void index_column(const std::string col_name);
         /**
-         * @brief Create new index tree for composite column A and B. Key is represented as A - B in integer format (what endiannes???????)
+         * @brief UNTESTED!!! Index two column as composite. Key is represented as (col1 - col2)
          * 
-         * @param col_A 
-         * @param col_B 
+         * @throw std::invalid_argument if the columns can't be indexed
+         * @param col_name_1 
+         * @param col_name_2 
          */
         void index_composite_columns(const std::string col_name_1, const std::string col_name_2);
         /**

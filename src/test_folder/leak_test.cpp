@@ -2,7 +2,7 @@
 int main(){
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     tree->add_column(rsql::Column::pkey_column(0));
-    tree->add_column(rsql::Column::int_column(0, 4));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
     tree->add_column(rsql::Column::date_column(0));
     tree->add_column(rsql::Column::char_column(0, 10));
     tree->write_disk();
