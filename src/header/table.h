@@ -15,16 +15,16 @@
 typedef std::pair<std::string, std::string> stringstring;
 namespace rsql
 {
+    struct StringString
+    {
+        std::pair<std::string, std::string> pair;
+        friend bool operator==(const StringString &left, const StringString &right);
+    };
     struct PairComp
     {
-        template <typename U, typename V>
-        size_t operator()(const std::pair<U, V> &p)
-        {
-            auto h1 = std::hash<U>{}(p.first);
-            auto h2 = std::hash<V>{}(p.second);
-            return h1 + 0x9e3779b9 + (h2 << 6) + (h2 >> 2);
-        }
+        std::size_t operator()(const StringString &p) const;
     };
+
     class Database;
     class Table
     {
@@ -41,7 +41,7 @@ namespace rsql
 
         rsql::BTree *primary_tree;
         std::unordered_map<std::string, rsql::BTree *> optional_trees;
-        std::unordered_map<stringstring, rsql::BTree *, PairComp> composite_trees;
+        std::unordered_map<StringString, rsql::BTree *, PairComp> composite_trees;
 
         bool changed;
 
