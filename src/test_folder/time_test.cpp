@@ -2,7 +2,7 @@
 #include <chrono>
 #include "database.h"
 
-#define ITEMSNUM 100000
+#define ITEMSNUM 1000000
 void increment_key(char *key);
 int main()
 {

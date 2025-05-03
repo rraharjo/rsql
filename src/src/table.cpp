@@ -2,17 +2,17 @@
 #include "database.h"
 namespace rsql
 {
-    bool operator==(const StringString &left, const StringString &right)
+    bool operator==(const uintuint32 &left, const uintuint32 &right)
     {
         bool first_exist = left.pair.first == right.pair.first || left.pair.first == right.pair.second;
         bool right_exist = left.pair.second == right.pair.first || left.pair.second == right.pair.second;
         return first_exist && right_exist;
     }
-    std::size_t PairComp::operator()(const StringString &p) const
+    std::size_t PairComp::operator()(const uintuint32 &p) const
     {
         //
-        auto h1 = std::hash<std::string>()(p.pair.first);
-        auto h2 = std::hash<std::string>()(p.pair.second);
+        auto h1 = std::hash<uint32_t>()(p.pair.first);
+        auto h2 = std::hash<uint32_t>()(p.pair.second);
         return h1 ^ h2; // XOR and shift to combine hash values
     }
     Table *Table::create_new_table(Database *db, const std::string table_name, std::vector<std::string> col_names, std::vector<Column> columns)
@@ -102,7 +102,7 @@ namespace rsql
             new_table->col_name_indexes[std::string(col_name)] = col_idx;
             if (tree_num > 0)
             {
-                new_table->optional_trees[std::string(col_name)] = BTree::read_disk(new_table, tree_num);
+                new_table->optional_trees[col_idx] = BTree::read_disk(new_table, tree_num);
             }
         }
         if (cur_read_bytes - bytes_processed < 12)
@@ -128,10 +128,10 @@ namespace rsql
         std::memcpy(&num_of_composite, read_buffer + bytes_processed, 4);
         bytes_processed += 4;
 
-        char col_name_2[COL_NAME_SIZE];
+        uint32_t composite_idx1, composite_idx2;
         for (uint32_t i = 0; i < num_of_composite; i++)
         {
-            if (cur_read_bytes - bytes_processed < 2 * COL_NAME_SIZE + 4)
+            if (cur_read_bytes - bytes_processed < 12)
             {
                 size_t remaining_bytes = cur_read_bytes - bytes_processed;
                 std::memmove(read_buffer, read_buffer + bytes_processed, remaining_bytes);
@@ -144,17 +144,13 @@ namespace rsql
                 cur_read_bytes += remaining_bytes;
                 bytes_processed = 0;
             }
-            std::memset(col_name, 0, COL_NAME_SIZE);
-            std::memcpy(col_name, read_buffer + bytes_processed, COL_NAME_SIZE);
-            bytes_processed += COL_NAME_SIZE;
-            col_name[COL_NAME_SIZE - 1] = 0;
-            std::memset(col_name_2, 0, COL_NAME_SIZE);
-            std::memcpy(col_name_2, read_buffer + bytes_processed, COL_NAME_SIZE);
-            bytes_processed += COL_NAME_SIZE;
-            col_name_2[COL_NAME_SIZE - 1] = 0;
+            std::memcpy(&composite_idx1, read_buffer + bytes_processed, 4);
+            bytes_processed += 4;
+            std::memcpy(&composite_idx2, read_buffer + bytes_processed, 4);
+            bytes_processed += 4;
             std::memcpy(&tree_num, read_buffer + bytes_processed, 4);
             bytes_processed += 4;
-            StringString composite_key = {std::make_pair(std::string(col_name), std::string(col_name_2))};
+            uintuint32 composite_key = {std::make_pair(composite_idx1, composite_idx2)};
             new_table->composite_trees[composite_key] = BTree::read_disk(new_table, tree_num);
         }
         new_table->db = db;
@@ -228,6 +224,11 @@ namespace rsql
         uint32_t col_idx = it->second;
         this->primary_tree->remove_column(col_idx);
         this->col_name_indexes.erase(it);
+        auto opt_tree_it = this->optional_trees.find(col_idx);
+        if (opt_tree_it != this->optional_trees.end()){
+            delete opt_tree_it->second;
+            this->optional_trees.erase(opt_tree_it);
+        }
         for (auto &pair : this->col_name_indexes)
         {
             if (pair.second > col_idx)
@@ -235,11 +236,35 @@ namespace rsql
                 pair.second--;
             }
         }
+        std::unordered_map<uint32_t, BTree *> new_optional_tree;
+        for (const auto &pair : this->optional_trees){
+            if (pair.first > col_idx){
+                new_optional_tree[pair.first - 1] = pair.second;
+            }
+            else{
+                new_optional_tree[pair.first] = pair.second;
+            }
+        }
+        this->optional_trees = new_optional_tree;
         this->changed = true;
     }
     void Table::insert_row_bin(const char *row)
     {
         this->primary_tree->insert_row(row);
+        for (const auto &it : this->optional_trees){
+            uint32_t col_index = it.first;
+            size_t opt_key_size = this->primary_tree->columns[col_index].width;
+            size_t primary_key_size = this->primary_tree->columns[0].width;
+            size_t preceding_size = 0;
+            for (size_t i = 0 ; i < (size_t) col_index ; i++){
+                preceding_size += this->primary_tree->columns[i].width;
+            }
+            char *new_key = new char[opt_key_size + primary_key_size];
+            std::memcpy(new_key, row + preceding_size, opt_key_size);
+            std::memcpy(new_key + opt_key_size, row, primary_key_size);
+            it.second->insert_row(new_key);
+            delete[] new_key;
+        }
     }
     void Table::insert_row_text(const std::vector<std::string> &row)
     {
@@ -293,7 +318,7 @@ namespace rsql
             const std::string err_msg = this->table_name + " does not have a column named " + col_name;
             throw err_msg;
         }
-        auto tree_num_it = this->optional_trees.find(col_name);
+        auto tree_num_it = this->optional_trees.find(index_it->second);
         size_t col_idx = (size_t)index_it->second;
         BTree *tree = nullptr;
         if (tree_num_it != this->optional_trees.end())
@@ -310,9 +335,9 @@ namespace rsql
             const std::string err_msg = this->table_name + " does not have a column named " + col_name;
             throw err_msg;
         }
-        auto tree_num_it = this->optional_trees.find(col_name);
+        auto tree_num_it = this->optional_trees.find(index_it->second);
         size_t col_idx = (size_t)index_it->second;
-        BTree *tree = 0;
+        BTree *tree = nullptr;
         if (tree_num_it != this->optional_trees.end())
         {
             tree = tree_num_it->second;
@@ -336,7 +361,7 @@ namespace rsql
             throw std::invalid_argument("Column does not exist");
             return {};
         }
-        StringString key = {make_pair(col_name_1, col_name_2)};
+        uintuint32 key = {std::make_pair(index_it_1->second, index_it_2->second)};
         auto tree_it = this->composite_trees.find(key);
     }
     void Table::index_column(const std::string col_name)
@@ -347,7 +372,7 @@ namespace rsql
             throw std::invalid_argument("Can't index column that doesn't exist");
             return;
         }
-        auto it_tree_num = this->optional_trees.find(col_name);
+        auto it_tree_num = this->optional_trees.find(it_index->second);
         if (it_tree_num != this->optional_trees.end())
         {
             throw std::invalid_argument("Can't index indexed column");
@@ -358,7 +383,7 @@ namespace rsql
         size_t indexed_col_index = it_index->second;
         Column indexed_col = this->primary_tree->columns[indexed_col_index];
         Column primary_col = this->primary_tree->columns[0];
-        this->optional_trees[col_name] = new_tree;
+        this->optional_trees[it_index->second] = new_tree;
         std::string where = std::filesystem::path(this->get_path()) / std::to_string(new_tree->tree_num);
         std::filesystem::create_directories(where);
         new_tree->add_column(indexed_col);
@@ -406,7 +431,6 @@ namespace rsql
             delete cur_node;
         }
         this->changed = true;
-        this->optional_trees[col_name] = new_tree;
         delete[] new_row;
     }
     void Table::index_composite_columns(const std::string col_name_1, const std::string col_name_2)
@@ -436,7 +460,11 @@ namespace rsql
             throw std::invalid_argument("Can't index columns - column types don't match");
             return;
         }
-        StringString composite_key = {std::make_pair(col_name_1, col_name_2)};
+        uintuint32 composite_key = {std::make_pair(col_1_idx, col_2_idx)};
+        if (this->composite_trees.find(composite_key) != this->composite_trees.end()){
+            throw std::invalid_argument("Columns already indexed");
+            return;
+        }
         Column first_column = this->primary_tree->columns[0];
         Column comparison_col = Column::get_column(0, col_1.type, std::min(col_1.width, col_2.width));
         size_t preceding_size_1 = 0, preceding_size_2 = 0;
@@ -548,7 +576,7 @@ namespace rsql
             bytes_processed += COL_NAME_SIZE;
             std::memcpy(write_buffer + bytes_processed, &col.second, 4);
             bytes_processed += 4;
-            auto optional_it = this->optional_trees.find(col.first);
+            auto optional_it = this->optional_trees.find(col.second);
             if (optional_it == this->optional_trees.end())
             {
                 std::memset(write_buffer + bytes_processed, 0, 4);
@@ -578,7 +606,7 @@ namespace rsql
         bytes_processed += 4;
         for (const auto &it : this->composite_trees)
         {
-            if (DISK_BUFFER_SZ - bytes_processed < 2 * COL_NAME_SIZE + 4)
+            if (DISK_BUFFER_SZ - bytes_processed < 12)
             {
                 if (write(fd, write_buffer, bytes_processed) < 0)
                 {
@@ -588,10 +616,10 @@ namespace rsql
                 bytes_processed = 0;
             }
             std::memset(write_buffer + bytes_processed, 0, 2 * COL_NAME_SIZE);
-            std::memcpy(write_buffer + bytes_processed, it.first.pair.first.c_str(), it.first.pair.first.length());
-            bytes_processed += COL_NAME_SIZE;
-            std::memcpy(write_buffer + bytes_processed, it.first.pair.second.c_str(), it.first.pair.second.length());
-            bytes_processed += COL_NAME_SIZE;
+            std::memcpy(write_buffer + bytes_processed, &it.first.pair.first, 4);
+            bytes_processed += 4;
+            std::memcpy(write_buffer + bytes_processed, &it.first.pair.second, 4);
+            bytes_processed += 4;
             uint32_t tree_num = it.second->tree_num;
             std::memcpy(write_buffer + bytes_processed, &tree_num, 4);
             bytes_processed += 4;

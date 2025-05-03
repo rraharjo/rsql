@@ -245,6 +245,10 @@ namespace rsql
     }
     void BTree::remove_column(const size_t idx)
     {
+        if (idx == 0){
+            throw std::invalid_argument("Can't delete the first column");
+            return;
+        }
         this->width -= this->columns[idx].width;
         this->columns.erase(this->columns.begin() + idx);
         this->root->match_columns();

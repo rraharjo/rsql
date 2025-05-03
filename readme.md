@@ -30,7 +30,7 @@ Structure:
     next 4 bytes                    : primary tree num
     next 4 bytes                    : max tree num
     next 4 bytes                    : number of composite trees
-    next n * (128 * 2 + 4) bytes    : composite trees information (col_name(128), col_name(128), tree_num(4))
+    next n * 12 bytes               : composite trees information (col_idx(4), col_idx(4), tree_num(4))
 
 Dependencies:
 1. C++ Boost libraries: https://www.boost.org/

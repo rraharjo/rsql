@@ -12,17 +12,17 @@
 #define TABLE_NAME_SIZE 256
 #define COL_NAME_SIZE 128
 #define TABLE_FILE_NAME "table.rsql"
-typedef std::pair<std::string, std::string> stringstring;
+
 namespace rsql
 {
-    struct StringString
+    struct uintuint32
     {
-        std::pair<std::string, std::string> pair;
-        friend bool operator==(const StringString &left, const StringString &right);
+        std::pair<uint32_t, uint32_t> pair;
+        friend bool operator==(const uintuint32 &left, const uintuint32 &right);
     };
     struct PairComp
     {
-        std::size_t operator()(const StringString &p) const;
+        std::size_t operator()(const uintuint32 &p) const;
     };
 
     class Database;
@@ -40,8 +40,8 @@ namespace rsql
         uint32_t max_tree_num;
 
         rsql::BTree *primary_tree;
-        std::unordered_map<std::string, rsql::BTree *> optional_trees;
-        std::unordered_map<StringString, rsql::BTree *, PairComp> composite_trees;
+        std::unordered_map<uint32_t, rsql::BTree *> optional_trees;
+        std::unordered_map<uintuint32, rsql::BTree *, PairComp> composite_trees;
 
         bool changed;
 

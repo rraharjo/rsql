@@ -16,7 +16,8 @@ BOOST_AUTO_TEST_CASE(table_create_test)
     std::system(clear_cache.c_str());
 }
 
-BOOST_AUTO_TEST_CASE(table_create_test_with_columns_test){
+BOOST_AUTO_TEST_CASE(table_create_test_with_columns_test)
+{
     std::vector<std::string> col_names = {"col_0", "col_1", "col_2"};
     std::vector<rsql::Column> columns;
     columns.push_back(rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
@@ -98,7 +99,7 @@ BOOST_AUTO_TEST_CASE(insert_row_text_test)
     unsigned long long int row_2_int = *reinterpret_cast<long long int *>(vec_row_2[0] + 52);
     char sign_byte_1 = *(vec_row_1[0] + 84);
     char sign_byte_2 = *(vec_row_2[0] + 84);
-    int sign_1 = (int) sign_byte_1, sign_2 = (int) sign_byte_2;
+    int sign_1 = (int)sign_byte_1, sign_2 = (int)sign_byte_2;
     cpp_int signed_int_1, signed_int_2;
     boost::multiprecision::import_bits(signed_int_1, vec_row_1[0] + 85, vec_row_1[0] + 92, 8, false);
     boost::multiprecision::import_bits(signed_int_2, vec_row_2[0] + 85, vec_row_2[0] + 92, 8, false);
@@ -138,8 +139,8 @@ BOOST_AUTO_TEST_CASE(insert_row_exceeding_column_size_test)
     table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::UINT, 32));
     table->add_column("col_4", rsql::Column::get_column(0, rsql::DataType::SINT, 4));
 
-    std::vector<std::string> row_1 = {"00000000000000000000000000000000", "abcdefghij", "2002-01-01", "1234567890", "-16777216"};//0x01 00 00 00
-    std::vector<std::string> row_2 = {"00000000000000000000000000000005", "klmnopqrst", "2002-01-01", "1000000000", "-16777215"};//0xff ff ff
+    std::vector<std::string> row_1 = {"00000000000000000000000000000000", "abcdefghij", "2002-01-01", "1234567890", "-16777216"}; // 0x01 00 00 00
+    std::vector<std::string> row_2 = {"00000000000000000000000000000005", "klmnopqrst", "2002-01-01", "1000000000", "-16777215"}; // 0xff ff ff
 
     BOOST_CHECK_THROW(table->insert_row_text(row_1), std::invalid_argument);
     table->insert_row_text(row_2);
@@ -149,7 +150,7 @@ BOOST_AUTO_TEST_CASE(insert_row_exceeding_column_size_test)
 
     unsigned long long int row_2_int = *reinterpret_cast<long long int *>(vec_row_2[0] + 52);
     char sign_byte_2 = *(vec_row_2[0] + 84);
-    int sign_2 = (int) sign_byte_2;
+    int sign_2 = (int)sign_byte_2;
     cpp_int signed_int_2;
     boost::multiprecision::import_bits(signed_int_2, vec_row_2[0] + 85, vec_row_2[0] + 88, 8, false);
     signed_int_2 *= sign_2;
@@ -430,6 +431,168 @@ BOOST_AUTO_TEST_CASE(optional_indexing_find_quantity_test)
         BOOST_CHECK(std::strncmp(row, rows[i], 56) == 0);
         row[PKEY_COL_W - 1]++;
         delete[] rows[i];
+    }
+    delete table;
+    delete db;
+    std::system(clear_cache.c_str());
+}
+
+BOOST_AUTO_TEST_CASE(optional_indexing_column_test)
+{
+    rsql::Database *db = rsql::Database::create_new_database("test_db");
+    BOOST_CHECK(db != nullptr);
+    rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
+    BOOST_CHECK(table != nullptr);
+
+    table->add_column("key", rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
+    table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::UINT, 10));
+    table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
+    table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::SINT, 4));
+
+    char row[32 + 10 + 10 + 4];
+    std::memset(row, 0, 32);
+    cpp_int ucpp_int = 1234567890;
+    std::memset(row + 32, 0, 10);
+    boost::multiprecision::export_bits(ucpp_int, row + 32, 8, false);
+    std::memcpy(row + 42, "2002-12-12", 10);
+    cpp_int scpp_int = -4321;
+    uint8_t sign = static_cast<uint8_t>(scpp_int.sign());
+    std::memcpy(row + 52, &sign, 1);
+    boost::multiprecision::export_bits(scpp_int, row + 53, 8, false);
+    for (int i = 0; i < 25; i++)
+    {
+        table->insert_row_bin(row);
+        row[31]++;
+        row[32]++;
+    }
+    table->index_column("col_1");
+    table->index_column("col_2");
+    table->index_column("col_3");
+    for (int i = 0; i < 25; i++)
+    {
+        table->insert_row_bin(row);
+        row[31]++;
+        row[32]++;
+    }
+    std::vector<char *> res_col_2 = table->find_row_text("2002-12-12", "col_2");
+    std::vector<char *> res_col_3 = table->find_row_text("-4321", "col_3");
+    BOOST_CHECK(res_col_2.size() == 50);
+    BOOST_CHECK(res_col_3.size() == 50);
+    for (const char *c : res_col_2)
+    {
+        delete[] c;
+    }
+    for (const char *c : res_col_3)
+    {
+        delete[] c;
+    }
+    delete table;
+    delete db;
+    std::system(clear_cache.c_str());
+}
+
+BOOST_AUTO_TEST_CASE(optional_indexing_delete_column_test)
+{
+    rsql::Database *db = rsql::Database::create_new_database("test_db");
+    BOOST_CHECK(db != nullptr);
+    rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
+    BOOST_CHECK(table != nullptr);
+
+    table->add_column("key", rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
+    table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::UINT, 10));
+    table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
+    table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::SINT, 4));
+
+    char row[32 + 10 + 10 + 4];
+    std::memset(row, 0, 32);
+    cpp_int ucpp_int = 1234567890;
+    std::memset(row + 32, 0, 10);
+    boost::multiprecision::export_bits(ucpp_int, row + 32, 8, false);
+    std::memcpy(row + 42, "2002-12-12", 10);
+    cpp_int scpp_int = -4321;
+    uint8_t sign = static_cast<uint8_t>(scpp_int.sign());
+    std::memcpy(row + 52, &sign, 1);
+    boost::multiprecision::export_bits(scpp_int, row + 53, 8, false);
+    table->index_column("col_1");
+    table->index_column("col_2");
+    table->index_column("col_3");
+    for (int i = 0; i < 25; i++)
+    {
+        table->insert_row_bin(row);
+        row[31]++;
+        row[32]++;
+    }
+    table->remove_column("col_2");
+    table->remove_column("col_1");
+    std::memset(row + 32, 0, 4);
+    std::memcpy(row + 32, &sign, 1);
+    boost::multiprecision::export_bits(scpp_int, row + 33, 8, false);
+    for (int i = 0; i < 25; i++)
+    {
+        table->insert_row_bin(row);
+        row[31]++;
+    }
+    std::vector<char *> res_col_3 = table->find_row_text("-4321", "col_3");
+    BOOST_CHECK(res_col_3.size() == 50);
+    for (const char *c : res_col_3)
+    {
+        delete[] c;
+    }
+    delete table;
+    delete db;
+    std::system(clear_cache.c_str());
+}
+
+BOOST_AUTO_TEST_CASE(optional_indexing_write_reload_table_test)
+{
+    rsql::Database *db = rsql::Database::create_new_database("test_db");
+    BOOST_CHECK(db != nullptr);
+    rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
+    BOOST_CHECK(table != nullptr);
+
+    table->add_column("key", rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
+    table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::UINT, 10));
+    table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
+    table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::SINT, 4));
+
+    char row[32 + 10 + 10 + 4];
+    std::memset(row, 0, 32);
+    cpp_int ucpp_int = 1234567890;
+    std::memset(row + 32, 0, 10);
+    boost::multiprecision::export_bits(ucpp_int, row + 32, 8, false);
+    std::memcpy(row + 42, "2002-12-12", 10);
+    cpp_int scpp_int = -4321;
+    uint8_t sign = static_cast<uint8_t>(scpp_int.sign());
+    std::memcpy(row + 52, &sign, 1);
+    boost::multiprecision::export_bits(scpp_int, row + 53, 8, false);
+    table->index_column("col_1");
+    table->index_column("col_2");
+    table->index_column("col_3");
+    for (int i = 0; i < 25; i++)
+    {
+        table->insert_row_bin(row);
+        row[31]++;
+        row[32]++;
+    }
+    table->remove_column("col_2");
+    table->remove_column("col_1");
+    std::memset(row + 32, 0, 4);
+    std::memcpy(row + 32, &sign, 1);
+    boost::multiprecision::export_bits(scpp_int, row + 33, 8, false);
+
+    delete table;
+    table = rsql::Table::load_table(db, "test_table");
+    
+    for (int i = 0; i < 25; i++)
+    {
+        table->insert_row_bin(row);
+        row[31]++;
+    }
+    std::vector<char *> res_col_3 = table->find_row_text("-4321", "col_3");
+    BOOST_CHECK(res_col_3.size() == 50);
+    for (const char *c : res_col_3)
+    {
+        delete[] c;
     }
     delete table;
     delete db;
