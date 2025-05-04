@@ -7,16 +7,17 @@
 #include <boost/multiprecision/cpp_int.hpp>
 
 #define DT_STR_LEN 4
+#define DEFAULT_KEY_WIDTH 32
 #define UINT_STR "UINT"
 #define SINT_STR "SINT"
 #define CHAR_STR "CHAR"
 #define DATE_STR "DATE"
-#define PKEY_STR "PKEY"
+#define DEF_KEY_STR "DKEY"
 namespace rsql
 {
     enum class DataType
     {
-        PKEY,
+        DEFAULT_KEY,
         UINT,
         SINT,
         CHAR,
@@ -25,6 +26,7 @@ namespace rsql
     DataType str_to_dt(std::string);
     std::string dt_to_str(DataType);
     bool valid_date(const std::string &);
+    void increment_default_key(unsigned char *const key);
 
     class Cell
     {

@@ -1,3 +1,4 @@
+#include <memory>
 #include "table.h"
 #include "database.h"
 namespace rsql
@@ -10,10 +11,9 @@ namespace rsql
     }
     std::size_t PairComp::operator()(const uintuint32 &p) const
     {
-        //
         auto h1 = std::hash<uint32_t>()(p.pair.first);
         auto h2 = std::hash<uint32_t>()(p.pair.second);
-        return h1 ^ h2; // XOR and shift to combine hash values
+        return h1 ^ h2;
     }
     Table *Table::create_new_table(Database *db, const std::string table_name, std::vector<std::string> col_names, std::vector<Column> columns)
     {
@@ -37,12 +37,13 @@ namespace rsql
 
         std::filesystem::create_directory(tree_folder);
         new_table->primary_tree = BTree::create_new_tree(new_table, new_table->primary_tree_num);
-
+        new_table->primary_tree->add_column(Column::get_column(0, DataType::DEFAULT_KEY, 0));
+        new_table->col_name_indexes[DEF_KEY_COL_NAME] = 0;
         for (size_t i = 0; i < col_names.size(); i++)
         {
             new_table->add_column(col_names[i], columns[i]);
         }
-
+        std::memset(new_table->next_default_key, 0, DEFAULT_KEY_WIDTH);
         new_table->write_disk();
         return new_table;
     }
@@ -105,7 +106,7 @@ namespace rsql
                 new_table->optional_trees[col_idx] = BTree::read_disk(new_table, tree_num);
             }
         }
-        if (cur_read_bytes - bytes_processed < 12)
+        if (cur_read_bytes - bytes_processed < 12 + DEFAULT_KEY_WIDTH)
         {
             size_t remaining_bytes = cur_read_bytes - bytes_processed;
             std::memmove(read_buffer, read_buffer + bytes_processed, remaining_bytes);
@@ -118,6 +119,8 @@ namespace rsql
             cur_read_bytes += remaining_bytes;
             bytes_processed = 0;
         }
+        std::memcpy(new_table->next_default_key, read_buffer + bytes_processed, DEFAULT_KEY_WIDTH);
+        bytes_processed += DEFAULT_KEY_WIDTH;
         uint32_t primary_tree_num;
         std::memcpy(&primary_tree_num, read_buffer + bytes_processed, 4);
         bytes_processed += 4;
@@ -198,6 +201,10 @@ namespace rsql
     }
     void Table::add_column(const std::string name, const rsql::Column col)
     {
+        if (col.type == DataType::DEFAULT_KEY){
+            throw std::invalid_argument("Can't add default key column");
+            return;
+        }
         if (name.length() >= COL_NAME_SIZE)
         {
             std::string err_msg = "Column name must be < " + std::to_string(COL_NAME_SIZE) + " in length";
@@ -222,10 +229,16 @@ namespace rsql
             return;
         }
         uint32_t col_idx = it->second;
+        if (col_idx == 0)
+        {
+            throw std::invalid_argument("Can't remove default key column");
+            return;
+        }
         this->primary_tree->remove_column(col_idx);
         this->col_name_indexes.erase(it);
         auto opt_tree_it = this->optional_trees.find(col_idx);
-        if (opt_tree_it != this->optional_trees.end()){
+        if (opt_tree_it != this->optional_trees.end())
+        {
             delete opt_tree_it->second;
             this->optional_trees.erase(opt_tree_it);
         }
@@ -237,11 +250,14 @@ namespace rsql
             }
         }
         std::unordered_map<uint32_t, BTree *> new_optional_tree;
-        for (const auto &pair : this->optional_trees){
-            if (pair.first > col_idx){
+        for (const auto &pair : this->optional_trees)
+        {
+            if (pair.first > col_idx)
+            {
                 new_optional_tree[pair.first - 1] = pair.second;
             }
-            else{
+            else
+            {
                 new_optional_tree[pair.first] = pair.second;
             }
         }
@@ -250,38 +266,44 @@ namespace rsql
     }
     void Table::insert_row_bin(const char *row)
     {
-        this->primary_tree->insert_row(row);
-        for (const auto &it : this->optional_trees){
+        char *const buffer = new char[this->get_width()];
+        std::memcpy(buffer, this->next_default_key, DEFAULT_KEY_WIDTH);
+        std::memcpy(buffer + DEFAULT_KEY_WIDTH, row, this->get_width() - DEFAULT_KEY_WIDTH);
+        this->primary_tree->insert_row(buffer);
+        for (const auto &it : this->optional_trees)
+        {
             uint32_t col_index = it.first;
             size_t opt_key_size = this->primary_tree->columns[col_index].width;
-            size_t primary_key_size = this->primary_tree->columns[0].width;
             size_t preceding_size = 0;
-            for (size_t i = 0 ; i < (size_t) col_index ; i++){
+            for (size_t i = 0; i < (size_t)col_index; i++)
+            {
                 preceding_size += this->primary_tree->columns[i].width;
             }
-            char *new_key = new char[opt_key_size + primary_key_size];
-            std::memcpy(new_key, row + preceding_size, opt_key_size);
-            std::memcpy(new_key + opt_key_size, row, primary_key_size);
+            char *new_key = new char[opt_key_size + DEFAULT_KEY_WIDTH];
+            std::memcpy(new_key, buffer + preceding_size, opt_key_size);
+            std::memcpy(new_key + opt_key_size, this->next_default_key, DEFAULT_KEY_WIDTH);
             it.second->insert_row(new_key);
             delete[] new_key;
         }
+        increment_default_key(this->next_default_key);
+        delete[] buffer;
     }
     void Table::insert_row_text(const std::vector<std::string> &row)
     {
-        if (row.size() != this->col_name_indexes.size())
+        if (row.size() != this->col_name_indexes.size() - 1) // Ignoring default key columns
         {
             throw std::invalid_argument("Row size does not match table size");
+            return;
         }
-        char *row_bin = new char[this->get_width()];
-        std::memset(row_bin, 0, this->get_width());
+        std::unique_ptr<char[]> row_bin = std::make_unique<char[]>(this->get_width() - DEFAULT_KEY_WIDTH);
+        std::memset(row_bin.get(), 0, this->get_width() - DEFAULT_KEY_WIDTH);
         size_t inserted_bytes = 0;
         for (size_t i = 0; i < row.size(); i++)
         {
-            this->primary_tree->columns[i].process_string(row_bin + inserted_bytes, row[i]);
-            inserted_bytes += this->primary_tree->columns[i].width;
+            this->primary_tree->columns[i + 1].process_string(row_bin.get() + inserted_bytes, row[i]);
+            inserted_bytes += this->primary_tree->columns[i + 1].width;
         }
-        this->insert_row_bin(row_bin);
-        delete[] row_bin;
+        this->insert_row_bin(row_bin.get());
     }
     std::vector<char *> Table::find_row(const char *key, size_t col_idx, BTree *tree)
     {
@@ -370,6 +392,11 @@ namespace rsql
         if (it_index == this->col_name_indexes.end())
         {
             throw std::invalid_argument("Can't index column that doesn't exist");
+            return;
+        }
+        if (it_index->second == 0)
+        {
+            throw std::invalid_argument("Can't index default key");
             return;
         }
         auto it_tree_num = this->optional_trees.find(it_index->second);
@@ -461,7 +488,8 @@ namespace rsql
             return;
         }
         uintuint32 composite_key = {std::make_pair(col_1_idx, col_2_idx)};
-        if (this->composite_trees.find(composite_key) != this->composite_trees.end()){
+        if (this->composite_trees.find(composite_key) != this->composite_trees.end())
+        {
             throw std::invalid_argument("Columns already indexed");
             return;
         }
@@ -588,7 +616,7 @@ namespace rsql
             }
             bytes_processed += 4;
         }
-        if (DISK_BUFFER_SZ - bytes_processed < 12)
+        if (DISK_BUFFER_SZ - bytes_processed < 12 + DEFAULT_KEY_WIDTH)
         {
             if (write(fd, write_buffer, bytes_processed) < 0)
             {
@@ -597,6 +625,8 @@ namespace rsql
             };
             bytes_processed = 0;
         }
+        std::memcpy(write_buffer + bytes_processed, this->next_default_key, DEFAULT_KEY_WIDTH);
+        bytes_processed += DEFAULT_KEY_WIDTH;
         std::memcpy(write_buffer + bytes_processed, &this->primary_tree_num, 4);
         bytes_processed += 4;
         std::memcpy(write_buffer + bytes_processed, &this->max_tree_num, 4);

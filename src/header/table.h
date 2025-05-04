@@ -11,6 +11,7 @@
 #define COMPOSITE_KEY_SIZE 2
 #define TABLE_NAME_SIZE 256
 #define COL_NAME_SIZE 128
+#define DEF_KEY_COL_NAME "DEFAULT_KEY"
 #define TABLE_FILE_NAME "table.rsql"
 
 namespace rsql
@@ -38,6 +39,7 @@ namespace rsql
         std::unordered_map<std::string, uint32_t> col_name_indexes;
         uint32_t primary_tree_num;
         uint32_t max_tree_num;
+        unsigned char next_default_key[DEFAULT_KEY_WIDTH];
 
         rsql::BTree *primary_tree;
         std::unordered_map<uint32_t, rsql::BTree *> optional_trees;

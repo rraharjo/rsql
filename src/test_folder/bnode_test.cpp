@@ -4,58 +4,58 @@
 std::string clean_this_cache = "make cleancache";
 BOOST_AUTO_TEST_CASE(merge_node_test){
     std::vector<rsql::Column> structure_1;
-    structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
+    structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::DEFAULT_KEY, 0));
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     for (rsql::Column &c : structure_1){
         tree->add_column(c);
     }
-    char key[PKEY_COL_W + 1] = "00000000000000000000000000000000";
+    char key[DEFAULT_KEY_WIDTH + 1] = "00000000000000000000000000000000";
     rsql::BNode *parent = new rsql::BNode(tree, 1);
-    parent->keys[0] = new char[PKEY_COL_W];
-    parent->keys[1] = new char[PKEY_COL_W];
+    parent->keys[0] = new char[DEFAULT_KEY_WIDTH];
+    parent->keys[1] = new char[DEFAULT_KEY_WIDTH];
     parent->size = 2;
-    key[PKEY_COL_W - 1] = '1';
-    std::memcpy(parent->keys[0], key, PKEY_COL_W);
-    key[PKEY_COL_W - 1] = '3';
-    std::memcpy(parent->keys[1], key, PKEY_COL_W);
+    key[DEFAULT_KEY_WIDTH - 1] = '1';
+    std::memcpy(parent->keys[0], key, DEFAULT_KEY_WIDTH);
+    key[DEFAULT_KEY_WIDTH - 1] = '3';
+    std::memcpy(parent->keys[1], key, DEFAULT_KEY_WIDTH);
 
     rsql::BNode *c_1 = new rsql::BNode(tree, 2);
-    c_1->keys[0] = new char[PKEY_COL_W];
+    c_1->keys[0] = new char[DEFAULT_KEY_WIDTH];
     c_1->size = 1;
-    key[PKEY_COL_W - 1] = '0';
-    std::memcpy(c_1->keys[0], key, PKEY_COL_W);
+    key[DEFAULT_KEY_WIDTH - 1] = '0';
+    std::memcpy(c_1->keys[0], key, DEFAULT_KEY_WIDTH);
 
     rsql::BNode *c_2 = new rsql::BNode(tree, 3);
-    c_2->keys[0] = new char[PKEY_COL_W];
+    c_2->keys[0] = new char[DEFAULT_KEY_WIDTH];
     c_2->size = 1;
-    key[PKEY_COL_W - 1] = '2';
-    std::memcpy(c_2->keys[0], key, PKEY_COL_W);
+    key[DEFAULT_KEY_WIDTH - 1] = '2';
+    std::memcpy(c_2->keys[0], key, DEFAULT_KEY_WIDTH);
 
     rsql::BNode *c_3 = new rsql::BNode(tree, 4);
-    c_3->keys[0] = new char[PKEY_COL_W];
+    c_3->keys[0] = new char[DEFAULT_KEY_WIDTH];
     c_3->size = 1;
-    key[PKEY_COL_W - 1] = '4';
-    std::memcpy(c_3->keys[0], key, PKEY_COL_W);
+    key[DEFAULT_KEY_WIDTH - 1] = '4';
+    std::memcpy(c_3->keys[0], key, DEFAULT_KEY_WIDTH);
 
     parent->merge(0, c_1, c_2);
 
     BOOST_CHECK(parent->size == 1);
-    BOOST_CHECK(strncmp(parent->keys[0], "00000000000000000000000000000003", PKEY_COL_W) == 0);
+    BOOST_CHECK(strncmp(parent->keys[0], "00000000000000000000000000000003", DEFAULT_KEY_WIDTH) == 0);
     BOOST_CHECK(c_1->size == 3);
-    BOOST_CHECK(strncmp(c_1->keys[0], "00000000000000000000000000000000", PKEY_COL_W) == 0);
-    BOOST_CHECK(strncmp(c_1->keys[1], "00000000000000000000000000000001", PKEY_COL_W) == 0);
-    BOOST_CHECK(strncmp(c_1->keys[2], "00000000000000000000000000000002", PKEY_COL_W) == 0);
+    BOOST_CHECK(strncmp(c_1->keys[0], "00000000000000000000000000000000", DEFAULT_KEY_WIDTH) == 0);
+    BOOST_CHECK(strncmp(c_1->keys[1], "00000000000000000000000000000001", DEFAULT_KEY_WIDTH) == 0);
+    BOOST_CHECK(strncmp(c_1->keys[2], "00000000000000000000000000000002", DEFAULT_KEY_WIDTH) == 0);
     BOOST_CHECK(c_3->size == 1);
-    BOOST_CHECK(strncmp(c_3->keys[0], "00000000000000000000000000000004", PKEY_COL_W) == 0);
+    BOOST_CHECK(strncmp(c_3->keys[0], "00000000000000000000000000000004", DEFAULT_KEY_WIDTH) == 0);
     delete tree;
     delete c_1;
     delete c_3;
     std::system(clean_this_cache.c_str());
 }
 BOOST_AUTO_TEST_CASE(match_column_test){
-    size_t structure_1_w = PKEY_COL_W + 4 + 10;
+    size_t structure_1_w = DEFAULT_KEY_WIDTH + 4 + 10;
     std::vector<rsql::Column> structure_1;
-    structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::PKEY, 0));
+    structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::DEFAULT_KEY, 0));
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::UINT, 4));
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
     rsql::BTree *tree = rsql::BTree::create_new_tree();

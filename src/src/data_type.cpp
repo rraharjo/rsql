@@ -2,9 +2,9 @@
 
 rsql::DataType rsql::str_to_dt(std::string string_repr)
 {
-    if (string_repr.compare(PKEY_STR) == 0)
+    if (string_repr.compare(DEF_KEY_STR) == 0)
     {
-        return rsql::DataType::PKEY;
+        return rsql::DataType::DEFAULT_KEY;
     }
     else if (string_repr.compare(UINT_STR) == 0)
     {
@@ -31,8 +31,8 @@ std::string rsql::dt_to_str(rsql::DataType type)
 {
     switch (type)
     {
-    case rsql::DataType::PKEY:
-        return PKEY_STR;
+    case rsql::DataType::DEFAULT_KEY:
+        return DEF_KEY_STR;
     case rsql::DataType::UINT:
         return UINT_STR;
     case rsql::DataType::SINT:
@@ -94,6 +94,17 @@ bool rsql::valid_date(const std::string &date)
     }
     return true;
 }
+void rsql::increment_default_key(unsigned char *const key){
+    unsigned int cur_idx = DEFAULT_KEY_WIDTH;
+    bool go_left = true;
+    while (go_left){
+        cur_idx--;
+        key[cur_idx]++;
+        if (key[cur_idx] != 0){
+            go_left = false;
+        }
+    }
+}
 
 namespace rsql
 {
@@ -112,7 +123,7 @@ namespace rsql
         validate_cells(this, &other);
         switch (this->type)
         {
-        case DataType::PKEY:
+        case DataType::DEFAULT_KEY:
         case DataType::CHAR:
         case DataType::DATE:
             return strncmp(this->src, other.src, this->len) == 0;
@@ -138,7 +149,7 @@ namespace rsql
         validate_cells(this, &other);
         switch (this->type)
         {
-        case DataType::PKEY:
+        case DataType::DEFAULT_KEY:
         case DataType::CHAR:
         case DataType::DATE:
             return strncmp(this->src, other.src, this->len) < 0;
@@ -160,7 +171,7 @@ namespace rsql
         validate_cells(this, &other);
         switch (this->type)
         {
-        case DataType::PKEY:
+        case DataType::DEFAULT_KEY:
         case DataType::CHAR:
         case DataType::DATE:
             return strncmp(this->src, other.src, this->len) <= 0;

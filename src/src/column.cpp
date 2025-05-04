@@ -19,7 +19,7 @@ namespace rsql
             std::memcpy(dest, src.c_str(), src.length());
             break;
         case DataType::CHAR:
-        case DataType::PKEY:
+        case DataType::DEFAULT_KEY:
             if (src.length() > this->width)
             {
                 throw std::invalid_argument("byte overflow");
@@ -64,7 +64,22 @@ namespace rsql
     {
         switch (this->type)
         {
-        case DataType::PKEY:
+        case DataType::DEFAULT_KEY:
+        {
+            int cmp = std::memcmp(k1, k2, this->width);
+            if (cmp < 0)
+            {
+                return -1;
+            }
+            else if (cmp > 0)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
         case DataType::DATE:
         case DataType::CHAR:
         {
@@ -141,7 +156,7 @@ namespace rsql
 
     Column Column::pkey_column(unsigned int col_id)
     {
-        return Column(col_id, PKEY_COL_W, DataType::PKEY);
+        return Column(col_id, DEFAULT_KEY_WIDTH, DataType::DEFAULT_KEY);
     }
     Column Column::unsigned_int_column(unsigned int col_id, const size_t width)
     {
@@ -167,7 +182,7 @@ namespace rsql
     {
         switch (type)
         {
-        case DataType::PKEY:
+        case DataType::DEFAULT_KEY:
             return Column::pkey_column(col_id);
         case DataType::UINT:
             return Column::unsigned_int_column(col_id, width);

@@ -54,7 +54,7 @@ namespace rsql
         int type_result;
         switch (this->type)
         {
-        case DataType::PKEY:
+        case DataType::DEFAULT_KEY:
         case DataType::CHAR:
         case DataType::DATE:
         {
@@ -167,7 +167,7 @@ namespace rsql
         int type_res;
         switch (this->type)
         {
-        case DataType::PKEY:
+        case DataType::DEFAULT_KEY:
         case DataType::CHAR:
         case DataType::DATE:
         {

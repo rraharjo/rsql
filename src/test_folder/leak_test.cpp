@@ -11,7 +11,7 @@ int main(){
     char src[32 + 4 + 10 + 10 + 1] = "00000000000000000000000000000000ytes6bytes6bytes6bytes2b";
     for (int i = 0 ; i < 10 ; i++){
         tree->insert_row(src);
-        src[PKEY_COL_W - 1]++;
+        src[DEFAULT_KEY_WIDTH - 1]++;
     }
     std::vector<char *>row = tree->find_all_row("00000000000000000000000000000009", 0);
     std::cout.write(row[0], 56);
