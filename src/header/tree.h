@@ -1,6 +1,7 @@
 #ifndef BTREE_H
 #define BTREE_H
 #include "node.h"
+#include "comparison.h"
 #include <iostream>
 #include <unistd.h>
 #include <fcntl.h>
@@ -50,7 +51,7 @@ namespace rsql
          * @param col_idx column index
          * @return std::vector<char *> a vector constisting copies of the found elements, dynamically allocated
          */
-        std::vector<char *> find_all_row(const char *key, const size_t col_idx);
+        std::vector<char *> find_all_row(const char *search_key, const size_t col_idx);
         /**
          * @brief insert src to the tree. Only n bytes of src will be inserted, where n is the width of the tree
          *

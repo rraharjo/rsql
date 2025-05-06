@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "column.h"
+#include "comparison.h"
 namespace rsql
 {
     class BTree;
@@ -17,28 +18,31 @@ namespace rsql
     {
     public:
         /**
-         * @brief return the first proper child idx
+         * @brief return the first proper child idx that matches the symbol. 
          *
          * @param k
+         * @param symbol
          * @return int
          */
-        int first_child_idx(const char *k);
+        int first_child_idx(const char *k, CompSymbol symbol);
         /**
          * @brief return the last proper child idx
          *
          * @param k
+         * @param symbol
          * @return int
          */
-        int last_child_idx(const char *k);
+        int last_child_idx(const char *k, CompSymbol symbol);
         /**
          * @brief Compare k byte, where k is the width of column at position col_idx
          *
          * @param k_1
          * @param k_2
          * @param col_idx
-         * @return < 0 if k_1 is less than k_2 ; > 0 if k_1 is larger than k_2
+         * @param symbol
+         * @return true if k_1 symbol k_2 is true
          */
-        int compare_key(const char *k_1, const char *k_2, size_t col_idx);
+        bool compare_key(const char *k_1, const char *k_2, size_t col_idx, CompSymbol symbol = CompSymbol::EQ);
         /**
          * @brief merge c_j to c_i, where c_i is the children number idx and c_j is children number (idx + 1). c_j is destroyed afterward.
          *
@@ -134,12 +138,13 @@ namespace rsql
          */
         char *find(const char *key);
         /**
-         * @brief find all occurences that match the key, useful when key indexes allow duplicate. When a matching row is found a copy is created
+         * @brief find all row where (key symbol k) is true. eg. if symbol is <, then find all row where key < k
          *
          * @param key the key that is searched for
          * @param alls found rows
+         * @param symbol
          */
-        void find_all_indexed(const char *key, std::vector<char *> &alls);
+        void find_all_indexed(const char *k, std::vector<char *> &alls, CompSymbol symbol = CompSymbol::EQ);
         /**
          * @brief find all occurences that match the key by linear search. When a matching row is found, a copy is created
          *

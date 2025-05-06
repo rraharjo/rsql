@@ -1,7 +1,7 @@
 #include "comparison.h"
 
 typedef boost::multiprecision::cpp_int cpp_int;
-inline bool compare_symbol(const int type_res, const rsql::CompSymbol symbol);
+bool compare_symbol(const int type_res, const rsql::CompSymbol symbol);
 namespace rsql
 {
     Comparison::Comparison()
@@ -17,12 +17,12 @@ namespace rsql
     }
 
     SingleComparison::SingleComparison(DataType type, CompSymbol symbol, size_t len)
-        : Comparison(), len(len), symbol(symbol), type(type)
+        : Comparison(), type(type), symbol(symbol), len(len)
     {
     }
 
     SingleComparison::SingleComparison(const SingleComparison &other)
-        : Comparison(other), len(other.len), symbol(other.symbol), type(other.type)
+        : Comparison(other), type(other.type), symbol(other.symbol), len(other.len)
     {
     }
 
@@ -55,6 +55,34 @@ namespace rsql
         switch (this->type)
         {
         case DataType::DEFAULT_KEY:
+        {
+            int to_ret = std::memcmp(row + left_preceding, row + right_preceding, this->len);
+            if (to_ret < 0)
+            {
+                type_result = -1;
+            }
+            else if (to_ret > 0)
+            {
+                type_result = 1;
+            }
+            else
+            {
+                // If the first n bytes are the same, the shorter one is smaller
+                if (this->len < this->right_len)
+                {
+                    type_result = -1;
+                }
+                else if (this->len > this->right_len)
+                {
+                    type_result = 1;
+                }
+                else
+                {
+                    type_result = 0;
+                }
+            }
+            break;
+        }
         case DataType::CHAR:
         case DataType::DATE:
         {
@@ -118,7 +146,7 @@ namespace rsql
             boost::multiprecision::import_bits(left_int, left_buff + 1, left_buff + this->len, 8, false);
             boost::multiprecision::import_bits(right_int, right_buff + 1, right_buff + this->right_len, 8, false);
             left_int *= left_sign;
-            right_int *= right_int;
+            right_int *= right_sign;
             if (left_int < right_int)
             {
                 type_result = -1;
@@ -168,6 +196,22 @@ namespace rsql
         switch (this->type)
         {
         case DataType::DEFAULT_KEY:
+        {
+            int to_ret = std::memcmp(row + this->preceding_size, this->constant_val, this->len);
+            if (to_ret < 0)
+            {
+                type_res = -1;
+            }
+            else if (to_ret > 0)
+            {
+                type_res = 1;
+            }
+            else
+            {
+                type_res = 0;
+            }
+            break;
+        }
         case DataType::CHAR:
         case DataType::DATE:
         {
@@ -216,7 +260,7 @@ namespace rsql
             boost::multiprecision::import_bits(left_int, left_buff + 1, left_buff + this->len, 8, false);
             boost::multiprecision::import_bits(right_int, this->constant_val + 1, this->constant_val + this->len, 8, false);
             left_int *= left_sign;
-            right_int *= right_int;
+            right_int *= right_sign;
             if (left_int < right_int)
             {
                 type_res = -1;
@@ -282,6 +326,10 @@ namespace rsql
 
     bool ORComparisons::compare(const char *const row)
     {
+        if (this->conditions.size() == 0)
+        {
+            return true;
+        }
         for (Comparison *c : this->conditions)
         {
             if (c->compare(row))
@@ -322,20 +370,22 @@ namespace rsql
     }
 }
 
-bool compare_symbol(const int type_res, const rsql::CompSymbol symbol){
-    switch (symbol){
-        case rsql::CompSymbol::EQ:
-            return type_res == 0;
-        case rsql::CompSymbol::GEQ:
-            return type_res >= 0;
-        case rsql::CompSymbol::GT:
-            return type_res > 0;
-        case rsql::CompSymbol::LEQ:
-            return type_res <= 0;
-        case rsql::CompSymbol::LT:
-            return type_res < 0;
-        default:
-            throw std::invalid_argument("Unknown comparison symbol");
-            return false;
+bool compare_symbol(const int type_res, const rsql::CompSymbol symbol)
+{
+    switch (symbol)
+    {
+    case rsql::CompSymbol::EQ:
+        return type_res == 0;
+    case rsql::CompSymbol::GEQ:
+        return type_res >= 0;
+    case rsql::CompSymbol::GT:
+        return type_res > 0;
+    case rsql::CompSymbol::LEQ:
+        return type_res <= 0;
+    case rsql::CompSymbol::LT:
+        return type_res < 0;
+    default:
+        throw std::invalid_argument("Unknown comparison symbol");
+        return false;
     }
 }

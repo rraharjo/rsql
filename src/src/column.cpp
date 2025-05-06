@@ -60,88 +60,10 @@ namespace rsql
         }
         }
     }
-    int Column::compare_key(const char *const k1, const char *const k2)
+    int Column::compare_key(const char *const k1, const char *const k2, CompSymbol symbol)
     {
-        switch (this->type)
-        {
-        case DataType::DEFAULT_KEY:
-        {
-            int cmp = std::memcmp(k1, k2, this->width);
-            if (cmp < 0)
-            {
-                return -1;
-            }
-            else if (cmp > 0)
-            {
-                return 1;
-            }
-            else
-            {
-                return 0;
-            }
-        }
-        case DataType::DATE:
-        case DataType::CHAR:
-        {
-            int cmp = std::strncmp(k1, k2, this->width);
-            if (cmp < 0)
-            {
-                return -1;
-            }
-            else if (cmp > 0)
-            {
-                return 1;
-            }
-            else
-            {
-                return 0;
-            }
-        }
-        case DataType::UINT:
-        {
-            boost::multiprecision::cpp_int c_int1, c_int2;
-            boost::multiprecision::import_bits(c_int1, k1, k1 + this->width, 8, false);
-            boost::multiprecision::import_bits(c_int2, k2, k2 + this->width, 8, false);
-            if (c_int1 < c_int2)
-            {
-                return -1;
-            }
-            else if (c_int1 > c_int2)
-            {
-                return 1;
-            }
-            else
-            {
-                return 0;
-            }
-        }
-        case DataType::SINT:
-        {
-            signed char char_sign1, char_sign2;
-            char_sign1 = *k1;
-            char_sign2 = *k2;
-            int sign1 = static_cast<int>(char_sign1), sign2 = static_cast<int>(char_sign2);
-            boost::multiprecision::cpp_int c_int1, c_int2;
-            boost::multiprecision::import_bits(c_int1, k1 + 1, k1 + this->width, 8, false);
-            boost::multiprecision::import_bits(c_int2, k2 + 1, k2 + this->width, 8, false);
-            c_int1 *= sign1;
-            c_int2 *= sign2;
-            if (c_int1 < c_int2)
-            {
-                return -1;
-            }
-            else if (c_int1 > c_int2)
-            {
-                return 1;
-            }
-            else
-            {
-                return 0;
-            }
-        }
-        default:
-            throw std::invalid_argument("Unknown DataType");
-        }
+        ConstantComparison c(this->type, symbol, this->width, 0, k2);
+        return c.compare(k1);
     }
 
     bool Column::operator==(const Column &other) const

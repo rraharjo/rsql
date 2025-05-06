@@ -4,7 +4,6 @@
 #include "data_type.h"
 namespace rsql
 {
-    //TODO: create copy constructor
     enum class CompSymbol
     {
         EQ,
@@ -19,6 +18,7 @@ namespace rsql
     protected:
         Comparison();
         Comparison(const Comparison &other);
+
     public:
         virtual ~Comparison();
         virtual Comparison *clone() = 0;
@@ -28,11 +28,12 @@ namespace rsql
     class SingleComparison : public Comparison
     {
     protected:
-        const CompSymbol symbol;
         const DataType type;
+        const CompSymbol symbol;
         const size_t len;
         SingleComparison(DataType type, CompSymbol symbol, size_t len);
         SingleComparison(const SingleComparison &other);
+
     public:
         virtual ~SingleComparison();
     };
@@ -68,32 +69,36 @@ namespace rsql
         bool compare(const char *const row) override;
     };
 
-    class MultiComparisons : public Comparison{
-        protected:
-            std::vector<Comparison *> conditions;
-            MultiComparisons();
-            MultiComparisons(const MultiComparisons &other);
-        public:
-            virtual ~MultiComparisons();
-            void add_condition(Comparison *comparison);
+    class MultiComparisons : public Comparison
+    {
+    protected:
+        std::vector<Comparison *> conditions;
+        MultiComparisons();
+        MultiComparisons(const MultiComparisons &other);
+
+    public:
+        virtual ~MultiComparisons();
+        void add_condition(Comparison *comparison);
     };
 
-    class ORComparisons : public MultiComparisons{
-        public:
-            ORComparisons();
-            ORComparisons(const ORComparisons &other);
-            ~ORComparisons();
-            ORComparisons *clone() override;
-            bool compare(const char *const row) override;
+    class ORComparisons : public MultiComparisons
+    {
+    public:
+        ORComparisons();
+        ORComparisons(const ORComparisons &other);
+        ~ORComparisons();
+        ORComparisons *clone() override;
+        bool compare(const char *const row) override;
     };
 
-    class ANDComparisons : public MultiComparisons{
-        public:
-            ANDComparisons();
-            ANDComparisons(const ANDComparisons &other);
-            ~ANDComparisons();
-            ANDComparisons *clone() override;
-            bool compare(const char *const row) override;
+    class ANDComparisons : public MultiComparisons
+    {
+    public:
+        ANDComparisons();
+        ANDComparisons(const ANDComparisons &other);
+        ~ANDComparisons();
+        ANDComparisons *clone() override;
+        bool compare(const char *const row) override;
     };
 }
 #endif
