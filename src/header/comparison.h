@@ -46,6 +46,16 @@ namespace rsql
         const size_t right_len;
 
     public:
+        /**
+         * @brief Construct a new Column Comparison object. Compare left to right
+         * 
+         * @param type DataType being compared
+         * @param symbol <, <=, ==, >=, >
+         * @param left_len the length of the left column
+         * @param left_preceding the preceding length of the left column
+         * @param right_preceding the preceding length of the right column
+         * @param right_len the length of the right column
+         */
         ColumnComparison(DataType type, CompSymbol symbol, size_t left_len, const size_t left_preceding, const size_t right_preceding, const size_t right_len);
         ColumnComparison(const ColumnComparison &other);
         ~ColumnComparison();
@@ -61,6 +71,15 @@ namespace rsql
         char *constant_val;
 
     public:
+        /**
+         * @brief Construct a new Constant Comparison object. compare left to constant
+         * 
+         * @param type data type being compared
+         * @param symbol <, <=, ==, >=, >
+         * @param len length of the data being compared
+         * @param col_preceding the preceding size of the left column
+         * @param right the value of the constant
+         */
         ConstantComparison(DataType type, CompSymbol symbol, size_t len, const size_t col_preceding, const char *right);
         ConstantComparison(const ConstantComparison &other);
         ~ConstantComparison();

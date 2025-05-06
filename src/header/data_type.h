@@ -8,6 +8,7 @@
 
 #define DT_STR_LEN 4
 #define DEFAULT_KEY_WIDTH 32
+#define DATE_TYPE_WIDTH 10
 #define UINT_STR "UINT"
 #define SINT_STR "SINT"
 #define CHAR_STR "CHAR"

@@ -19,6 +19,16 @@ namespace rsql
     SingleComparison::SingleComparison(DataType type, CompSymbol symbol, size_t len)
         : Comparison(), type(type), symbol(symbol), len(len)
     {
+        if (type == DataType::DEFAULT_KEY && len != DEFAULT_KEY_WIDTH)
+        {
+            throw std::invalid_argument("Can't compare default key. Default key width has to be " + std::to_string(DEFAULT_KEY_WIDTH));
+            return;
+        }
+        if (type == DataType::DATE && len != DATE_TYPE_WIDTH)
+        {
+            throw std::invalid_argument("Can't compare date. Date width has to be " + std::to_string(DATE_TYPE_WIDTH));
+            return;
+        }
     }
 
     SingleComparison::SingleComparison(const SingleComparison &other)
