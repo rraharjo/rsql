@@ -16,15 +16,15 @@ namespace rsql
     {
     }
 
-    SingleComparison::SingleComparison(DataType type, CompSymbol symbol, size_t len)
-        : Comparison(), type(type), symbol(symbol), len(len)
+    SingleComparison::SingleComparison(const DataType type, const CompSymbol symbol, const size_t left_preceding, const size_t left_len)
+        : Comparison(), type(type), symbol(symbol), left_preceding(left_preceding), left_len(left_len)
     {
-        if (type == DataType::DEFAULT_KEY && len != DEFAULT_KEY_WIDTH)
+        if (type == DataType::DEFAULT_KEY && left_len != DEFAULT_KEY_WIDTH)
         {
             throw std::invalid_argument("Can't compare default key. Default key width has to be " + std::to_string(DEFAULT_KEY_WIDTH));
             return;
         }
-        if (type == DataType::DATE && len != DATE_TYPE_WIDTH)
+        if (type == DataType::DATE && left_len != DATE_TYPE_WIDTH)
         {
             throw std::invalid_argument("Can't compare date. Date width has to be " + std::to_string(DATE_TYPE_WIDTH));
             return;
@@ -32,7 +32,7 @@ namespace rsql
     }
 
     SingleComparison::SingleComparison(const SingleComparison &other)
-        : Comparison(other), type(other.type), symbol(other.symbol), len(other.len)
+        : Comparison(other), type(other.type), symbol(other.symbol), left_preceding(other.left_preceding), left_len(other.left_len)
     {
     }
 
@@ -40,13 +40,19 @@ namespace rsql
     {
     }
 
-    ColumnComparison::ColumnComparison(DataType type, CompSymbol symbol, size_t left_len, const size_t left_preceding, const size_t right_preceding, const size_t right_len)
-        : SingleComparison(type, symbol, left_len), left_preceding(left_preceding), right_preceding(right_preceding), right_len(right_len)
+    ColumnComparison::ColumnComparison(DataType type, CompSymbol symbol, size_t left_len, const size_t left_preceding, const size_t right_len, const size_t right_preceding)
+        : SingleComparison(type, symbol, left_preceding, left_len), right_len(right_len), right_preceding(right_preceding)
     {
+        if (this->type == DataType::DEFAULT_KEY || this->type == DataType::DATE){
+            if (this->left_len != this->right_len){
+                throw std::invalid_argument("Can't compare date or default key if both columns do not have the same length");
+                return;
+            }
+        }
     }
 
     ColumnComparison::ColumnComparison(const ColumnComparison &other)
-        : SingleComparison(other), left_preceding(other.left_preceding), right_preceding(other.right_preceding), right_len(other.right_len)
+        : SingleComparison(other), right_preceding(other.right_preceding), right_len(other.right_len)
     {
     }
 
@@ -66,7 +72,7 @@ namespace rsql
         {
         case DataType::DEFAULT_KEY:
         {
-            int to_ret = std::memcmp(row + left_preceding, row + right_preceding, this->len);
+            int to_ret = std::memcmp(row + left_preceding, row + right_preceding, this->left_len);
             if (to_ret < 0)
             {
                 type_result = -1;
@@ -78,11 +84,11 @@ namespace rsql
             else
             {
                 // If the first n bytes are the same, the shorter one is smaller
-                if (this->len < this->right_len)
+                if (this->left_len < this->right_len)
                 {
                     type_result = -1;
                 }
-                else if (this->len > this->right_len)
+                else if (this->left_len > this->right_len)
                 {
                     type_result = 1;
                 }
@@ -96,7 +102,7 @@ namespace rsql
         case DataType::CHAR:
         case DataType::DATE:
         {
-            const size_t min_size = std::min(this->len, this->right_len);
+            const size_t min_size = std::min(this->left_len, this->right_len);
             int to_ret = std::strncmp(row + left_preceding, row + right_preceding, min_size);
             if (to_ret < 0)
             {
@@ -109,11 +115,11 @@ namespace rsql
             else
             {
                 // If the first n bytes are the same, the shorter one is smaller
-                if (this->len < this->right_len)
+                if (this->left_len < this->right_len)
                 {
                     type_result = -1;
                 }
-                else if (this->len > this->right_len)
+                else if (this->left_len > this->right_len)
                 {
                     type_result = 1;
                 }
@@ -129,7 +135,7 @@ namespace rsql
             cpp_int left_int, right_int;
             const char *const left_buff = row + this->left_preceding;
             const char *const right_buff = row + this->right_preceding;
-            boost::multiprecision::import_bits(left_int, left_buff, left_buff + this->len, 8, false);
+            boost::multiprecision::import_bits(left_int, left_buff, left_buff + this->left_len, 8, false);
             boost::multiprecision::import_bits(right_int, right_buff, right_buff + this->right_len, 8, false);
             if (left_int < right_int)
             {
@@ -153,7 +159,7 @@ namespace rsql
             int left_sign, right_sign;
             left_sign = static_cast<int>(*left_buff);
             right_sign = static_cast<int>(*right_buff);
-            boost::multiprecision::import_bits(left_int, left_buff + 1, left_buff + this->len, 8, false);
+            boost::multiprecision::import_bits(left_int, left_buff + 1, left_buff + this->left_len, 8, false);
             boost::multiprecision::import_bits(right_int, right_buff + 1, right_buff + this->right_len, 8, false);
             left_int *= left_sign;
             right_int *= right_sign;
@@ -178,16 +184,18 @@ namespace rsql
         return compare_symbol(type_result, this->symbol);
     }
 
-    ConstantComparison::ConstantComparison(DataType type, CompSymbol symbol, size_t len, const size_t preceding_size, const char *right)
-        : SingleComparison(type, symbol, len), preceding_size(preceding_size)
+    ConstantComparison::ConstantComparison(DataType type, CompSymbol symbol, size_t len, const size_t left_preceding, const char *right_val)
+        : SingleComparison(type, symbol, left_preceding, len)
     {
-        this->constant_val = new char[len];
-        std::memcpy(this->constant_val, right, len);
+        this->constant_val = new char[this->left_len];
+        std::memcpy(this->constant_val, right_val, this->left_len);
     }
 
     ConstantComparison::ConstantComparison(const ConstantComparison &other)
-        : SingleComparison(other), preceding_size(other.preceding_size)
+        : SingleComparison(other)
     {
+        this->constant_val = new char[this->left_len];
+        std::memcpy(this->constant_val, other.constant_val, this->left_len);
     }
 
     ConstantComparison::~ConstantComparison()
@@ -207,7 +215,7 @@ namespace rsql
         {
         case DataType::DEFAULT_KEY:
         {
-            int to_ret = std::memcmp(row + this->preceding_size, this->constant_val, this->len);
+            int to_ret = std::memcmp(row + this->left_preceding, this->constant_val, this->left_len);
             if (to_ret < 0)
             {
                 type_res = -1;
@@ -225,7 +233,7 @@ namespace rsql
         case DataType::CHAR:
         case DataType::DATE:
         {
-            int to_ret = std::strncmp(row + this->preceding_size, this->constant_val, this->len);
+            int to_ret = std::strncmp(row + this->left_preceding, this->constant_val, this->left_len);
             if (to_ret < 0)
             {
                 type_res = -1;
@@ -243,9 +251,9 @@ namespace rsql
         case DataType::UINT:
         {
             cpp_int left_int, right_int;
-            const char *const left_buff = row + this->preceding_size;
-            boost::multiprecision::import_bits(left_int, left_buff, left_buff + this->len, 8, false);
-            boost::multiprecision::import_bits(right_int, this->constant_val, this->constant_val + this->len, 8, false);
+            const char *const left_buff = row + this->left_preceding;
+            boost::multiprecision::import_bits(left_int, left_buff, left_buff + this->left_len, 8, false);
+            boost::multiprecision::import_bits(right_int, this->constant_val, this->constant_val + this->left_len, 8, false);
             if (left_int < right_int)
             {
                 type_res = -1;
@@ -263,12 +271,12 @@ namespace rsql
         case DataType::SINT:
         {
             cpp_int left_int, right_int;
-            const char *const left_buff = row + this->preceding_size;
+            const char *const left_buff = row + this->left_preceding;
             int left_sign, right_sign;
             left_sign = static_cast<int>(*left_buff);
             right_sign = static_cast<int>(*(this->constant_val));
-            boost::multiprecision::import_bits(left_int, left_buff + 1, left_buff + this->len, 8, false);
-            boost::multiprecision::import_bits(right_int, this->constant_val + 1, this->constant_val + this->len, 8, false);
+            boost::multiprecision::import_bits(left_int, left_buff + 1, left_buff + this->left_len, 8, false);
+            boost::multiprecision::import_bits(right_int, this->constant_val + 1, this->constant_val + this->left_len, 8, false);
             left_int *= left_sign;
             right_int *= right_sign;
             if (left_int < right_int)

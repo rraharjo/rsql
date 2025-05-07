@@ -28,35 +28,40 @@ namespace rsql
     std::string dt_to_str(DataType);
     bool valid_date(const std::string &);
     void increment_default_key(unsigned char *const key);
-
-    class Cell
-    {
-    public:
-        char *src = nullptr;
-        const size_t len;
-        const DataType type;
-
-    protected:
-        Cell(const size_t len, const DataType type);
-        // virtual ~Cell();
-    public:
-        bool operator==(const Cell &other) const;
-        bool operator<(const Cell &other) const;
-        bool operator<=(const Cell &other) const;
-        bool operator>(const Cell &other) const;
-        bool operator>=(const Cell &other) const;
-        bool operator!=(const Cell &other) const;
-    };
-
-    class ConstCell : public Cell
-    {
-    public:
-        ConstCell(const char *src, const size_t len, const DataType type);
-    };
-    class ColumnCell : public Cell
-    {
-    public:
-        ColumnCell(char *src, const size_t len, const DataType type);
-    };
+    /**
+     * @brief Copy the underlying byte of ucpp_int to dest. Will ignore sign (little endian format)
+     * 
+     * @throw std::invalid_argument if the destination size is less than the cpp_int total number of bytes
+     * @param dest 
+     * @param dest_len 
+     * @param ucpp_int 
+     */
+    void ucpp_int_to_char(char *const dest, const size_t dest_len, boost::multiprecision::cpp_int &ucpp_int);
+    /**
+     * @brief @brief Copy the underlying byte of scpp_int to dest. the first byte is sign byte, the rest are magnitude bytes (little endian format)
+     * 
+     * @throw std::invalid_argument if the destination size is less than the cpp_int total number of bytes
+     * @param dest 
+     * @param dest_len 
+     * @param scpp_int 
+     */
+    void scpp_int_to_char(char *const dest, const size_t dest_len, boost::multiprecision::cpp_int &scpp_int);
+    /**
+     * @brief Takes src_len bytes and convert it to unsigned cpp_int (little endian format)
+     * 
+     * @param src 
+     * @param src_len 
+     * @param ucpp_int 
+     */
+    void char_to_ucpp_int(char *const src, const size_t src_len, boost::multiprecision::cpp_int &ucpp_int);
+    /**
+     * @brief Takes src_len bytes and convert it to signed cpp_int (little endian format)
+     * 
+     * @throw std::invalid_argument if the first byte of src does not equal -1 or 0 or 1
+     * @param src 
+     * @param src_len 
+     * @param scpp_int 
+     */
+    void char_to_scpp_int(char *const src, const size_t src_len, boost::multiprecision::cpp_int &scpp_int);
 }
 #endif

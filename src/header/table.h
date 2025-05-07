@@ -32,10 +32,6 @@ namespace rsql
     private:
         const Database *db;
         std::string table_name;
-        /**
-         * @brief Each column has an array index and a tree. pair::first denotes the column index, while pair::second denotes the tree number
-         *
-         */
         std::unordered_map<std::string, uint32_t> col_name_indexes;
         uint32_t primary_tree_num;
         uint32_t max_tree_num;

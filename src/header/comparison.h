@@ -30,8 +30,9 @@ namespace rsql
     protected:
         const DataType type;
         const CompSymbol symbol;
-        const size_t len;
-        SingleComparison(DataType type, CompSymbol symbol, size_t len);
+        const size_t left_preceding;
+        const size_t left_len;
+        SingleComparison(const DataType type, const CompSymbol symbol, const size_t left_preceding, const size_t len);
         SingleComparison(const SingleComparison &other);
 
     public:
@@ -41,9 +42,8 @@ namespace rsql
     class ColumnComparison : public SingleComparison
     {
     protected:
-        const size_t left_preceding;
-        const size_t right_preceding;
         const size_t right_len;
+        const size_t right_preceding;
 
     public:
         /**
@@ -56,7 +56,7 @@ namespace rsql
          * @param right_preceding the preceding length of the right column
          * @param right_len the length of the right column
          */
-        ColumnComparison(DataType type, CompSymbol symbol, size_t left_len, const size_t left_preceding, const size_t right_preceding, const size_t right_len);
+        ColumnComparison(DataType type, CompSymbol symbol, size_t left_len, const size_t left_preceding, const size_t right_len, const size_t right_preceding);
         ColumnComparison(const ColumnComparison &other);
         ~ColumnComparison();
 
@@ -67,20 +67,19 @@ namespace rsql
     class ConstantComparison : public SingleComparison
     {
     protected:
-        const size_t preceding_size;
         char *constant_val;
 
     public:
         /**
-         * @brief Construct a new Constant Comparison object. compare left to constant
+         * @brief Construct a new Constant Comparison object. compare left to constant. Does not take ownership of right_val
          * 
          * @param type data type being compared
          * @param symbol <, <=, ==, >=, >
          * @param len length of the data being compared
-         * @param col_preceding the preceding size of the left column
-         * @param right the value of the constant
+         * @param left_preceding the preceding size of the left column
+         * @param right_val the value of the constant
          */
-        ConstantComparison(DataType type, CompSymbol symbol, size_t len, const size_t col_preceding, const char *right);
+        ConstantComparison(DataType type, CompSymbol symbol, size_t len, const size_t left_preceding, const char *right_val);
         ConstantComparison(const ConstantComparison &other);
         ~ConstantComparison();
 
@@ -97,6 +96,11 @@ namespace rsql
 
     public:
         virtual ~MultiComparisons();
+        /**
+         * @brief Add condition to the multicomparison. Does not take ownership of the pointer
+         * 
+         * @param comparison 
+         */
         void add_condition(Comparison *comparison);
     };
 

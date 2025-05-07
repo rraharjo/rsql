@@ -395,52 +395,554 @@ BOOST_AUTO_TEST_CASE(constant_comparison_test_signed_int)
     }
 }
 
-BOOST_AUTO_TEST_CASE(column_comparison)
+BOOST_AUTO_TEST_CASE(columns_comparison_test_default_key)
 {
-    // def_key 32 bytes
-    // sint    4 bytes
-    // sint    8 bytes
+    // def_key 32 bytes * 2
     std::vector<char *> sample_data;
-    cpp_int sint_1 = -5, sint_2 = 0;
-    char key[DEFAULT_KEY_WIDTH];
-    std::memset(key, 0, DEFAULT_KEY_WIDTH);
-    for (int i = 0; i < 10; i++)
+    size_t width = DEFAULT_KEY_WIDTH;
+    char key_1[width], key_2[width];
+    std::memset(key_1, 0, width);
+    std::memset(key_2, 0, width);
+    key_2[width - 1] = 1;
+    for (int i = 0; i < 5; i++) // 0 to 4 & 1 to 5
     {
-        char *row = new char[44];
-        std::memset(row, 0, 44);
-        std::memcpy(row, key, DEFAULT_KEY_WIDTH);
-        key[DEFAULT_KEY_WIDTH - 1]++;
-        int sign_1, sign_2;
-        sign_1 = sint_1.sign();
-        sign_2 = sint_2.sign();
-        std::memcpy(row + DEFAULT_KEY_WIDTH, &sign_1, 1);
-        boost::multiprecision::export_bits(sint_1, row + DEFAULT_KEY_WIDTH + 1, 8, false);
-        std::memcpy(row + 36, &sign_2, 1);
-        boost::multiprecision::export_bits(sint_2, row + 37, 8, false);
+        char *row = new char[2 * width];
+        std::memcpy(row, key_1, width);
+        std::memcpy(row + width, key_2, width);
+        rsql::increment_default_key((unsigned char *)key_1);
+        rsql::increment_default_key((unsigned char *)key_2);
         sample_data.push_back(row);
-        sint_1 += 1;
-        sint_2 += 1;
     }
-    rsql::ColumnComparison *eq_comparison = new rsql::ColumnComparison(rsql::DataType::SINT, rsql::CompSymbol::EQ, 8, 36, 32, 4);
-    rsql::ColumnComparison *leq_comparison = new rsql::ColumnComparison(rsql::DataType::SINT, rsql::CompSymbol::LEQ, 4, 32, 36, 8);
-    size_t eq_count = 0, leq_count = 0;
-    for (char *c : sample_data)
+    for (int i = 0; i < 5; i++) // 5 to 9 & 6
     {
-        if (eq_comparison->compare(c))
-        {
-            eq_count++;
-        }
-        if (leq_comparison->compare(c))
-        {
-            leq_count++;
-        }
+        char *row = new char[2 * width];
+        std::memcpy(row, key_1, width);
+        std::memcpy(row + width, key_2, width);
+        rsql::increment_default_key((unsigned char *)key_1);
+        sample_data.push_back(row);
     }
-    BOOST_CHECK(eq_count == 0);
-    BOOST_CHECK(leq_count == 10);
-    for (char *c : sample_data)
+    rsql::ColumnComparison *lt = new rsql::ColumnComparison(rsql::DataType::DEFAULT_KEY, rsql::CompSymbol::LT, width, 0, width, width);
+    rsql::ColumnComparison *leq = new rsql::ColumnComparison(rsql::DataType::DEFAULT_KEY, rsql::CompSymbol::LEQ, width, 0, width, width);
+    rsql::ColumnComparison *eq = new rsql::ColumnComparison(rsql::DataType::DEFAULT_KEY, rsql::CompSymbol::EQ, width, 0, width, width);
+    rsql::ColumnComparison *geq = new rsql::ColumnComparison(rsql::DataType::DEFAULT_KEY, rsql::CompSymbol::GEQ, width, 0, width, width);
+    rsql::ColumnComparison *gt = new rsql::ColumnComparison(rsql::DataType::DEFAULT_KEY, rsql::CompSymbol::GT, width, 0, width, width);
+    size_t lt_correct = 0, leq_correct = 0, eq_correct = 0, geq_correct = 0, gt_correct = 0;
+    for (char *row : sample_data)
     {
-        delete[] c;
+        if (lt->compare(row))
+        {
+            lt_correct++;
+        }
+        if (leq->compare(row))
+        {
+            leq_correct++;
+        }
+        if (eq->compare(row))
+        {
+            eq_correct++;
+        }
+        if (geq->compare(row))
+        {
+            geq_correct++;
+        }
+        if (gt->compare(row))
+        {
+            gt_correct++;
+        }
     }
-    delete eq_comparison;
-    delete leq_comparison;
+    BOOST_CHECK(lt_correct == 6);
+    BOOST_CHECK(leq_correct == 7);
+    BOOST_CHECK(eq_correct == 1);
+    BOOST_CHECK(geq_correct == 4);
+    BOOST_CHECK(gt_correct == 3);
+    delete lt;
+    delete leq;
+    delete eq;
+    delete geq;
+    delete gt;
+    for (char *row : sample_data)
+    {
+        delete[] row;
+    }
+}
+
+BOOST_AUTO_TEST_CASE(columns_comparison_test_char)
+{
+    // def_key 32 bytes * 2
+    std::vector<char *> sample_data;
+    size_t width_1 = 6, width_2 = 12, width = width_1 + width_2;
+    char key_1[width_1], key_2[width_2];
+    std::memcpy(key_1, "aaaaaa", width_1);
+    std::memcpy(key_2, "aaaaaaaaaaaa", width_2);
+    for (int i = 0; i < 2; i++)
+    {
+        key_2[width_2 - 1]++;
+        char *row = new char[width];
+        std::memcpy(row, key_1, width_1);
+        std::memcpy(row + width_1, key_2, width_2);
+        sample_data.push_back(row);
+    }
+    key_1[width_1 - 1] = 'b';
+    for (int i = 0; i < 5; i++)
+    {
+        key_2[width_2 - 1]++;
+        char *row = new char[width];
+        std::memcpy(row, key_1, width_1);
+        std::memcpy(row + width_1, key_2, width_2);
+        sample_data.push_back(row);
+    }
+    rsql::ColumnComparison *lt = new rsql::ColumnComparison(rsql::DataType::CHAR, rsql::CompSymbol::LT, width_1, 0, width_2, width_1);
+    rsql::ColumnComparison *leq = new rsql::ColumnComparison(rsql::DataType::CHAR, rsql::CompSymbol::LEQ, width_1, 0, width_2, width_1);
+    rsql::ColumnComparison *eq = new rsql::ColumnComparison(rsql::DataType::CHAR, rsql::CompSymbol::EQ, width_1, 0, width_2, width_1);
+    rsql::ColumnComparison *geq = new rsql::ColumnComparison(rsql::DataType::CHAR, rsql::CompSymbol::GEQ, width_1, 0, width_2, width_1);
+    rsql::ColumnComparison *gt = new rsql::ColumnComparison(rsql::DataType::CHAR, rsql::CompSymbol::GT, width_1, 0, width_2, width_1);
+    size_t lt_correct = 0, leq_correct = 0, eq_correct = 0, geq_correct = 0, gt_correct = 0;
+    for (char *row : sample_data)
+    {
+        if (lt->compare(row))
+        {
+            lt_correct++;
+        }
+        if (leq->compare(row))
+        {
+            leq_correct++;
+        }
+        if (eq->compare(row))
+        {
+            eq_correct++;
+        }
+        if (geq->compare(row))
+        {
+            geq_correct++;
+        }
+        if (gt->compare(row))
+        {
+            gt_correct++;
+        }
+    }
+    BOOST_CHECK(lt_correct == 2);
+    BOOST_CHECK(leq_correct == 2);
+    BOOST_CHECK(eq_correct == 0);
+    BOOST_CHECK(geq_correct == 5);
+    BOOST_CHECK(gt_correct == 5);
+    delete lt;
+    delete leq;
+    delete eq;
+    delete geq;
+    delete gt;
+    for (char *row : sample_data)
+    {
+        delete[] row;
+    }
+}
+
+BOOST_AUTO_TEST_CASE(columns_comparison_test_date)
+{
+    // date (10 bytes * 2)
+    std::vector<char *> sample_data;
+    size_t width = DATE_TYPE_WIDTH;
+    char key_1[width], key_2[width];
+    std::memcpy(key_1, "2002-01-01", DATE_TYPE_WIDTH);
+    std::memcpy(key_2, "2002-02-27", DATE_TYPE_WIDTH);
+    for (int i = 0; i < 3; i++)
+    {
+        char *row = new char[2 * width];
+        std::memcpy(row, key_1, width);
+        std::memcpy(row + width, key_2, width);
+        key_1[6]++;
+        key_2[6]++;
+        sample_data.push_back(row);
+    }
+    for (int i = 0; i < 4; i++)
+    {
+        char *row = new char[2 * width];
+        std::memcpy(row, key_1, width);
+        std::memcpy(row + width, key_2, width);
+        key_1[6]++;
+        sample_data.push_back(row);
+    }
+    rsql::ColumnComparison *lt = new rsql::ColumnComparison(rsql::DataType::DATE, rsql::CompSymbol::LT, width, 0, width, width);
+    rsql::ColumnComparison *leq = new rsql::ColumnComparison(rsql::DataType::DATE, rsql::CompSymbol::LEQ, width, 0, width, width);
+    rsql::ColumnComparison *eq = new rsql::ColumnComparison(rsql::DataType::DATE, rsql::CompSymbol::EQ, width, 0, width, width);
+    rsql::ColumnComparison *geq = new rsql::ColumnComparison(rsql::DataType::DATE, rsql::CompSymbol::GEQ, width, 0, width, width);
+    rsql::ColumnComparison *gt = new rsql::ColumnComparison(rsql::DataType::DATE, rsql::CompSymbol::GT, width, 0, width, width);
+    size_t lt_correct = 0, leq_correct = 0, eq_correct = 0, geq_correct = 0, gt_correct = 0;
+    for (char *row : sample_data)
+    {
+        if (lt->compare(row))
+        {
+            lt_correct++;
+        }
+        if (leq->compare(row))
+        {
+            leq_correct++;
+        }
+        if (eq->compare(row))
+        {
+            eq_correct++;
+        }
+        if (geq->compare(row))
+        {
+            geq_correct++;
+        }
+        if (gt->compare(row))
+        {
+            gt_correct++;
+        }
+    }
+    BOOST_CHECK(lt_correct == 5);
+    BOOST_CHECK(leq_correct == 5);
+    BOOST_CHECK(eq_correct == 0);
+    BOOST_CHECK(geq_correct == 2);
+    BOOST_CHECK(gt_correct == 2);
+    delete lt;
+    delete leq;
+    delete eq;
+    delete geq;
+    delete gt;
+    for (char *row : sample_data)
+    {
+        delete[] row;
+    }
+}
+
+BOOST_AUTO_TEST_CASE(columns_comparison_test_unsigned_int)
+{
+    // date (10 bytes * 2)
+    std::vector<char *> sample_data;
+    size_t width_1 = 4, width_2 = 8, width = width_1 + width_2;
+    cpp_int c_1 = 1200, c_2 = 500;
+    for (int i = 0; i < 3; i++)
+    {
+        // 1200 500
+        // 1200 600
+        // 1200 700
+        char *row = new char[width];
+        rsql::ucpp_int_to_char(row, width_1, c_1);
+        rsql::ucpp_int_to_char(row + width_1, width_2, c_2);
+        c_2 += 100;
+        sample_data.push_back(row);
+    }
+    for (int i = 0; i < 4; i++)
+    {
+        // 1200 800
+        // 1000 800
+        // 800  800
+        // 600  800
+        char *row = new char[width];
+        rsql::ucpp_int_to_char(row, width_1, c_1);
+        rsql::ucpp_int_to_char(row + width_1, width_2, c_2);
+        c_1 -= 200;
+        sample_data.push_back(row);
+    }
+    rsql::ColumnComparison *lt = new rsql::ColumnComparison(rsql::DataType::UINT, rsql::CompSymbol::LT, width_1, 0, width_2, width_1);
+    rsql::ColumnComparison *leq = new rsql::ColumnComparison(rsql::DataType::UINT, rsql::CompSymbol::LEQ, width_1, 0, width_2, width_1);
+    rsql::ColumnComparison *eq = new rsql::ColumnComparison(rsql::DataType::UINT, rsql::CompSymbol::EQ, width_1, 0, width_2, width_1);
+    rsql::ColumnComparison *geq = new rsql::ColumnComparison(rsql::DataType::UINT, rsql::CompSymbol::GEQ, width_1, 0, width_2, width_1);
+    rsql::ColumnComparison *gt = new rsql::ColumnComparison(rsql::DataType::UINT, rsql::CompSymbol::GT, width_1, 0, width_2, width_1);
+    size_t lt_correct = 0, leq_correct = 0, eq_correct = 0, geq_correct = 0, gt_correct = 0;
+    for (char *row : sample_data)
+    {
+        if (lt->compare(row))
+        {
+            lt_correct++;
+        }
+        if (leq->compare(row))
+        {
+            leq_correct++;
+        }
+        if (eq->compare(row))
+        {
+            eq_correct++;
+        }
+        if (geq->compare(row))
+        {
+            geq_correct++;
+        }
+        if (gt->compare(row))
+        {
+            gt_correct++;
+        }
+    }
+    BOOST_CHECK(lt_correct == 1);
+    BOOST_CHECK(leq_correct == 2);
+    BOOST_CHECK(eq_correct == 1);
+    BOOST_CHECK(geq_correct == 6);
+    BOOST_CHECK(gt_correct == 5);
+    delete lt;
+    delete leq;
+    delete eq;
+    delete geq;
+    delete gt;
+    for (char *row : sample_data)
+    {
+        delete[] row;
+    }
+}
+
+BOOST_AUTO_TEST_CASE(columns_comparison_test_signed_int)
+{
+    // date (10 bytes * 2)
+    std::vector<char *> sample_data;
+    size_t width_1 = 4, width_2 = 8, width = width_1 + width_2;
+    cpp_int c_1 = -3000, c_2 = 500;
+    for (int i = 0; i < 5; i++)
+    {
+        //  -3000   500
+        //  -2000   500
+        //  -1000   500
+        //  0       500
+        //  1000    500
+        char *row = new char[width];
+        rsql::scpp_int_to_char(row, width_1, c_1);
+        rsql::scpp_int_to_char(row + width_1, width_2, c_2);
+        c_1 += 1000;
+        sample_data.push_back(row);
+    }
+    for (int i = 0; i < 4; i++)
+    {
+        //  2000    500
+        //  1500    500
+        //  1000    500
+        //  500     500
+        char *row = new char[width];
+        rsql::scpp_int_to_char(row, width_1, c_1);
+        rsql::scpp_int_to_char(row + width_1, width_2, c_2);
+        c_1 -= 500;
+        sample_data.push_back(row);
+    }
+    rsql::ColumnComparison *lt = new rsql::ColumnComparison(rsql::DataType::SINT, rsql::CompSymbol::LT, width_1, 0, width_2, width_1);
+    rsql::ColumnComparison *leq = new rsql::ColumnComparison(rsql::DataType::SINT, rsql::CompSymbol::LEQ, width_1, 0, width_2, width_1);
+    rsql::ColumnComparison *eq = new rsql::ColumnComparison(rsql::DataType::SINT, rsql::CompSymbol::EQ, width_1, 0, width_2, width_1);
+    rsql::ColumnComparison *geq = new rsql::ColumnComparison(rsql::DataType::SINT, rsql::CompSymbol::GEQ, width_1, 0, width_2, width_1);
+    rsql::ColumnComparison *gt = new rsql::ColumnComparison(rsql::DataType::SINT, rsql::CompSymbol::GT, width_1, 0, width_2, width_1);
+    size_t lt_correct = 0, leq_correct = 0, eq_correct = 0, geq_correct = 0, gt_correct = 0;
+    for (char *row : sample_data)
+    {
+        if (lt->compare(row))
+        {
+            lt_correct++;
+        }
+        if (leq->compare(row))
+        {
+            leq_correct++;
+        }
+        if (eq->compare(row))
+        {
+            eq_correct++;
+        }
+        if (geq->compare(row))
+        {
+            geq_correct++;
+        }
+        if (gt->compare(row))
+        {
+            gt_correct++;
+        }
+    }
+    BOOST_CHECK(lt_correct == 4);
+    BOOST_CHECK(leq_correct == 5);
+    BOOST_CHECK(eq_correct == 1);
+    BOOST_CHECK(geq_correct == 5);
+    BOOST_CHECK(gt_correct == 4);
+    delete lt;
+    delete leq;
+    delete eq;
+    delete geq;
+    delete gt;
+    for (char *row : sample_data)
+    {
+        delete[] row;
+    }
+}
+
+BOOST_AUTO_TEST_CASE(and_comparisons_test){
+    std::vector<char *> sample_data;
+    size_t width_1 = 4, width_2 = 8, width_3 = 4, width_4 = 8, width = width_1 + width_2+ width_3 + width_4;
+    cpp_int c_1 = -3000, c_2 = 500, c_3 = 1200, c_4 = 500;
+    for (int i = 0; i < 5; i++)
+    {
+        //  c_1     c_2     c_3     c_4
+        //  -3000   500     1200    500
+        //  -2000   500     1200    600
+        //  -1000   500     1200    700
+        //  0       500     1200    800
+        //  1000    500     1200    900
+        char *row = new char[width];
+        rsql::scpp_int_to_char(row, width_1, c_1);
+        rsql::scpp_int_to_char(row + width_1, width_2, c_2);
+        c_1 += 1000;
+        rsql::ucpp_int_to_char(row + width_1 + width_2, width_3, c_3);
+        rsql::ucpp_int_to_char(row + width_1 + width_2 + width_3, width_4, c_4);
+        c_4 += 100;
+        sample_data.push_back(row);
+    }
+    for (int i = 0; i < 4; i++)
+    {
+        //  2000    500     1200    1000
+        //  1500    500     1200    800
+        //  1000    500     1200    600
+        //  500     500     1200    400
+        char *row = new char[width];
+        rsql::scpp_int_to_char(row, width_1, c_1);
+        rsql::scpp_int_to_char(row + width_1, width_2, c_2);
+        c_1 -= 500;
+        rsql::ucpp_int_to_char(row + width_1 + width_2, width_3, c_3);
+        rsql::ucpp_int_to_char(row + width_1 + width_2 + width_3, width_4, c_4);
+        c_4 -= 200;
+        sample_data.push_back(row);
+    }
+    cpp_int constant_val = 700;
+    char constant_val_char[width_4];
+    rsql::ucpp_int_to_char(constant_val_char, width_4, constant_val);
+    rsql::Comparison *col_1_less_than_col_2 = new rsql::ColumnComparison(rsql::DataType::SINT, rsql::CompSymbol::LT, width_1, 0, width_2, width_1);
+    rsql::Comparison *col_4_equal_700 = new rsql::ConstantComparison(rsql::DataType::UINT, rsql::CompSymbol::EQ, width_4, width_1 + width_2 + width_3, constant_val_char);
+    rsql::MultiComparisons *and_comparison = new rsql::ANDComparisons();
+    and_comparison->add_condition(col_1_less_than_col_2);
+    and_comparison->add_condition(col_4_equal_700);
+    delete col_1_less_than_col_2;
+    delete col_4_equal_700;
+    size_t correct = 0;
+    for (char *row : sample_data){
+        if (and_comparison->compare(row)){
+            correct++;
+        }
+    }
+    BOOST_CHECK(correct == 1);
+    delete and_comparison;
+    for (char *row : sample_data)
+    {
+        delete[] row;
+    }
+}
+
+BOOST_AUTO_TEST_CASE(or_comparisons_test){
+    std::vector<char *> sample_data;
+    size_t width_1 = 4, width_2 = 8, width_3 = 4, width_4 = 8, width = width_1 + width_2+ width_3 + width_4;
+    cpp_int c_1 = -3000, c_2 = 500, c_3 = 1200, c_4 = 500;
+    for (int i = 0; i < 5; i++)
+    {
+        //  c_1     c_2     c_3     c_4
+        //  -3000   500     1200    500
+        //  -2000   500     1200    600
+        //  -1000   500     1200    700
+        //  0       500     1200    800
+        //  1000    500     1200    900
+        char *row = new char[width];
+        rsql::scpp_int_to_char(row, width_1, c_1);
+        rsql::scpp_int_to_char(row + width_1, width_2, c_2);
+        c_1 += 1000;
+        rsql::ucpp_int_to_char(row + width_1 + width_2, width_3, c_3);
+        rsql::ucpp_int_to_char(row + width_1 + width_2 + width_3, width_4, c_4);
+        c_4 += 100;
+        sample_data.push_back(row);
+    }
+    for (int i = 0; i < 4; i++)
+    {
+        //  2000    500     1200    1000
+        //  1500    500     1200    800
+        //  1000    500     1200    600
+        //  500     500     1200    400
+        char *row = new char[width];
+        rsql::scpp_int_to_char(row, width_1, c_1);
+        rsql::scpp_int_to_char(row + width_1, width_2, c_2);
+        c_1 -= 500;
+        rsql::ucpp_int_to_char(row + width_1 + width_2, width_3, c_3);
+        rsql::ucpp_int_to_char(row + width_1 + width_2 + width_3, width_4, c_4);
+        c_4 -= 200;
+        sample_data.push_back(row);
+    }
+    cpp_int constant_val = 400;
+    char constant_val_char[width_4];
+    rsql::ucpp_int_to_char(constant_val_char, width_4, constant_val);
+    rsql::Comparison *col_1_less_than_col_2 = new rsql::ColumnComparison(rsql::DataType::SINT, rsql::CompSymbol::LT, width_1, 0, width_2, width_1);
+    rsql::Comparison *col_4_equal_400 = new rsql::ConstantComparison(rsql::DataType::UINT, rsql::CompSymbol::EQ, width_4, width_1 + width_2 + width_3, constant_val_char);
+    rsql::MultiComparisons *or_comparison = new rsql::ORComparisons();
+    or_comparison->add_condition(col_1_less_than_col_2);
+    or_comparison->add_condition(col_4_equal_400);
+    delete col_1_less_than_col_2;
+    delete col_4_equal_400;
+    size_t correct = 0;
+    for (char *row : sample_data){
+        if (or_comparison->compare(row)){
+            correct++;
+        }
+    }
+    BOOST_CHECK(correct == 5);
+    delete or_comparison;
+    for (char *row : sample_data)
+    {
+        delete[] row;
+    }
+}
+
+BOOST_AUTO_TEST_CASE(nested_comparisons_test){
+    // sint, sint, uint, uint
+    std::vector<char *> sample_data;
+    size_t width_1 = 4, width_2 = 8, width_3 = 4, width_4 = 8, width = width_1 + width_2+ width_3 + width_4;
+    cpp_int c_1 = -3000, c_2 = 500, c_3 = 1200, c_4 = 500;
+    for (int i = 0; i < 5; i++)
+    {
+        //  c_1     c_2     c_3     c_4
+        //  -3000   500     1200    500
+        //  -2000   500     1200    600
+        //  -1000   500     1200    700
+        //  0       500     1200    800
+        //  1000    500     1200    900
+        char *row = new char[width];
+        rsql::scpp_int_to_char(row, width_1, c_1);
+        rsql::scpp_int_to_char(row + width_1, width_2, c_2);
+        c_1 += 1000;
+        rsql::ucpp_int_to_char(row + width_1 + width_2, width_3, c_3);
+        rsql::ucpp_int_to_char(row + width_1 + width_2 + width_3, width_4, c_4);
+        c_4 += 100;
+        sample_data.push_back(row);
+    }
+    for (int i = 0; i < 4; i++)
+    {
+        //  2000    500     1200    1000
+        //  1500    500     1200    800
+        //  1000    500     1200    600
+        //  500     500     1200    400
+        char *row = new char[width];
+        rsql::scpp_int_to_char(row, width_1, c_1);
+        rsql::scpp_int_to_char(row + width_1, width_2, c_2);
+        c_1 -= 500;
+        rsql::ucpp_int_to_char(row + width_1 + width_2, width_3, c_3);
+        rsql::ucpp_int_to_char(row + width_1 + width_2 + width_3, width_4, c_4);
+        c_4 -= 200;
+        sample_data.push_back(row);
+    }
+    // ((c_1 < c_2 && c_4 = 700) || c_1 >= 1500)
+    cpp_int constant_val = 700;
+    char constant_val_char[width_4];
+    rsql::ucpp_int_to_char(constant_val_char, width_4, constant_val);
+    rsql::Comparison *col_1_less_than_col_2 = new rsql::ColumnComparison(rsql::DataType::SINT, rsql::CompSymbol::LT, width_1, 0, width_2, width_1);
+    rsql::Comparison *col_4_equal_700 = new rsql::ConstantComparison(rsql::DataType::UINT, rsql::CompSymbol::EQ, width_4, width_1 + width_2 + width_3, constant_val_char);
+    rsql::MultiComparisons *and_comparison = new rsql::ANDComparisons();
+    and_comparison->add_condition(col_1_less_than_col_2);
+    and_comparison->add_condition(col_4_equal_700);
+    delete col_1_less_than_col_2;
+    delete col_4_equal_700;
+    cpp_int const_1500 = 1500;
+    char constant_val_1500[width_1];
+    rsql::scpp_int_to_char(constant_val_1500, width_1, const_1500);
+    rsql::Comparison *col_1_geq_1500 = new rsql::ConstantComparison(rsql::DataType::SINT, rsql::CompSymbol::GEQ, width_1, 0, constant_val_1500);
+    rsql::MultiComparisons *or_comparison = new rsql::ORComparisons();
+    or_comparison->add_condition(col_1_geq_1500);
+    or_comparison->add_condition(and_comparison);
+    delete col_1_geq_1500;
+    delete and_comparison;
+    size_t correct = 0;
+    for (char *row : sample_data){
+        if (or_comparison->compare(row)){
+            correct++;
+        }
+    }
+    BOOST_CHECK(correct == 3);
+    delete or_comparison;
+    for (char *row : sample_data)
+    {
+        delete[] row;
+    }
 }
