@@ -2,11 +2,13 @@
 #include <boost/test/included/unit_test.hpp>
 #include "tree.h"
 std::string clean_this_cache = "make cleancache";
-BOOST_AUTO_TEST_CASE(merge_node_test){
+BOOST_AUTO_TEST_CASE(merge_node_test)
+{
     std::vector<rsql::Column> structure_1;
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::DEFAULT_KEY, 0));
     rsql::BTree *tree = rsql::BTree::create_new_tree();
-    for (rsql::Column &c : structure_1){
+    for (rsql::Column &c : structure_1)
+    {
         tree->add_column(c);
     }
     char key[DEFAULT_KEY_WIDTH + 1] = "00000000000000000000000000000000";
@@ -52,14 +54,17 @@ BOOST_AUTO_TEST_CASE(merge_node_test){
     delete c_3;
     std::system(clean_this_cache.c_str());
 }
-BOOST_AUTO_TEST_CASE(match_column_test){
+
+BOOST_AUTO_TEST_CASE(match_column_test)
+{
     size_t structure_1_w = DEFAULT_KEY_WIDTH + 4 + 10;
     std::vector<rsql::Column> structure_1;
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::DEFAULT_KEY, 0));
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::UINT, 4));
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
     rsql::BTree *tree = rsql::BTree::create_new_tree();
-    for (rsql::Column &c : structure_1){
+    for (rsql::Column &c : structure_1)
+    {
         tree->add_column(c);
     }
     rsql::BNode *node = new rsql::BNode(tree, 0);
@@ -96,30 +101,36 @@ BOOST_AUTO_TEST_CASE(match_column_test){
     std::system(clean_this_cache.c_str());
 }
 
-BOOST_AUTO_TEST_CASE(find_first_idx_test){
+BOOST_AUTO_TEST_CASE(find_first_idx_test)
+{
     std::vector<rsql::Column> structure_1;
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::DEFAULT_KEY, 0));
     rsql::BTree *tree = rsql::BTree::create_new_tree();
-    for (rsql::Column &c : structure_1){
+    for (rsql::Column &c : structure_1)
+    {
         tree->add_column(c);
     }
-    if (DEGREE != 128){
+    if (DEGREE != 128)//Tested on degree 128
+    {
         return;
     }
     char key[DEFAULT_KEY_WIDTH];
     std::memset(key, 0, DEFAULT_KEY_WIDTH);
     rsql::BNode *node = new rsql::BNode(tree, 0);
     size_t cur_idx = 0;
-    for (; cur_idx < 5 ; cur_idx++){// 0 to 4
+    for (; cur_idx < 5; cur_idx++)
+    { // 0 to 4
         node->keys[cur_idx] = new char[DEFAULT_KEY_WIDTH];
         std::memcpy(node->keys[cur_idx], key, DEFAULT_KEY_WIDTH);
         key[DEFAULT_KEY_WIDTH - 1]++;
     }
-    for (; cur_idx < 8 ; cur_idx++){// 5 to 7
+    for (; cur_idx < 8; cur_idx++)
+    { // 5 to 7
         node->keys[cur_idx] = new char[DEFAULT_KEY_WIDTH];
         std::memcpy(node->keys[cur_idx], key, DEFAULT_KEY_WIDTH);
     }
-    for (; cur_idx < 10 ; cur_idx++){// 8 to 9
+    for (; cur_idx < 10; cur_idx++)
+    { // 8 to 9
         key[DEFAULT_KEY_WIDTH - 1]++;
         node->keys[cur_idx] = new char[DEFAULT_KEY_WIDTH];
         std::memcpy(node->keys[cur_idx], key, DEFAULT_KEY_WIDTH);
@@ -143,30 +154,36 @@ BOOST_AUTO_TEST_CASE(find_first_idx_test){
     delete tree;
 }
 
-BOOST_AUTO_TEST_CASE(find_last_idx_test){
+BOOST_AUTO_TEST_CASE(find_last_idx_test)
+{
     std::vector<rsql::Column> structure_1;
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::DEFAULT_KEY, 0));
     rsql::BTree *tree = rsql::BTree::create_new_tree();
-    for (rsql::Column &c : structure_1){
+    for (rsql::Column &c : structure_1)
+    {
         tree->add_column(c);
     }
-    if (DEGREE != 128){
+    if (DEGREE != 128)
+    {
         return;
     }
     char key[DEFAULT_KEY_WIDTH];
     std::memset(key, 0, DEFAULT_KEY_WIDTH);
     rsql::BNode *node = new rsql::BNode(tree, 0);
     size_t cur_idx = 0;
-    for (; cur_idx < 5 ; cur_idx++){// 0 to 4
+    for (; cur_idx < 5; cur_idx++)
+    { // 0 to 4
         node->keys[cur_idx] = new char[DEFAULT_KEY_WIDTH];
         std::memcpy(node->keys[cur_idx], key, DEFAULT_KEY_WIDTH);
         key[DEFAULT_KEY_WIDTH - 1]++;
     }
-    for (; cur_idx < 8 ; cur_idx++){// 5 to 7
+    for (; cur_idx < 8; cur_idx++)
+    { // 5 to 7
         node->keys[cur_idx] = new char[DEFAULT_KEY_WIDTH];
         std::memcpy(node->keys[cur_idx], key, DEFAULT_KEY_WIDTH);
     }
-    for (; cur_idx < 10 ; cur_idx++){// 8 to 9
+    for (; cur_idx < 10; cur_idx++)
+    { // 8 to 9
         key[DEFAULT_KEY_WIDTH - 1]++;
         node->keys[cur_idx] = new char[DEFAULT_KEY_WIDTH];
         std::memcpy(node->keys[cur_idx], key, DEFAULT_KEY_WIDTH);

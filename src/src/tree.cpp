@@ -157,6 +157,26 @@ namespace rsql
         }
         return to_ret;
     }
+    std::vector<char *> BTree::search_rows(const char *key, CompSymbol symbol, Comparison *comparison)
+    {
+        std::vector<char *> result;
+        if (key == nullptr)
+        {
+            if (comparison == nullptr){
+                comparison = new ORComparisons();
+                this->root->linear_search(result, comparison);
+                delete comparison;
+            }
+            else{
+                this->root->linear_search(result, comparison);
+            }
+        }
+        else
+        {
+            this->root->indexed_search(result, key, symbol, comparison);
+        }
+        return result;
+    }
     void BTree::insert_row(const char *src)
     {
         if (this->root->full())
@@ -245,7 +265,8 @@ namespace rsql
     }
     void BTree::remove_column(const size_t idx)
     {
-        if (idx == 0){
+        if (idx == 0)
+        {
             throw std::invalid_argument("Can't delete the first column");
             return;
         }

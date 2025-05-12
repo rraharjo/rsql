@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 // Can be changed to any number >= 2
-#define DEGREE 128
+#define DEGREE 2
 #define DISK_BUFFER_SZ 4096
 #define TREE_FILE "tree.rsql"
 namespace rsql
@@ -52,6 +52,15 @@ namespace rsql
          * @return std::vector<char *> a vector constisting copies of the found elements, dynamically allocated
          */
         std::vector<char *> find_all_row(const char *search_key, const size_t col_idx);
+        /**
+         * @brief Search all rows that satisfy both key and comparison. if both arguments are null, then all rows will always satisfy the condition
+         * 
+         * @param key null by default. This function does not take ownership of this pointer
+         * @param symbol equal by default. Specify which key is valid. e.g. GEQ means takes all row of which key is greater or equal than the key argument
+         * @param comparison null by default. This function does not take ownership of this pointer
+         * @return std::vector<char *> each item is dynamically allocated. Ownership of pointers goes to the caller.
+         */
+        std::vector<char *> search_rows(const char *key = nullptr, CompSymbol symbol = CompSymbol::EQ, Comparison *comparison = nullptr);
         /**
          * @brief insert src to the tree. Only n bytes of src will be inserted, where n is the width of the tree
          *

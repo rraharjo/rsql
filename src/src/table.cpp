@@ -201,7 +201,8 @@ namespace rsql
     }
     void Table::add_column(const std::string name, const rsql::Column col)
     {
-        if (col.type == DataType::DEFAULT_KEY){
+        if (col.type == DataType::DEFAULT_KEY)
+        {
             throw std::invalid_argument("Can't add default key column");
             return;
         }
@@ -305,6 +306,56 @@ namespace rsql
         }
         this->insert_row_bin(row_bin.get());
     }
+    std::vector<char *> Table::search_row(std::string key_col, const char *key_val, CompSymbol symbol, Comparison *comparison)
+    {
+        auto it = this->col_name_indexes.find(key_col);
+        if (it == this->col_name_indexes.end())
+        {
+            std::string err_msg = "Table " + this->table_name + " does not have a column named " + key_col;
+            throw std::invalid_argument(err_msg);
+            return std::vector<char *>();
+        }
+        uint32_t col_idx = it->second;
+        if (col_idx == 0)
+        {
+            return this->primary_tree->search_rows(key_val, symbol, comparison);
+        }
+
+        Column comparison_col = this->primary_tree->columns[col_idx];
+        size_t preceding_size = 0;
+        for (uint32_t i = 0; i < col_idx; i++)
+        {
+            preceding_size += this->primary_tree->columns[i].width;
+        }
+
+        auto optional_tree_it = this->optional_trees.find(col_idx);
+        if (optional_tree_it == this->optional_trees.end())
+        {
+            MultiComparisons *new_comparison = new ANDComparisons();
+            Comparison *key_comparison = new ConstantComparison(comparison_col.type, symbol, comparison_col.width, preceding_size, key_val);
+            new_comparison->add_condition(key_comparison);
+            if (comparison != nullptr)
+            {
+                new_comparison->add_condition(comparison);
+            }
+            delete key_comparison;
+            std::vector<char *> to_ret = this->primary_tree->search_rows(nullptr, CompSymbol::EQ, new_comparison);
+            delete new_comparison;
+            return to_ret;
+        }
+        else
+        {
+            BTree *optional_tree = optional_tree_it->second;
+            std::vector<char *> optional_result = optional_tree->search_rows(key_val, symbol);
+            std::vector<char *> to_ret;
+            for (size_t i = 0; i < optional_result.size(); i++)
+            {
+                std::vector<char *> res = this->primary_tree->search_rows(optional_result[i] + comparison_col.width, CompSymbol::EQ, comparison);
+                to_ret.insert(to_ret.end(), res.begin(), res.end());
+            }
+            return to_ret;
+        }
+    }
     std::vector<char *> Table::find_row(const char *key, size_t col_idx, BTree *tree)
     {
         if (tree != nullptr)
@@ -385,6 +436,8 @@ namespace rsql
         }
         uintuint32 key = {std::make_pair(index_it_1->second, index_it_2->second)};
         auto tree_it = this->composite_trees.find(key);
+        //TODO: NOT DONE
+        return {};
     }
     void Table::index_column(const std::string col_name)
     {

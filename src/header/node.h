@@ -11,9 +11,6 @@
 namespace rsql
 {
     class BTree;
-}
-namespace rsql
-{
     class BNode
     {
     public:
@@ -154,6 +151,8 @@ namespace rsql
          * @param alls found rows
          */
         void find_all_unindexed(const char *key, const size_t col_idx, const size_t preceding_size, std::vector<char *> &alls);
+        void indexed_search(std::vector<char *> &result, const char *const key, const CompSymbol symbol = CompSymbol::EQ, Comparison *extra_condition = nullptr);
+        void linear_search(std::vector<char *> &result, Comparison *condition);
         void insert(const char *row);
         char *delete_row(const char *key);
         void write_disk();

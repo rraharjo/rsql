@@ -358,7 +358,7 @@ BOOST_AUTO_TEST_CASE(optional_indexing_find_quality_test)
     table->index_column("col_3");
     std::vector<char *> rows = table->find_row_text("1", "col_3");
     uint32_t target_col_val = 1;
-    
+
     std::memset(row, 0, 10);
     boost::multiprecision::export_bits(num_1, row, 8, false);
     std::memcpy(row + 10, date.data(), 10);
@@ -565,6 +565,108 @@ BOOST_AUTO_TEST_CASE(optional_indexing_write_reload_table_test)
     for (const char *c : res_col_3)
     {
         delete[] c;
+    }
+    delete table;
+    delete db;
+    std::system(clear_cache.c_str());
+}
+
+BOOST_AUTO_TEST_CASE(search_table_test)
+{
+    rsql::Database *db = rsql::Database::create_new_database("test_db");
+    BOOST_CHECK(db != nullptr);
+    rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
+    BOOST_CHECK(table != nullptr);
+
+    table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::UINT, 10));
+    table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
+    table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::SINT, 4));
+
+    const size_t buff_width = 10 + 10 + 4;
+    char buff[buff_width];
+    std::memset(buff, 0, buff_width);
+    cpp_int unsigned_int = 100000;
+    rsql::ucpp_int_to_char(buff, 10, unsigned_int);
+    std::memcpy(buff + 10, "2025-05-12", 10);
+    cpp_int signed_int = -15000;
+    rsql::scpp_int_to_char(buff + 20, 4, signed_int);
+    for (size_t i = 0; i < 50; i++)
+    {
+        table->insert_row_bin(buff);
+        unsigned_int++;
+        rsql::ucpp_int_to_char(buff, 10, unsigned_int);
+    }
+    char search_key[DEFAULT_KEY_WIDTH];
+    std::memset(search_key, 0, DEFAULT_KEY_WIDTH);
+    search_key[DEFAULT_KEY_WIDTH - 1] = 37;
+    std::vector<char *> res_indexed = table->search_row(DEF_KEY_COL_NAME, search_key, rsql::CompSymbol::LEQ, nullptr);
+
+    char uint_search[10];
+    cpp_int uint_search_int = 100005;
+    rsql::ucpp_int_to_char(uint_search, 10, uint_search_int);
+    rsql::Comparison *comp = new rsql::ConstantComparison(rsql::DataType::UINT, rsql::CompSymbol::GEQ, 10, DEFAULT_KEY_WIDTH, uint_search);
+    std::vector<char *> res_with_comparison = table->search_row(DEF_KEY_COL_NAME, search_key, rsql::CompSymbol::LEQ, comp);
+
+    rsql::Comparison *key_comparison = new rsql::ConstantComparison(rsql::DataType::DEFAULT_KEY, rsql::CompSymbol::LEQ, DEFAULT_KEY_WIDTH, 0, search_key);
+    std::vector<char *> res_linear = table->search_row("col_1", uint_search, rsql::CompSymbol::GEQ, key_comparison);
+
+    delete key_comparison;
+    delete comp;
+
+    BOOST_CHECK(res_indexed.size() == 38);
+    for (size_t i = 0; i < res_indexed.size(); i++)
+    {
+        BOOST_CHECK(res_indexed[i][DEFAULT_KEY_WIDTH - 1] >= 0);
+        BOOST_CHECK(res_indexed[i][DEFAULT_KEY_WIDTH - 1] <= 37);
+        cpp_int this_row_uint;
+        rsql::char_to_ucpp_int(res_indexed[i] + DEFAULT_KEY_WIDTH, 10, this_row_uint);
+        BOOST_CHECK(this_row_uint >= 100000);
+        BOOST_CHECK(this_row_uint <= 100037);
+        BOOST_CHECK(std::strncmp(res_indexed[i] + DEFAULT_KEY_WIDTH + 10, "2025-05-12", 10) == 0);
+        cpp_int this_row_sint;
+        rsql::char_to_scpp_int(res_indexed[i] + DEFAULT_KEY_WIDTH + 20, 4, this_row_sint);
+        BOOST_CHECK(this_row_sint == -15000);
+    }
+
+    BOOST_CHECK(res_with_comparison.size() == 33);
+    for (size_t i = 0; i < res_with_comparison.size(); i++)
+    {
+        BOOST_CHECK(res_with_comparison[i][DEFAULT_KEY_WIDTH - 1] >= 5);
+        BOOST_CHECK(res_with_comparison[i][DEFAULT_KEY_WIDTH - 1] <= 37);
+        cpp_int this_row_uint;
+        rsql::char_to_ucpp_int(res_with_comparison[i] + DEFAULT_KEY_WIDTH, 10, this_row_uint);
+        BOOST_CHECK(this_row_uint >= 100005);
+        BOOST_CHECK(this_row_uint <= 100037);
+        BOOST_CHECK(std::strncmp(res_with_comparison[i] + DEFAULT_KEY_WIDTH + 10, "2025-05-12", 10) == 0);
+        cpp_int this_row_sint;
+        rsql::char_to_scpp_int(res_with_comparison[i] + DEFAULT_KEY_WIDTH + 20, 4, this_row_sint);
+        BOOST_CHECK(this_row_sint == -15000);
+    }
+
+    BOOST_CHECK(res_linear.size() == 33);
+    for (size_t i = 0; i < res_linear.size(); i++)
+    {
+        BOOST_CHECK(res_linear[i][DEFAULT_KEY_WIDTH - 1] >= 5);
+        BOOST_CHECK(res_linear[i][DEFAULT_KEY_WIDTH - 1] <= 37);
+        cpp_int this_row_uint;
+        rsql::char_to_ucpp_int(res_linear[i] + DEFAULT_KEY_WIDTH, 10, this_row_uint);
+        BOOST_CHECK(this_row_uint >= 100005);
+        BOOST_CHECK(this_row_uint <= 100037);
+        BOOST_CHECK(std::strncmp(res_linear[i] + DEFAULT_KEY_WIDTH + 10, "2025-05-12", 10) == 0);
+        cpp_int this_row_sint;
+        rsql::char_to_scpp_int(res_linear[i] + DEFAULT_KEY_WIDTH + 20, 4, this_row_sint);
+        BOOST_CHECK(this_row_sint == -15000);
+    }
+    for (const char *r : res_indexed)
+    {
+        delete[] r;
+    }
+    for (const char *r : res_with_comparison)
+    {
+        delete[] r;
+    }
+    for (const char *r : res_linear){
+        delete[] r;
     }
     delete table;
     delete db;

@@ -135,7 +135,7 @@ namespace rsql
     }
     int BNode::last_child_idx(const char *k, CompSymbol symbol)
     {
-        if (symbol == CompSymbol::GEQ || symbol == CompSymbol::GT)//Last item that is GEQ k
+        if (symbol == CompSymbol::GEQ || symbol == CompSymbol::GT) // Last item that is GEQ k
         {
             return this->size;
         }
@@ -161,7 +161,7 @@ namespace rsql
     }
     int BNode::first_child_idx(const char *k, CompSymbol symbol)
     {
-        if (symbol == CompSymbol::LEQ || symbol == CompSymbol::LT)//First item that is less than k
+        if (symbol == CompSymbol::LEQ || symbol == CompSymbol::LT) // First item that is less than k
         {
             return 0;
         }
@@ -634,6 +634,60 @@ namespace rsql
             std::string c_i_str = BNode::get_file_name(this_children[i]);
             BNode *c_i = BNode::read_disk(tree, c_i_str);
             c_i->find_all_unindexed(k, col_idx, preceding_size, alls);
+        }
+    }
+    void BNode::indexed_search(std::vector<char *> &result, const char *const key, const CompSymbol symbol, Comparison *extra_condition)
+    {
+        size_t valid_low = this->first_child_idx(key, symbol);
+        size_t valid_high = this->last_child_idx(key, symbol);
+        for (size_t i = valid_low; i < valid_high; i++)
+        {
+            if (this->compare_key(this->keys[i], key, 0, symbol) && (extra_condition == nullptr || extra_condition->compare(keys[i])))
+            {
+                char *found = new char[this->tree->width];
+                std::memcpy(found, this->keys[i], this->tree->width);
+                result.push_back(found);
+                if (this->tree->unique_key && symbol == CompSymbol::EQ)
+                {
+                    return;
+                }
+            }
+        }
+        std::vector<uint32_t> next_nodes;
+        if (!this->leaf)
+        {
+            next_nodes.insert(next_nodes.end(), this->children.begin() + valid_low, this->children.begin() + valid_high + 1);
+        }
+        this->del_if_not_root();
+        for (const uint32_t next_node : next_nodes)
+        {
+            std::string file_name = BNode::get_file_name(next_node);
+            BNode *cur_node = BNode::read_disk(this->tree, file_name);
+            cur_node->indexed_search(result, key, symbol, extra_condition);
+        }
+    }
+    void BNode::linear_search(std::vector<char *> &result, Comparison *condition)
+    {
+        for (uint32_t i = 0; i < this->size; i++)
+        {
+            if (condition->compare(this->keys[i]))
+            {
+                char *found = new char[this->tree->width];
+                std::memcpy(found, this->keys[i], this->tree->width);
+                result.push_back(found);
+            }
+        }
+        std::vector<uint32_t> next_nodes;
+        if (!this->leaf)
+        {
+            next_nodes.insert(next_nodes.end(), this->children.begin(), this->children.begin() + this->size + 1);
+        }
+        this->del_if_not_root();
+        for (const uint32_t next_node : next_nodes)
+        {
+            std::string file_name = BNode::get_file_name(next_node);
+            BNode *cur_node = BNode::read_disk(this->tree, file_name);
+            cur_node->linear_search(result, condition);
         }
     }
     void BNode::insert(const char *src)

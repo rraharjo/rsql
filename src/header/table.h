@@ -38,6 +38,10 @@ namespace rsql
         unsigned char next_default_key[DEFAULT_KEY_WIDTH];
 
         rsql::BTree *primary_tree;
+        /**
+         * @brief key is the index, value is the pointer to the tree. If a column does not have a tree, that column does not belong in this attribute
+         * 
+         */
         std::unordered_map<uint32_t, rsql::BTree *> optional_trees;
         std::unordered_map<uintuint32, rsql::BTree *, PairComp> composite_trees;
 
@@ -113,6 +117,8 @@ namespace rsql
          * @return std::vector<char *> all rows, dynamically allocated
          */
         void insert_row_text(const std::vector<std::string> &row);
+        //TODO: test this function
+        std::vector<char *> search_row(std::string key_col, const char *key, CompSymbol symbol = CompSymbol::EQ, Comparison *comparison = nullptr);
         std::vector<char *> find_row_bin(const char *key, const std::string col_name);
         std::vector<char *> find_row_text(std::string key, const std::string col_name);
         std::vector<char *> find_row_col_comparison(const std::string col_name_1, const std::string col_name_2);
