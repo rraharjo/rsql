@@ -723,3 +723,179 @@ BOOST_AUTO_TEST_CASE(delete_all_unindexed_test)
     delete tree;
     std::system(clean_this_cache.c_str());
 }
+
+BOOST_AUTO_TEST_CASE(delete_row_test)
+{
+    rsql::BTree *tree = rsql::BTree::create_new_tree(nullptr, 0, false);
+    tree->add_column(rsql::Column::pkey_column(0));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
+    tree->add_column(rsql::Column::date_column(0));
+    tree->add_column(rsql::Column::char_column(0, 10));
+    size_t row_width = DEFAULT_KEY_WIDTH + 4 + 10 + 10;
+    char row[row_width];
+    std::memset(row, 0, row_width);
+    cpp_int ucpp = 0;
+    std::memcpy(row + 36, "2025/05/14", 10);
+    std::memcpy(row + 46, "SUPERBAD", 8);
+    for (size_t i = 0; i < 25; i++)
+    {
+        tree->insert_row(row);
+        ucpp++;
+        rsql::ucpp_int_to_char(row + 32, 4, ucpp);
+    }
+    rsql::increment_default_key(reinterpret_cast<unsigned char *>(row));
+    for (size_t i = 0; i < 25; i++)
+    {
+        tree->insert_row(row);
+        ucpp++;
+        rsql::ucpp_int_to_char(row + 32, 4, ucpp);
+    }
+    char key[DEFAULT_KEY_WIDTH];
+    std::memset(key, 0, DEFAULT_KEY_WIDTH);
+    std::vector<char *> res = tree->delete_all_row(key);
+    std::vector<char *> not_found = tree->search_rows(key);
+    BOOST_CHECK(res.size() == 25);
+    for (size_t i = 0 ; i < res.size() ; i++){
+        BOOST_CHECK(std::memcmp(res[i], key, DEFAULT_KEY_WIDTH) == 0);
+        cpp_int cur_ucpp;
+        rsql::char_to_ucpp_int(res[i] + DEFAULT_KEY_WIDTH, 4, cur_ucpp);
+        BOOST_CHECK(cur_ucpp >= 0);
+        BOOST_CHECK(cur_ucpp < 25);
+        BOOST_CHECK(std::strncmp(res[i] + 36, "2025/05/14", 10) == 0);
+        BOOST_CHECK(std::strncmp(res[i] + 46, "SUPERBAD", 8) == 0);
+    }
+    BOOST_CHECK(not_found.size() == 0);
+    for (size_t i = 0 ; i < res.size() ; i++){
+        delete[] res[i];
+    }
+    delete tree;
+    std::system(clean_this_cache.c_str());
+}
+
+BOOST_AUTO_TEST_CASE(delete_row_test_with_comparison)
+{
+    rsql::BTree *tree = rsql::BTree::create_new_tree(nullptr, 0, false);
+    tree->add_column(rsql::Column::pkey_column(0));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
+    tree->add_column(rsql::Column::date_column(0));
+    tree->add_column(rsql::Column::char_column(0, 10));
+    size_t row_width = DEFAULT_KEY_WIDTH + 4 + 10 + 10;
+    char row[row_width];
+    std::memset(row, 0, row_width);
+    cpp_int ucpp = 0;
+    std::memcpy(row + 36, "2025/05/14", 10);
+    std::memcpy(row + 46, "SUPERBAD", 8);
+    for (size_t i = 0; i < 25; i++)
+    {
+        tree->insert_row(row);
+        ucpp++;
+        rsql::ucpp_int_to_char(row + 32, 4, ucpp);
+    }
+    rsql::increment_default_key(reinterpret_cast<unsigned char *>(row));
+    for (size_t i = 0; i < 25; i++)
+    {
+        tree->insert_row(row);
+        ucpp++;
+        rsql::ucpp_int_to_char(row + 32, 4, ucpp);
+    }
+    char key[DEFAULT_KEY_WIDTH];
+    std::memset(key, 0, DEFAULT_KEY_WIDTH);
+    cpp_int comp_val = 10;
+    char comp_val_char[4];
+    rsql::ucpp_int_to_char(comp_val_char, 4, comp_val);
+    rsql::Comparison *ucpp_gt_10 = new rsql::ConstantComparison(rsql::DataType::UINT, rsql::CompSymbol::GT, 4, 32, comp_val_char);
+    std::vector<char *> res = tree->delete_all_row(key, ucpp_gt_10);
+    std::vector<char *> found_some = tree->search_rows(key);
+    BOOST_CHECK(res.size() == 14);
+    for (size_t i = 0 ; i < res.size() ; i++){
+        BOOST_CHECK(std::memcmp(res[i], key, DEFAULT_KEY_WIDTH) == 0);
+        cpp_int cur_ucpp;
+        rsql::char_to_ucpp_int(res[i] + DEFAULT_KEY_WIDTH, 4, cur_ucpp);
+        BOOST_CHECK(cur_ucpp > 10);
+        BOOST_CHECK(cur_ucpp < 25);
+        BOOST_CHECK(std::strncmp(res[i] + 36, "2025/05/14", 10) == 0);
+        BOOST_CHECK(std::strncmp(res[i] + 46, "SUPERBAD", 8) == 0);
+    }
+    BOOST_CHECK(found_some.size() == 11);
+    for (size_t i = 0 ; i < found_some.size() ; i++){
+        BOOST_CHECK(std::memcmp(found_some[i], key, DEFAULT_KEY_WIDTH) == 0);
+        cpp_int cur_ucpp;
+        rsql::char_to_ucpp_int(found_some[i] + DEFAULT_KEY_WIDTH, 4, cur_ucpp);
+        BOOST_CHECK(cur_ucpp >= 0);
+        BOOST_CHECK(cur_ucpp < 11);
+        BOOST_CHECK(std::strncmp(found_some[i] + 36, "2025/05/14", 10) == 0);
+        BOOST_CHECK(std::strncmp(found_some[i] + 46, "SUPERBAD", 8) == 0);
+    }
+    for (size_t i = 0 ; i < res.size() ; i++){
+        delete[] res[i];
+    }
+    for (size_t i = 0 ; i < found_some.size() ; i++){
+        delete[] found_some[i];
+    }
+    delete tree;
+    std::system(clean_this_cache.c_str());
+}
+
+BOOST_AUTO_TEST_CASE(delete_row_with_linear_search)
+{
+    rsql::BTree *tree = rsql::BTree::create_new_tree(nullptr, 0, false);
+    tree->add_column(rsql::Column::pkey_column(0));
+    tree->add_column(rsql::Column::unsigned_int_column(0, 4));
+    tree->add_column(rsql::Column::date_column(0));
+    tree->add_column(rsql::Column::char_column(0, 10));
+    size_t row_width = DEFAULT_KEY_WIDTH + 4 + 10 + 10;
+    char row[row_width];
+    std::memset(row, 0, row_width);
+    cpp_int ucpp = 0;
+    std::memcpy(row + 36, "2025/05/14", 10);
+    std::memcpy(row + 46, "SUPERBAD", 8);
+    for (size_t i = 0; i < 25; i++)
+    {
+        tree->insert_row(row);
+        ucpp++;
+        rsql::ucpp_int_to_char(row + 32, 4, ucpp);
+    }
+    rsql::increment_default_key(reinterpret_cast<unsigned char *>(row));
+    for (size_t i = 0; i < 25; i++)
+    {
+        tree->insert_row(row);
+        ucpp++;
+        rsql::ucpp_int_to_char(row + 32, 4, ucpp);
+    }
+    char key[DEFAULT_KEY_WIDTH];
+    std::memset(key, 0, DEFAULT_KEY_WIDTH);
+    cpp_int comp_val = 10;
+    char comp_val_char[4];
+    rsql::ucpp_int_to_char(comp_val_char, 4, comp_val);
+    rsql::Comparison *ucpp_gt_10 = new rsql::ConstantComparison(rsql::DataType::UINT, rsql::CompSymbol::GT, 4, 32, comp_val_char);
+    std::vector<char *> res = tree->delete_all_row(nullptr, ucpp_gt_10);
+    std::vector<char *> found_some = tree->search_rows(key);
+    BOOST_CHECK(res.size() == 39);
+    for (size_t i = 0 ; i < res.size() ; i++){
+        BOOST_CHECK(res[i][DEFAULT_KEY_WIDTH - 1] == 0 || res[i][DEFAULT_KEY_WIDTH - 1] == 1);
+        cpp_int cur_ucpp;
+        rsql::char_to_ucpp_int(res[i] + DEFAULT_KEY_WIDTH, 4, cur_ucpp);
+        BOOST_CHECK(cur_ucpp > 10);
+        BOOST_CHECK(cur_ucpp < 50);
+        BOOST_CHECK(std::strncmp(res[i] + 36, "2025/05/14", 10) == 0);
+        BOOST_CHECK(std::strncmp(res[i] + 46, "SUPERBAD", 8) == 0);
+    }
+    BOOST_CHECK(found_some.size() == 11);
+    for (size_t i = 0 ; i < found_some.size() ; i++){
+        BOOST_CHECK(std::memcmp(found_some[i], key, DEFAULT_KEY_WIDTH) == 0);
+        cpp_int cur_ucpp;
+        rsql::char_to_ucpp_int(found_some[i] + DEFAULT_KEY_WIDTH, 4, cur_ucpp);
+        BOOST_CHECK(cur_ucpp >= 0);
+        BOOST_CHECK(cur_ucpp < 11);
+        BOOST_CHECK(std::strncmp(found_some[i] + 36, "2025/05/14", 10) == 0);
+        BOOST_CHECK(std::strncmp(found_some[i] + 46, "SUPERBAD", 8) == 0);
+    }
+    for (size_t i = 0 ; i < res.size() ; i++){
+        delete[] res[i];
+    }
+    for (size_t i = 0 ; i < found_some.size() ; i++){
+        delete[] found_some[i];
+    }
+    delete tree;
+    std::system(clean_this_cache.c_str());
+}

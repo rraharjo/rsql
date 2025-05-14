@@ -81,7 +81,15 @@ namespace rsql
          * @param key
          * @return char * the deleted element, dynamically allocated
          */
-        char *delete_row(const char *key);
+        char *delete_row(const char *key, Comparison *comp = nullptr);
+        /**
+         * @brief Delete all rows with matching key and comparison. If key is null, a linear search will be performed
+         * 
+         * @param key 
+         * @param comparison 
+         * @return std::vector<char *> 
+         */
+        std::vector<char *> delete_all_row(const char *key = nullptr, Comparison *comparison = nullptr);
         /**
          * @brief Delete all occurences of which value at column indexed col_idx equals to the argument key
          *

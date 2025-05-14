@@ -352,7 +352,7 @@ namespace rsql
         this->del_if_not_root();
         return to_ret;
     }
-    char *BNode::delete_row_2(const char *key, const size_t idx)
+    char *BNode::delete_row_2(const char *key, const size_t idx, Comparison *comparison)
     {
         uint32_t c_i_num = this->children[idx];
         std::string c_i_str = BNode::get_file_name(c_i_num);
@@ -381,9 +381,9 @@ namespace rsql
         }
         this->merge(idx, c_i, c_j);
         this->del_if_not_root();
-        return c_i->delete_row(key);
+        return c_i->delete_row(key, comparison);
     }
-    char *BNode::delete_row_3(const char *key, const size_t idx)
+    char *BNode::delete_row_3(const char *key, const size_t idx, Comparison *comparison)
     {
         uint32_t c_i_num = this->children[idx];
         std::string c_i_str = BNode::get_file_name(c_i_num);
@@ -412,7 +412,7 @@ namespace rsql
                     this->changed = true;
                     delete c_l;
                     this->del_if_not_root();
-                    return c_i->delete_row(key);
+                    return c_i->delete_row(key, comparison);
                 }
             }
             if (idx < this->size)
@@ -436,7 +436,7 @@ namespace rsql
                     this->changed = true;
                     delete c_r;
                     this->del_if_not_root();
-                    return c_i->delete_row(key);
+                    return c_i->delete_row(key, comparison);
                 }
             }
             if (idx > 0)
@@ -447,15 +447,15 @@ namespace rsql
                     delete c_r;
                 }
                 this->del_if_not_root();
-                return c_l->delete_row(key);
+                return c_l->delete_row(key, comparison);
             }
             this->merge(idx, c_i, c_r);
             // idx is definitely 0, c_l is null
             this->del_if_not_root();
-            return c_i->delete_row(key);
+            return c_i->delete_row(key, comparison);
         }
         this->del_if_not_root();
-        return c_i->delete_row(key);
+        return c_i->delete_row(key, comparison);
     }
     inline void BNode::del_if_not_root()
     {
@@ -733,24 +733,24 @@ namespace rsql
             c_i->insert(src);
         }
     }
-    char *BNode::delete_row(const char *key)
+    char *BNode::delete_row(const char *key, Comparison *comp)
     {
         size_t idx = 0;
         while (idx < this->size && this->compare_key(key, this->keys[idx], 0, CompSymbol::GT))
         {
             idx++;
         }
-        if (idx < this->size && this->compare_key(key, this->keys[idx], 0) && this->leaf)
+        if (idx < this->size && this->leaf && this->compare_key(key, this->keys[idx], 0) && (!comp || comp->compare(this->keys[idx])))
         {
             return this->delete_row_1(idx);
         }
-        else if (idx < this->size && this->compare_key(key, this->keys[idx], 0) && !this->leaf)
+        else if (idx < this->size && this->compare_key(key, this->keys[idx], 0) && !this->leaf && (!comp || comp->compare(this->keys[idx])))
         {
-            return this->delete_row_2(key, idx);
+            return this->delete_row_2(key, idx, comp);
         }
         else if (!this->leaf)
         {
-            return this->delete_row_3(key, idx);
+            return this->delete_row_3(key, idx, comp);
         }
         else
         {

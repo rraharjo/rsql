@@ -71,14 +71,14 @@ namespace rsql
          *
          * @param key
          */
-        char *delete_row_2(const char *key, const size_t idx);
+        char *delete_row_2(const char *key, const size_t idx, Comparison *comparison);
         /**
          * @brief case 3 of deleting an item: item is not in this node
          *
          * @param key
          * @param idx index of the child node
          */
-        char *delete_row_3(const char *key, const size_t idx);
+        char *delete_row_3(const char *key, const size_t idx, Comparison *comparison);
         /**
          * @brief delete this node if this node is not a root node
          *
@@ -123,6 +123,12 @@ namespace rsql
          * @return BNode*
          */
         static BNode *read_disk(BTree *tree, const std::string file_name);
+        /**
+         * @brief Get the file name of the node with the stated node number
+         * 
+         * @param node_num 
+         * @return std::string 
+         */
         static std::string get_file_name(const uint32_t node_num);
         BNode(BTree *tree, const uint32_t node_num);
         ~BNode();
@@ -154,7 +160,7 @@ namespace rsql
         void indexed_search(std::vector<char *> &result, const char *const key, const CompSymbol symbol = CompSymbol::EQ, Comparison *extra_condition = nullptr);
         void linear_search(std::vector<char *> &result, Comparison *condition);
         void insert(const char *row);
-        char *delete_row(const char *key);
+        char *delete_row(const char *key, Comparison *comp = nullptr);
         void write_disk();
 
         friend class BTree;

@@ -196,9 +196,9 @@ namespace rsql
             this->root->insert(src);
         }
     }
-    char *BTree::delete_row(const char *key)
+    char *BTree::delete_row(const char *key, Comparison *comp)
     {
-        char *to_ret = this->root->delete_row(key);
+        char *to_ret = this->root->delete_row(key, comp);
         if (this->root->size == 0)
         {
             uint32_t new_root_num = this->root->children[0];
@@ -207,6 +207,24 @@ namespace rsql
             this->root->destroy();
             this->root = new_root;
             this->root_num = this->root->node_num;
+        }
+        return to_ret;
+    }
+    std::vector<char *> BTree::delete_all_row(const char *key, Comparison *comp){
+        std::vector<char *> to_ret;
+        if (key){
+            char *to_add = nullptr;
+            while ((to_add = this->delete_row(key, comp))){
+                to_ret.push_back(to_add);
+                to_add = nullptr;
+            }
+        }
+        else{
+            std::vector<char *> to_del = this->search_rows(key, rsql::CompSymbol::EQ, comp);
+            for (const char *row : to_del){
+                to_ret.push_back(this->delete_row(row, comp));
+                delete[] row;
+            }
         }
         return to_ret;
     }
