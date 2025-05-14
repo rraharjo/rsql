@@ -274,6 +274,11 @@ namespace rsql
         this->columns.erase(this->columns.begin() + idx);
         this->root->match_columns();
     }
+    void BTree::destroy(){
+        std::string rm_command = "rm -r " + this->get_path();
+        delete this;
+        std::system(rm_command.c_str());
+    }
     void BTree::write_disk()
     {
         std::string where;

@@ -41,6 +41,14 @@ namespace rsql
          * @return BTree* 
          */
         static BTree *read_disk(Table *table = nullptr, const uint32_t tree_num = 0);
+        /**
+         * @brief Create a new tree object
+         * 
+         * @param table the table of which the new tree belongs
+         * @param tree_num the new tree number
+         * @param unique_key Whether the key on the new tree would be unique
+         * @return BTree* 
+         */
         static BTree *create_new_tree(Table *table = nullptr, const uint32_t tree_num = 0, bool unique_key = true);
         ~BTree();
 
@@ -101,8 +109,22 @@ namespace rsql
          * @param idx
          */
         void remove_column(const size_t idx);
+        /**
+         * @brief Return the path directory of which this tree is stored at (does not include the tree file, just the directory)
+         * 
+         * @return std::string 
+         */
         std::string get_path() const;
+        /**
+         * @brief Write the content of this tree to the disk. File location can be obtained by calling get_path()
+         * 
+         */
         void write_disk();
+        /**
+         * @brief Delete the file that represents this tree, as well as destroying all its node. Will also unload this object from memory (call delete on self)
+         * 
+         */
+        void destroy();
         friend class BNode;
     };
 }

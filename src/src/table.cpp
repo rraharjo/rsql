@@ -240,8 +240,7 @@ namespace rsql
         auto opt_tree_it = this->optional_trees.find(col_idx);
         if (opt_tree_it != this->optional_trees.end())
         {
-            delete opt_tree_it->second;
-            //TODO shouldn't this destroy the tree file?
+            opt_tree_it->second->destroy();
             this->optional_trees.erase(opt_tree_it);
         }
         for (auto &pair : this->col_name_indexes)
