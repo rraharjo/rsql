@@ -241,6 +241,7 @@ namespace rsql
         if (opt_tree_it != this->optional_trees.end())
         {
             delete opt_tree_it->second;
+            //TODO shouldn't this destroy the tree file?
             this->optional_trees.erase(opt_tree_it);
         }
         for (auto &pair : this->col_name_indexes)
@@ -306,7 +307,7 @@ namespace rsql
         }
         this->insert_row_bin(row_bin.get());
     }
-    std::vector<char *> Table::search_row(std::string key_col, const char *key_val, CompSymbol symbol, Comparison *comparison)
+    std::vector<char *> Table::search_row_single_key(std::string key_col, const char *key_val, CompSymbol symbol, Comparison *comparison)
     {
         auto it = this->col_name_indexes.find(key_col);
         if (it == this->col_name_indexes.end())
