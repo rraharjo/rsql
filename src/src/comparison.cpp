@@ -43,8 +43,10 @@ namespace rsql
     ColumnComparison::ColumnComparison(DataType type, CompSymbol symbol, size_t left_len, const size_t left_preceding, const size_t right_len, const size_t right_preceding)
         : SingleComparison(type, symbol, left_preceding, left_len), right_len(right_len), right_preceding(right_preceding)
     {
-        if (this->type == DataType::DEFAULT_KEY || this->type == DataType::DATE){
-            if (this->left_len != this->right_len){
+        if (this->type == DataType::DEFAULT_KEY || this->type == DataType::DATE)
+        {
+            if (this->left_len != this->right_len)
+            {
                 throw std::invalid_argument("Can't compare date or default key if both columns do not have the same length");
                 return;
             }
@@ -188,7 +190,8 @@ namespace rsql
         : SingleComparison(type, symbol, left_preceding, len)
     {
         this->constant_val = new char[this->left_len];
-        std::memcpy(this->constant_val, right_val, this->left_len);
+        if (right_val)
+            std::memcpy(this->constant_val, right_val, this->left_len);
     }
 
     ConstantComparison::ConstantComparison(const ConstantComparison &other)
@@ -298,6 +301,11 @@ namespace rsql
             return 0;
         }
         return compare_symbol(type_res, this->symbol);
+    }
+
+    void ConstantComparison::change_right_val(const char *new_right_val)
+    {
+        std::memcpy(this->constant_val, new_right_val, this->left_len);
     }
 
     MultiComparisons::MultiComparisons()

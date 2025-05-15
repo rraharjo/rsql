@@ -79,6 +79,7 @@ namespace rsql
          * @brief Delete the first occurence the row of which key equal to the argument key. Only compare the first column.
          *
          * @param key
+         * @param comp
          * @return char * the deleted element, dynamically allocated
          */
         char *delete_row(const char *key, Comparison *comp = nullptr);
@@ -89,7 +90,7 @@ namespace rsql
          * @param comparison 
          * @return std::vector<char *> 
          */
-        std::vector<char *> delete_all_row(const char *key = nullptr, Comparison *comparison = nullptr);
+        std::vector<char *> delete_all_row(const char *key = nullptr, CompSymbol symbol = CompSymbol::EQ, Comparison *comparison = nullptr);
         /**
          * @brief Delete all occurences of which value at column indexed col_idx equals to the argument key
          *

@@ -265,7 +265,196 @@ BOOST_AUTO_TEST_CASE(find_text_row_test)
     delete db;
     std::system(clear_cache.c_str());
 }
+//TODO: Check memory leak
+BOOST_AUTO_TEST_CASE(delete_row_test){
+    rsql::Database *db = rsql::Database::create_new_database("test_db");
+    BOOST_CHECK(db != nullptr);
+    rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
+    BOOST_CHECK(table != nullptr);
 
+    table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
+    table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
+    table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::UINT, 32));
+    table->add_column("col_4", rsql::Column::get_column(0, rsql::DataType::SINT, 8));
+
+    size_t row_width = 10 + 10 + 32 + 8;
+    char row[row_width];
+    std::memset(row, 0, row_width);
+    std::memcpy(row, "RSQLTEST", 8);
+    std::memcpy(row + 10, "2025/05/15", 10);
+    cpp_int ucpp("1234567890");
+    rsql::ucpp_int_to_char(row + 20, 32, ucpp);
+    cpp_int scpp("-1000000000");
+    rsql::scpp_int_to_char(row + 52, 8, scpp);
+    for (size_t i = 0 ; i < 50 ; i++){
+        table->insert_row_bin(row);
+        scpp++;
+        rsql::scpp_int_to_char(row + 52, 8, scpp);
+    }
+    char search_key[DEFAULT_KEY_WIDTH];
+    std::memset(search_key, 0, DEFAULT_KEY_WIDTH);
+    search_key[DEFAULT_KEY_WIDTH - 1] = 32;
+    std::vector<char *> primary_result = table->delete_row(DEF_KEY_COL_NAME, search_key, rsql::CompSymbol::GT);
+    std::vector<char *> not_found = table->search_row_single_key(DEF_KEY_COL_NAME, search_key, rsql::CompSymbol::GT);
+    cpp_int low_scpp("-999999968");
+    cpp_int high_scpp("-999999951");
+    BOOST_CHECK(primary_result.size() == 17);
+    BOOST_CHECK(not_found.size() == 0);
+    for (size_t i = 0 ; i < primary_result.size() ; i++){
+        BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] > 32);
+        BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] < 50);
+        BOOST_CHECK(std::strncmp(primary_result[i] + 32, "RSQLTEST", 8) == 0);
+        BOOST_CHECK(std::strncmp(primary_result[i] + 42, "2025/05/15", 10) == 0);
+        cpp_int cur_ucpp;
+        rsql::char_to_ucpp_int(primary_result[i] + 52, 32, cur_ucpp);
+        BOOST_CHECK(cur_ucpp == ucpp);
+        cpp_int cur_scpp;
+        rsql::char_to_scpp_int(primary_result[i] + 84, 8, cur_scpp);
+        BOOST_CHECK(cur_scpp >= low_scpp && cur_scpp <= high_scpp);
+    }
+
+    for (size_t i = 0 ; i < primary_result.size() ; i++){
+        delete[] primary_result[i];
+    }
+    delete table;
+    delete db;
+    std::system(clear_cache.c_str());
+}
+
+BOOST_AUTO_TEST_CASE(delete_row_with_additional_comparison_test){
+    rsql::Database *db = rsql::Database::create_new_database("test_db");
+    BOOST_CHECK(db != nullptr);
+    rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
+    BOOST_CHECK(table != nullptr);
+
+    table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
+    table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
+    table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::UINT, 32));
+    table->add_column("col_4", rsql::Column::get_column(0, rsql::DataType::SINT, 8));
+
+    size_t row_width = 10 + 10 + 32 + 8;
+    char row[row_width];
+    std::memset(row, 0, row_width);
+    std::memcpy(row, "RSQLTEST", 8);
+    std::memcpy(row + 10, "2025/05/15", 10);
+    cpp_int ucpp("1234567890");
+    rsql::ucpp_int_to_char(row + 20, 32, ucpp);
+    cpp_int scpp("-1000000000");
+    rsql::scpp_int_to_char(row + 52, 8, scpp);
+    for (size_t i = 0 ; i < 50 ; i++){
+        table->insert_row_bin(row);
+        scpp++;
+        rsql::scpp_int_to_char(row + 52, 8, scpp);
+    }
+    char search_key[DEFAULT_KEY_WIDTH];
+    std::memset(search_key, 0, DEFAULT_KEY_WIDTH);
+    search_key[DEFAULT_KEY_WIDTH - 1] = 32;
+    cpp_int scpp_comp("-999999955");
+    char scpp_comp_char[8];
+    rsql::scpp_int_to_char(scpp_comp_char, 8, scpp_comp);
+    rsql::Comparison *sint_compare = new rsql::ConstantComparison(rsql::DataType::SINT, rsql::CompSymbol::LT, 8, 84, scpp_comp_char);
+    std::vector<char *> primary_result = table->delete_row(DEF_KEY_COL_NAME, search_key, rsql::CompSymbol::GT, sint_compare);
+    std::vector<char *> found_some = table->search_row_single_key(DEF_KEY_COL_NAME, search_key, rsql::CompSymbol::GT);
+    cpp_int low_scpp("-999999968");
+    cpp_int high_scpp("-999999956");
+    BOOST_CHECK(primary_result.size() == 12);
+    BOOST_CHECK(found_some.size() == 5);
+    for (size_t i = 0 ; i < primary_result.size() ; i++){
+        BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] > 32);
+        BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] < 45);
+        BOOST_CHECK(std::strncmp(primary_result[i] + 32, "RSQLTEST", 8) == 0);
+        BOOST_CHECK(std::strncmp(primary_result[i] + 42, "2025/05/15", 10) == 0);
+        cpp_int cur_ucpp;
+        rsql::char_to_ucpp_int(primary_result[i] + 52, 32, cur_ucpp);
+        BOOST_CHECK(cur_ucpp == ucpp);
+        cpp_int cur_scpp;
+        rsql::char_to_scpp_int(primary_result[i] + 84, 8, cur_scpp);
+        BOOST_CHECK(cur_scpp >= low_scpp && cur_scpp <= high_scpp);
+    }
+    low_scpp = cpp_int("-999999956");
+    high_scpp = cpp_int("-999999951");
+    for (size_t i = 0 ; i < found_some.size() ; i++){
+        BOOST_CHECK(found_some[i][DEFAULT_KEY_WIDTH - 1] >= 45);
+        BOOST_CHECK(found_some[i][DEFAULT_KEY_WIDTH - 1] < 50);
+        BOOST_CHECK(std::strncmp(found_some[i] + 32, "RSQLTEST", 8) == 0);
+        BOOST_CHECK(std::strncmp(found_some[i] + 42, "2025/05/15", 10) == 0);
+        cpp_int cur_ucpp;
+        rsql::char_to_ucpp_int(found_some[i] + 52, 32, cur_ucpp);
+        BOOST_CHECK(cur_ucpp == ucpp);
+        cpp_int cur_scpp;
+        rsql::char_to_scpp_int(found_some[i] + 84, 8, cur_scpp);
+        BOOST_CHECK(cur_scpp >= low_scpp && cur_scpp <= high_scpp);
+    }
+
+    for (size_t i = 0 ; i < primary_result.size() ; i++){
+        delete[] primary_result[i];
+    }
+    for (size_t i = 0 ; i < found_some.size() ; i++){
+        delete[] found_some[i];
+    }
+    delete table;
+    delete db;
+    std::system(clear_cache.c_str());
+}
+
+BOOST_AUTO_TEST_CASE(delete_row_linear_search_test){
+    rsql::Database *db = rsql::Database::create_new_database("test_db");
+    BOOST_CHECK(db != nullptr);
+    rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
+    BOOST_CHECK(table != nullptr);
+
+    table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
+    table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
+    table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::UINT, 32));
+    table->add_column("col_4", rsql::Column::get_column(0, rsql::DataType::SINT, 8));
+
+    size_t row_width = 10 + 10 + 32 + 8;
+    char row[row_width];
+    std::memset(row, 0, row_width);
+    std::memcpy(row, "RSQLTEST", 8);
+    std::memcpy(row + 10, "2025/05/15", 10);
+    cpp_int ucpp("1234567890");
+    rsql::ucpp_int_to_char(row + 20, 32, ucpp);
+    cpp_int scpp("-1000000000");
+    rsql::scpp_int_to_char(row + 52, 8, scpp);
+    for (size_t i = 0 ; i < 50 ; i++){
+        table->insert_row_bin(row);
+        scpp++;
+        rsql::scpp_int_to_char(row + 52, 8, scpp);
+    }
+    char search_key[DEFAULT_KEY_WIDTH];
+    std::memset(search_key, 0, DEFAULT_KEY_WIDTH);
+    search_key[DEFAULT_KEY_WIDTH - 1] = 32;
+    cpp_int lower_sint("-999999960");
+    char char_lower_sint[8];
+    rsql::scpp_int_to_char(char_lower_sint, 8, lower_sint);
+    std::vector<char *> primary_result = table->delete_row("col_4", char_lower_sint, rsql::CompSymbol::GEQ);
+    std::vector<char *> not_found = table->search_row_single_key("col_4", char_lower_sint, rsql::CompSymbol::GEQ);
+    cpp_int low_scpp("-999999960");
+    cpp_int high_scpp("-999999951");
+    BOOST_CHECK(primary_result.size() == 10);
+    BOOST_CHECK(not_found.size() == 0);
+    for (size_t i = 0 ; i < primary_result.size() ; i++){
+        BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] >= 40);
+        BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] < 50);
+        BOOST_CHECK(std::strncmp(primary_result[i] + 32, "RSQLTEST", 8) == 0);
+        BOOST_CHECK(std::strncmp(primary_result[i] + 42, "2025/05/15", 10) == 0);
+        cpp_int cur_ucpp;
+        rsql::char_to_ucpp_int(primary_result[i] + 52, 32, cur_ucpp);
+        BOOST_CHECK(cur_ucpp == ucpp);
+        cpp_int cur_scpp;
+        rsql::char_to_scpp_int(primary_result[i] + 84, 8, cur_scpp);
+        BOOST_CHECK(cur_scpp >= low_scpp && cur_scpp <= high_scpp);
+    }
+
+    for (size_t i = 0 ; i < primary_result.size() ; i++){
+        delete[] primary_result[i];
+    }
+    delete table;
+    delete db;
+    std::system(clear_cache.c_str());
+}
+//end
 BOOST_AUTO_TEST_CASE(load_table_test)
 {
     rsql::Database *db = rsql::Database::create_new_database("test_db");
@@ -570,6 +759,65 @@ BOOST_AUTO_TEST_CASE(optional_indexing_write_reload_table_test)
     delete db;
     std::system(clear_cache.c_str());
 }
+//TODO: Check memory leak
+BOOST_AUTO_TEST_CASE(delete_row_with_indexed_tree_test){
+    rsql::Database *db = rsql::Database::create_new_database("test_db");
+    BOOST_CHECK(db != nullptr);
+    rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
+    BOOST_CHECK(table != nullptr);
+
+    table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::CHAR, 10));
+    table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
+    table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::UINT, 32));
+    table->add_column("col_4", rsql::Column::get_column(0, rsql::DataType::SINT, 8));
+    table->index_column("col_4");
+
+    size_t row_width = 10 + 10 + 32 + 8;
+    char row[row_width];
+    std::memset(row, 0, row_width);
+    std::memcpy(row, "RSQLTEST", 8);
+    std::memcpy(row + 10, "2025/05/15", 10);
+    cpp_int ucpp("1234567890");
+    rsql::ucpp_int_to_char(row + 20, 32, ucpp);
+    cpp_int scpp("-1000000000");
+    rsql::scpp_int_to_char(row + 52, 8, scpp);
+    for (size_t i = 0 ; i < 50 ; i++){
+        table->insert_row_bin(row);
+        scpp++;
+        rsql::scpp_int_to_char(row + 52, 8, scpp);
+    }
+    char search_key[DEFAULT_KEY_WIDTH];
+    std::memset(search_key, 0, DEFAULT_KEY_WIDTH);
+    search_key[DEFAULT_KEY_WIDTH - 1] = 32;
+    cpp_int lower_sint("-999999960");
+    char char_lower_sint[8];
+    rsql::scpp_int_to_char(char_lower_sint, 8, lower_sint);
+    std::vector<char *> primary_result = table->delete_row("col_4", char_lower_sint, rsql::CompSymbol::GEQ);
+    std::vector<char *> not_found = table->search_row_single_key("col_4", char_lower_sint, rsql::CompSymbol::GEQ);
+    cpp_int low_scpp("-999999960");
+    cpp_int high_scpp("-999999951");
+    BOOST_CHECK(primary_result.size() == 10);
+    BOOST_CHECK(not_found.size() == 0);
+    for (size_t i = 0 ; i < primary_result.size() ; i++){
+        BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] >= 40);
+        BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] < 50);
+        BOOST_CHECK(std::strncmp(primary_result[i] + 32, "RSQLTEST", 8) == 0);
+        BOOST_CHECK(std::strncmp(primary_result[i] + 42, "2025/05/15", 10) == 0);
+        cpp_int cur_ucpp;
+        rsql::char_to_ucpp_int(primary_result[i] + 52, 32, cur_ucpp);
+        BOOST_CHECK(cur_ucpp == ucpp);
+        cpp_int cur_scpp;
+        rsql::char_to_scpp_int(primary_result[i] + 84, 8, cur_scpp);
+        BOOST_CHECK(cur_scpp >= low_scpp && cur_scpp <= high_scpp);
+    }
+
+    for (size_t i = 0 ; i < primary_result.size() ; i++){
+        delete[] primary_result[i];
+    }
+    delete table;
+    delete db;
+    std::system(clear_cache.c_str());
+}
 
 BOOST_AUTO_TEST_CASE(search_table_test_primary_tree)
 {
@@ -725,3 +973,4 @@ BOOST_AUTO_TEST_CASE(search_table_test_optional_tree)
     delete db;
     std::system(clear_cache.c_str());
 }
+//end

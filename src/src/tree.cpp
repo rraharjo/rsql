@@ -210,9 +210,9 @@ namespace rsql
         }
         return to_ret;
     }
-    std::vector<char *> BTree::delete_all_row(const char *key, Comparison *comp){
+    std::vector<char *> BTree::delete_all_row(const char *key, CompSymbol symbol, Comparison *comp){
         std::vector<char *> to_ret;
-        if (key){
+        if (key && symbol == CompSymbol::EQ){
             char *to_add = nullptr;
             while ((to_add = this->delete_row(key, comp))){
                 to_ret.push_back(to_add);
@@ -220,7 +220,7 @@ namespace rsql
             }
         }
         else{
-            std::vector<char *> to_del = this->search_rows(key, rsql::CompSymbol::EQ, comp);
+            std::vector<char *> to_del = this->search_rows(key, symbol, comp);
             for (const char *row : to_del){
                 to_ret.push_back(this->delete_row(row, comp));
                 delete[] row;

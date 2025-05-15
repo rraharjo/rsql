@@ -118,6 +118,8 @@ namespace rsql
          */
         void insert_row_text(const std::vector<std::string> &row);
         std::vector<char *> search_row_single_key(std::string key_col, const char *key, CompSymbol symbol = CompSymbol::EQ, Comparison *comparison = nullptr);
+        //TODO: test this function
+        std::vector<char *> delete_row(std::string key_col, const char *key, CompSymbol = CompSymbol::EQ, Comparison *comparison = nullptr);
         std::vector<char *> find_row_bin(const char *key, const std::string col_name);
         std::vector<char *> find_row_text(std::string key, const std::string col_name);
         std::vector<char *> find_row_col_comparison(const std::string col_name_1, const std::string col_name_2);

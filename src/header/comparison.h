@@ -77,7 +77,7 @@ namespace rsql
          * @param symbol <, <=, ==, >=, >
          * @param len length of the data being compared
          * @param left_preceding the preceding size of the left column
-         * @param right_val the value of the constant
+         * @param right_val the value of the constant. If right_val is nullptr, the value will not be initialized
          */
         ConstantComparison(DataType type, CompSymbol symbol, size_t len, const size_t left_preceding, const char *right_val);
         ConstantComparison(const ConstantComparison &other);
@@ -85,6 +85,7 @@ namespace rsql
 
         ConstantComparison *clone() override;
         bool compare(const char *const row) override;
+        void change_right_val(const char *new_right_val);
     };
 
     class MultiComparisons : public Comparison

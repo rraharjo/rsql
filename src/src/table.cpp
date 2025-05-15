@@ -356,6 +356,71 @@ namespace rsql
             return to_ret;
         }
     }
+    std::vector<char *> Table::delete_row(std::string key_col, const char *key_val, CompSymbol symbol, Comparison *comparison)
+    {
+        auto key_col_it = this->col_name_indexes.find(key_col);
+        if (key_col_it == this->col_name_indexes.end())
+        {
+            std::string err_msg = "Column " + key_col + " does not exist in this table";
+            throw std::invalid_argument(err_msg);
+            return std::vector<char *>();
+        }
+        uint32_t col_idx = key_col_it->second;
+        std::vector<char *> to_ret;
+        if (col_idx == 0)
+        {
+            to_ret = this->primary_tree->delete_all_row(key_val, symbol, comparison);
+        }
+        else
+        {
+            auto optional_tree_it = this->optional_trees.find(col_idx);
+            Column key_column = this->primary_tree->columns[col_idx];
+            if (optional_tree_it == this->optional_trees.end())
+            { // linear search has to be performed
+                size_t preceding_size = 0;
+                for (uint32_t i = 0; i < col_idx; i++)
+                {
+                    preceding_size += this->primary_tree->columns[i].width;
+                }
+                Comparison *key_comparison = new ConstantComparison(key_column.type, symbol, key_column.width, preceding_size, key_val);
+                MultiComparisons *and_comparison = new ANDComparisons();
+                and_comparison->add_condition(key_comparison);
+                if (comparison)
+                    and_comparison->add_condition(comparison);
+                to_ret = this->primary_tree->delete_all_row(nullptr, CompSymbol::EQ, and_comparison);
+                delete key_comparison;
+                delete and_comparison;
+            }
+            else
+            {
+                BTree *optional_tree = optional_tree_it->second;
+                std::vector<char *> keys_from_optional_tree = optional_tree->search_rows(key_val, symbol, comparison);
+                for (char *optional_key : keys_from_optional_tree)
+                {
+                    char *primary_key = optional_key + key_column.width;
+                    to_ret.push_back(this->primary_tree->delete_row(primary_key));
+                    delete[] optional_key;
+                }
+            }
+        }
+        for (auto pair : this->optional_trees)
+        {
+            size_t preceding_size = 0;
+            for (uint32_t i = 0; i < pair.first; i++)
+            {
+                preceding_size += this->primary_tree->columns[i].width;
+            }
+            size_t optional_preceding = this->primary_tree->columns[pair.first].width;
+            ConstantComparison *primary_key_comparison = new ConstantComparison(DataType::DEFAULT_KEY, CompSymbol::EQ, DEFAULT_KEY_WIDTH, optional_preceding, nullptr);
+            for (const char *res : to_ret)
+            {
+                primary_key_comparison->change_right_val(res);
+                pair.second->delete_all_row(res + preceding_size, CompSymbol::EQ, primary_key_comparison);
+            }
+            delete primary_key_comparison;
+        }
+        return to_ret;
+    }
     std::vector<char *> Table::find_row(const char *key, size_t col_idx, BTree *tree)
     {
         if (tree != nullptr)
@@ -436,7 +501,7 @@ namespace rsql
         }
         uintuint32 key = {std::make_pair(index_it_1->second, index_it_2->second)};
         auto tree_it = this->composite_trees.find(key);
-        //TODO: NOT DONE
+        // TODO: NOT DONE
         return {};
     }
     void Table::index_column(const std::string col_name)
