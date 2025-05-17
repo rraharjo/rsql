@@ -352,6 +352,7 @@ namespace rsql
             {
                 std::vector<char *> res = this->primary_tree->search_rows(optional_result[i] + comparison_col.width, CompSymbol::EQ, comparison);
                 to_ret.insert(to_ret.end(), res.begin(), res.end());
+                delete[] optional_result[i];
             }
             return to_ret;
         }
@@ -415,7 +416,11 @@ namespace rsql
             for (const char *res : to_ret)
             {
                 primary_key_comparison->change_right_val(res);
-                pair.second->delete_all_row(res + preceding_size, CompSymbol::EQ, primary_key_comparison);
+                std::vector<char *> opt_ret = pair.second->delete_all_row(res + preceding_size, CompSymbol::EQ, primary_key_comparison);
+                for (char *opt_res : opt_ret)
+                {
+                    delete[] opt_res;
+                }
             }
             delete primary_key_comparison;
         }

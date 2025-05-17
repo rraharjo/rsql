@@ -162,12 +162,14 @@ namespace rsql
         std::vector<char *> result;
         if (key == nullptr)
         {
-            if (comparison == nullptr){
+            if (comparison == nullptr)
+            {
                 comparison = new ORComparisons();
                 this->root->linear_search(result, comparison);
                 delete comparison;
             }
-            else{
+            else
+            {
                 this->root->linear_search(result, comparison);
             }
         }
@@ -202,6 +204,10 @@ namespace rsql
         if (this->root->size == 0)
         {
             uint32_t new_root_num = this->root->children[0];
+            if (new_root_num == 0)
+            {
+                return to_ret;
+            }
             std::string new_root_name = "node_" + std::to_string(new_root_num) + ".rsql";
             BNode *new_root = BNode::read_disk(this, new_root_name);
             this->root->destroy();
@@ -210,18 +216,23 @@ namespace rsql
         }
         return to_ret;
     }
-    std::vector<char *> BTree::delete_all_row(const char *key, CompSymbol symbol, Comparison *comp){
+    std::vector<char *> BTree::delete_all_row(const char *key, CompSymbol symbol, Comparison *comp)
+    {
         std::vector<char *> to_ret;
-        if (key && symbol == CompSymbol::EQ){
+        if (key && symbol == CompSymbol::EQ)
+        {
             char *to_add = nullptr;
-            while ((to_add = this->delete_row(key, comp))){
+            while ((to_add = this->delete_row(key, comp)))
+            {
                 to_ret.push_back(to_add);
                 to_add = nullptr;
             }
         }
-        else{
+        else
+        {
             std::vector<char *> to_del = this->search_rows(key, symbol, comp);
-            for (const char *row : to_del){
+            for (const char *row : to_del)
+            {
                 to_ret.push_back(this->delete_row(row, comp));
                 delete[] row;
             }
@@ -292,7 +303,8 @@ namespace rsql
         this->columns.erase(this->columns.begin() + idx);
         this->root->match_columns();
     }
-    void BTree::destroy(){
+    void BTree::destroy()
+    {
         std::string rm_command = "rm -r " + this->get_path();
         delete this;
         std::system(rm_command.c_str());

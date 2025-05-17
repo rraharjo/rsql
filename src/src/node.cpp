@@ -435,6 +435,7 @@ namespace rsql
                     c_r->changed = true;
                     this->changed = true;
                     delete c_r;
+                    delete c_l;
                     this->del_if_not_root();
                     return c_i->delete_row(key, comparison);
                 }
@@ -442,10 +443,7 @@ namespace rsql
             if (idx > 0)
             {
                 this->merge(idx - 1, c_l, c_i);
-                if (c_r != nullptr)
-                {
-                    delete c_r;
-                }
+                delete c_r;
                 this->del_if_not_root();
                 return c_l->delete_row(key, comparison);
             }
@@ -467,7 +465,8 @@ namespace rsql
     inline void BNode::destroy()
     {
         std::string file_name = BNode::get_file_name(this->node_num);
-        std::remove(file_name.c_str());
+        std::string where = std::filesystem::path(tree->get_path()) / file_name;
+        std::remove(where.c_str());
         this->changed = false;
         delete this;
     }
@@ -649,6 +648,7 @@ namespace rsql
                 result.push_back(found);
                 if (this->tree->unique_key && symbol == CompSymbol::EQ)
                 {
+                    this->del_if_not_root();
                     return;
                 }
             }
