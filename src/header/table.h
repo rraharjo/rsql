@@ -78,6 +78,14 @@ namespace rsql
         static Table *load_table(Database *db, const std::string table_name);
         ~Table();
         /**
+         * @brief Convert a vector of values (in text format) to binary format. Number of values has to match number of columns. Does not count default key column
+         * 
+         * @param values 
+         * @throw std::invalid_argument if the number of entries does not match the number of columns
+         * @return char* dynamically allocated. Ownership belongs to caller
+         */
+        char *convert_texts_to_char_stream(const std::vector<std::string> &values);
+        /**
          * @brief Get the width of the table
          *
          * @return size_t
@@ -91,6 +99,12 @@ namespace rsql
          * @return size_t
          */
         size_t get_col_width(const std::string col_name) const;
+        /**
+         * @brief Add new column to the table
+         * 
+         * @param name 
+         * @param col 
+         */
         void add_column(const std::string name, const rsql::Column col);
         /**
          * @brief remove a column named col_name
@@ -115,7 +129,24 @@ namespace rsql
          * @return std::vector<char *> all rows, dynamically allocated
          */
         void insert_row_text(const std::vector<std::string> &row);
+        /**
+         * @brief Search all the rows within this table that matches the criteria provided
+         * 
+         * @param key_col Key column for comparison
+         * @param key value of key column - binary format
+         * @param symbol 
+         * @param comparison 
+         * @return std::vector<char *> 
+         */
         std::vector<char *> search_row_single_key(std::string key_col, const char *key, CompSymbol symbol = CompSymbol::EQ, Comparison *comparison = nullptr);
+        /**
+         * @brief Delete all the rows within this table that matches the criteria provided
+         * 
+         * @param key_col 
+         * @param key key to find - binary format
+         * @param comparison 
+         * @return std::vector<char *> 
+         */
         std::vector<char *> delete_row(std::string key_col, const char *key, CompSymbol = CompSymbol::EQ, Comparison *comparison = nullptr);
         /**
          * @brief Index column

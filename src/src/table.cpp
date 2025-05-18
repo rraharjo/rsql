@@ -180,7 +180,24 @@ namespace rsql
             delete pair.second;
         }
     }
-    size_t Table::get_width() const
+    char *Table::convert_texts_to_char_stream(const std::vector<std::string> &values)
+    {
+        if (values.size() != this->col_name_indexes.size() - 1)
+        {
+            std::string err_msg = "Table " + this->table_name + " has " + std::to_string(this->col_name_indexes.size()) + " columns, but values only have " + std::to_string(values.size()) + " entries.";
+            throw std::invalid_argument(err_msg);
+            return nullptr;
+        }
+        char *buff = new char[this->get_width() - DEFAULT_KEY_WIDTH];
+        size_t cur_position = 0;
+        for (size_t i = 1; i < this->primary_tree->columns.size(); i++)
+        {
+            this->primary_tree->columns[i].process_string(buff + cur_position, values[i - 1]);
+            cur_position += this->primary_tree->columns[i].width;
+        }
+        return buff;
+    }
+    inline size_t Table::get_width() const
     {
         return this->primary_tree->width;
     }

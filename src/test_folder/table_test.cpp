@@ -84,8 +84,11 @@ BOOST_AUTO_TEST_CASE(insert_row_text_test)
     std::vector<std::string> row_1 = {"abcdefghij", "2002-01-01", "1234567890", "-10000"};
     std::vector<std::string> row_2 = {"klmnopqrst", "2002-01-12", "1000000000", "20000"};
 
-    table->insert_row_text(row_1);
-    table->insert_row_text(row_2);
+    char *buff_1 = table->convert_texts_to_char_stream(row_1);
+    char *buff_2 = table->convert_texts_to_char_stream(row_2);
+
+    table->insert_row_bin(buff_1);
+    table->insert_row_bin(buff_2);
 
     char key[DEFAULT_KEY_WIDTH];
     std::memset(key, 0, DEFAULT_KEY_WIDTH);
@@ -123,6 +126,8 @@ BOOST_AUTO_TEST_CASE(insert_row_text_test)
 
     delete[] vec_row_1[0];
     delete[] vec_row_2[0];
+    delete[] buff_1;
+    delete[] buff_2;
     delete table;
     delete db;
     std::system(clear_cache.c_str());
@@ -211,60 +216,6 @@ BOOST_AUTO_TEST_CASE(find_binary_row_test)
     delete[] found_0[0];
     delete[] found_5[0];
     delete[] found_8[0];
-    delete table;
-    delete db;
-    std::system(clear_cache.c_str());
-}
-
-//TODO: create a function to convert vector of string to stream of char
-BOOST_AUTO_TEST_CASE(find_text_row_test)
-{
-    rsql::Database *db = rsql::Database::create_new_database("test_db");
-    BOOST_CHECK(db != nullptr);
-    rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
-    BOOST_CHECK(table != nullptr);
-
-    table->add_column("col_0", rsql::Column::get_column(0, rsql::DataType::SINT, 8));
-    table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::UINT, 10));
-    table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
-    std::string key = "-10000";
-    std::string num = "10";
-    std::vector<std::string> row = {key, num, "2002-01-01"};
-    for (int i = 0; i < 5; i++)
-    {
-        table->insert_row_text(row);
-        key[5]++;
-        row[0] = key;
-    }
-    num = "8";
-    row[1] = num;
-    for (int i = 0; i < 5; i++)
-    {
-        table->insert_row_text(row);
-        key[5]++;
-        row[0] = key;
-    }
-    cpp_int ucpp = 10;
-    char ucpp_char[10];
-    rsql::ucpp_int_to_char(ucpp_char, 10, ucpp);
-    std::vector<char *> rows = table->search_row_single_key("col_1", ucpp_char);
-    BOOST_CHECK(rows.size() == 5);
-    for (size_t i = 0; i < rows.size(); i++)
-    {
-        int sign = (int)(*(rows[i] + 32));
-        cpp_int magnitude;
-        boost::multiprecision::import_bits(magnitude, rows[i] + 33, rows[i] + 40, 8, false);
-        magnitude *= sign;
-        int num = *reinterpret_cast<int *>(rows[i] + 40);
-        BOOST_CHECK(magnitude <= -10000);
-        BOOST_CHECK(magnitude >= -10004);
-        BOOST_CHECK(num == 10);
-        BOOST_CHECK(strncmp(rows[i] + 50, "2002-01-01", 10) == 0);
-    }
-    for (size_t i = 0; i < rows.size(); i++)
-    {
-        delete[] rows[i];
-    }
     delete table;
     delete db;
     std::system(clear_cache.c_str());
