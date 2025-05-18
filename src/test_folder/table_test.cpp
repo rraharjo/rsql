@@ -90,9 +90,9 @@ BOOST_AUTO_TEST_CASE(insert_row_text_test)
     char key[DEFAULT_KEY_WIDTH];
     std::memset(key, 0, DEFAULT_KEY_WIDTH);
 
-    std::vector<char *> vec_row_1 = table->find_row_bin(key, DEF_KEY_COL_NAME);
+    std::vector<char *> vec_row_1 = table->search_row_single_key(DEF_KEY_COL_NAME, key);
     key[DEFAULT_KEY_WIDTH - 1]++;
-    std::vector<char *> vec_row_2 = table->find_row_bin(key, DEF_KEY_COL_NAME);
+    std::vector<char *> vec_row_2 = table->search_row_single_key(DEF_KEY_COL_NAME, key);
 
     cpp_int uint1, uint2;
     boost::multiprecision::import_bits(uint1, vec_row_1[0] + 52, vec_row_1[0] + 52 + 32, 8, false);
@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_CASE(insert_row_exceeding_column_size_test)
 
     char key[DEFAULT_KEY_WIDTH];
     std::memset(key, 0, DEFAULT_KEY_WIDTH);
-    std::vector<char *> vec_row_2 = table->find_row_bin(key, DEF_KEY_COL_NAME);
+    std::vector<char *> vec_row_2 = table->search_row_single_key(DEF_KEY_COL_NAME, key);
 
     cpp_int unsigned_int;
     boost::multiprecision::import_bits(unsigned_int, vec_row_2[0] + 52, vec_row_2[0] + 84, 8, false);
@@ -186,13 +186,13 @@ BOOST_AUTO_TEST_CASE(find_binary_row_test)
     }
     char key[DEFAULT_KEY_WIDTH];
     std::memset(key, 0, DEFAULT_KEY_WIDTH);
-    std::vector<char *> found_0 = table->find_row_bin(key, DEF_KEY_COL_NAME);
+    std::vector<char *> found_0 = table->search_row_single_key(DEF_KEY_COL_NAME, key);
     key[DEFAULT_KEY_WIDTH - 1] = 5;
-    std::vector<char *> found_5 = table->find_row_bin(key, DEF_KEY_COL_NAME);
+    std::vector<char *> found_5 = table->search_row_single_key(DEF_KEY_COL_NAME, key);
     key[DEFAULT_KEY_WIDTH - 1] = 8;
-    std::vector<char *> found_8 = table->find_row_bin(key, DEF_KEY_COL_NAME);
+    std::vector<char *> found_8 = table->search_row_single_key(DEF_KEY_COL_NAME, key);
     key[DEFAULT_KEY_WIDTH - 1] = 10;
-    std::vector<char *> found_idk = table->find_row_bin(key, DEF_KEY_COL_NAME);
+    std::vector<char *> found_idk = table->search_row_single_key(DEF_KEY_COL_NAME, key);
 
     BOOST_CHECK(found_0.size() == 1);
     BOOST_CHECK(found_5.size() == 1);
@@ -216,6 +216,7 @@ BOOST_AUTO_TEST_CASE(find_binary_row_test)
     std::system(clear_cache.c_str());
 }
 
+//TODO: create a function to convert vector of string to stream of char
 BOOST_AUTO_TEST_CASE(find_text_row_test)
 {
     rsql::Database *db = rsql::Database::create_new_database("test_db");
@@ -243,7 +244,10 @@ BOOST_AUTO_TEST_CASE(find_text_row_test)
         key[5]++;
         row[0] = key;
     }
-    std::vector<char *> rows = table->find_row_text("10", "col_1");
+    cpp_int ucpp = 10;
+    char ucpp_char[10];
+    rsql::ucpp_int_to_char(ucpp_char, 10, ucpp);
+    std::vector<char *> rows = table->search_row_single_key("col_1", ucpp_char);
     BOOST_CHECK(rows.size() == 5);
     for (size_t i = 0; i < rows.size(); i++)
     {
@@ -265,7 +269,7 @@ BOOST_AUTO_TEST_CASE(find_text_row_test)
     delete db;
     std::system(clear_cache.c_str());
 }
-//TODO: Check memory leak
+
 BOOST_AUTO_TEST_CASE(delete_row_test){
     rsql::Database *db = rsql::Database::create_new_database("test_db");
     BOOST_CHECK(db != nullptr);
@@ -454,7 +458,7 @@ BOOST_AUTO_TEST_CASE(delete_row_linear_search_test){
     delete db;
     std::system(clear_cache.c_str());
 }
-//end
+
 BOOST_AUTO_TEST_CASE(load_table_test)
 {
     rsql::Database *db = rsql::Database::create_new_database("test_db");
@@ -474,7 +478,7 @@ BOOST_AUTO_TEST_CASE(load_table_test)
     delete table;
     table = rsql::Table::load_table(db, "test_table");
     std::memset(key, 0, DEFAULT_KEY_WIDTH);
-    std::vector<char *> rows = table->find_row_text(key, DEF_KEY_COL_NAME);
+    std::vector<char *> rows = table->search_row_single_key(DEF_KEY_COL_NAME, key);
     cpp_int row_num;
     boost::multiprecision::import_bits(row_num, rows[0] + DEFAULT_KEY_WIDTH, rows[0] + DEFAULT_KEY_WIDTH + 10, 8, false);
     BOOST_CHECK(rows.size() == 1);
@@ -545,7 +549,10 @@ BOOST_AUTO_TEST_CASE(optional_indexing_find_quality_test)
         std::memcpy(row + 20, &num_2, 4);
     }
     table->index_column("col_3");
-    std::vector<char *> rows = table->find_row_text("1", "col_3");
+    cpp_int ucpp = 1;
+    char ucpp_char[4];
+    rsql::ucpp_int_to_char(ucpp_char, 4, ucpp);
+    std::vector<char *> rows = table->search_row_single_key("col_3", ucpp_char);
     uint32_t target_col_val = 1;
 
     std::memset(row, 0, 10);
@@ -588,7 +595,10 @@ BOOST_AUTO_TEST_CASE(optional_indexing_find_quantity_test)
         table->insert_row_bin(row);
     }
     table->index_column("col_3");
-    std::vector<char *> rows = table->find_row_text("0", "col_3");
+    cpp_int ucpp = 0;
+    char ucpp_char[4];
+    rsql::ucpp_int_to_char(ucpp_char, 4, ucpp);
+    std::vector<char *> rows = table->search_row_single_key("col_3", ucpp_char);
     std::sort(rows.begin(), rows.end(), [](const char *r1, const char *r2)
               { return std::strncmp(r1, r2, 56) < 0; });
     BOOST_CHECK(rows.size() == 50);
@@ -641,8 +651,11 @@ BOOST_AUTO_TEST_CASE(optional_indexing_column_test)
         table->insert_row_bin(row);
         row[0]++;
     }
-    std::vector<char *> res_col_2 = table->find_row_text("2002-12-12", "col_2");
-    std::vector<char *> res_col_3 = table->find_row_text("-4321", "col_3");
+    cpp_int scpp = -4321;
+    char scpp_char[4];
+    rsql::scpp_int_to_char(scpp_char, 4, scpp);
+    std::vector<char *> res_col_2 = table->search_row_single_key("col_2", "2002-12-12");
+    std::vector<char *> res_col_3 = table->search_row_single_key("col_3", scpp_char);
     BOOST_CHECK(res_col_2.size() == 50);
     BOOST_CHECK(res_col_3.size() == 50);
     for (const char *c : res_col_2)
@@ -696,7 +709,10 @@ BOOST_AUTO_TEST_CASE(optional_indexing_delete_column_test)
     {
         table->insert_row_bin(row);
     }
-    std::vector<char *> res_col_3 = table->find_row_text("-4321", "col_3");
+    cpp_int scpp = -4321;
+    char scpp_char[4];
+    rsql::scpp_int_to_char(scpp_char, 4, scpp);
+    std::vector<char *> res_col_3 = table->search_row_single_key("col_3", scpp_char);
     BOOST_CHECK(res_col_3.size() == 50);
     for (const char *c : res_col_3)
     {
@@ -749,7 +765,10 @@ BOOST_AUTO_TEST_CASE(optional_indexing_write_reload_table_test)
     {
         table->insert_row_bin(row);
     }
-    std::vector<char *> res_col_3 = table->find_row_text("-4321", "col_3");
+    cpp_int scpp = -4321;
+    char scpp_char[4];
+    rsql::scpp_int_to_char(scpp_char, 4, scpp);
+    std::vector<char *> res_col_3 = table->search_row_single_key("col_3", scpp_char);
     BOOST_CHECK(res_col_3.size() == 50);
     for (const char *c : res_col_3)
     {
@@ -759,7 +778,7 @@ BOOST_AUTO_TEST_CASE(optional_indexing_write_reload_table_test)
     delete db;
     std::system(clear_cache.c_str());
 }
-//TODO: Check memory leak
+
 BOOST_AUTO_TEST_CASE(delete_row_with_indexed_tree_test){
     rsql::Database *db = rsql::Database::create_new_database("test_db");
     BOOST_CHECK(db != nullptr);
@@ -973,4 +992,3 @@ BOOST_AUTO_TEST_CASE(search_table_test_optional_tree)
     delete db;
     std::system(clear_cache.c_str());
 }
-//end
