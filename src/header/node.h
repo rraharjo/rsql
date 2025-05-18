@@ -7,38 +7,39 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "column.h"
+#include "comparison.h"
 namespace rsql
 {
     class BTree;
-}
-namespace rsql
-{
     class BNode
     {
     public:
         /**
-         * @brief return the first proper child idx
+         * @brief return the first proper child idx that matches the symbol. 
          *
          * @param k
+         * @param symbol
          * @return int
          */
-        int first_child_idx(const char *k);
+        int first_child_idx(const char *k, CompSymbol symbol);
         /**
          * @brief return the last proper child idx
          *
          * @param k
+         * @param symbol
          * @return int
          */
-        int last_child_idx(const char *k);
+        int last_child_idx(const char *k, CompSymbol symbol);
         /**
          * @brief Compare k byte, where k is the width of column at position col_idx
          *
          * @param k_1
          * @param k_2
          * @param col_idx
-         * @return < 0 if k_1 is less than k_2 ; > 0 if k_1 is larger than k_2
+         * @param symbol
+         * @return true if k_1 symbol k_2 is true
          */
-        int compare_key(const char *k_1, const char *k_2, size_t col_idx);
+        bool compare_key(const char *k_1, const char *k_2, size_t col_idx, CompSymbol symbol = CompSymbol::EQ);
         /**
          * @brief merge c_j to c_i, where c_i is the children number idx and c_j is children number (idx + 1). c_j is destroyed afterward.
          *
@@ -70,14 +71,14 @@ namespace rsql
          *
          * @param key
          */
-        char *delete_row_2(const char *key, const size_t idx);
+        char *delete_row_2(const char *key, const size_t idx, Comparison *comparison);
         /**
          * @brief case 3 of deleting an item: item is not in this node
          *
          * @param key
          * @param idx index of the child node
          */
-        char *delete_row_3(const char *key, const size_t idx);
+        char *delete_row_3(const char *key, const size_t idx, Comparison *comparison);
         /**
          * @brief delete this node if this node is not a root node
          *
@@ -122,6 +123,12 @@ namespace rsql
          * @return BNode*
          */
         static BNode *read_disk(BTree *tree, const std::string file_name);
+        /**
+         * @brief Get the file name of the node with the stated node number
+         * 
+         * @param node_num 
+         * @return std::string 
+         */
         static std::string get_file_name(const uint32_t node_num);
         BNode(BTree *tree, const uint32_t node_num);
         ~BNode();
@@ -134,12 +141,13 @@ namespace rsql
          */
         char *find(const char *key);
         /**
-         * @brief find all occurences that match the key, useful when key indexes allow duplicate. When a matching row is found a copy is created
+         * @brief find all row where (key symbol k) is true. eg. if symbol is <, then find all row where key < k
          *
          * @param key the key that is searched for
          * @param alls found rows
+         * @param symbol
          */
-        void find_all_indexed(const char *key, std::vector<char *> &alls);
+        void find_all_indexed(const char *k, std::vector<char *> &alls, CompSymbol symbol = CompSymbol::EQ);
         /**
          * @brief find all occurences that match the key by linear search. When a matching row is found, a copy is created
          *
@@ -149,8 +157,10 @@ namespace rsql
          * @param alls found rows
          */
         void find_all_unindexed(const char *key, const size_t col_idx, const size_t preceding_size, std::vector<char *> &alls);
+        void indexed_search(std::vector<char *> &result, const char *const key, const CompSymbol symbol = CompSymbol::EQ, Comparison *extra_condition = nullptr);
+        void linear_search(std::vector<char *> &result, Comparison *condition);
         void insert(const char *row);
-        char *delete_row(const char *key);
+        char *delete_row(const char *key, Comparison *comp = nullptr);
         void write_disk();
 
         friend class BTree;

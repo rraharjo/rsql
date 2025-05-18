@@ -2,11 +2,11 @@
 #define COLUMN_H
 #include <string>
 #include "data_type.h"
+#include "comparison.h"
 
 #define COLUMN_BYTES 12
 #define MAX_COL_NAME 64
 #define DATE_COL_W 10
-#define PKEY_COL_W 32 // 32 bytes -> 248 bits pretty -> 2^248 pretty sure this is big enough :)
 namespace rsql
 {
     class Column
@@ -25,7 +25,7 @@ namespace rsql
          * @param src
          */
         void process_string(char *const dest, const std::string src);
-        int compare_key(const char *const k1, const char *const k2);
+        int compare_key(const char *const k1, const char *const k2, CompSymbol symbol = CompSymbol::EQ);
         bool operator==(const Column &other) const;
         bool operator!=(const Column &other) const;
 

@@ -157,6 +157,28 @@ namespace rsql
         }
         return to_ret;
     }
+    std::vector<char *> BTree::search_rows(const char *key, CompSymbol symbol, Comparison *comparison)
+    {
+        std::vector<char *> result;
+        if (key == nullptr)
+        {
+            if (comparison == nullptr)
+            {
+                comparison = new ORComparisons();
+                this->root->linear_search(result, comparison);
+                delete comparison;
+            }
+            else
+            {
+                this->root->linear_search(result, comparison);
+            }
+        }
+        else
+        {
+            this->root->indexed_search(result, key, symbol, comparison);
+        }
+        return result;
+    }
     void BTree::insert_row(const char *src)
     {
         if (this->root->full())
@@ -176,17 +198,44 @@ namespace rsql
             this->root->insert(src);
         }
     }
-    char *BTree::delete_row(const char *key)
+    char *BTree::delete_row(const char *key, Comparison *comp)
     {
-        char *to_ret = this->root->delete_row(key);
+        char *to_ret = this->root->delete_row(key, comp);
         if (this->root->size == 0)
         {
             uint32_t new_root_num = this->root->children[0];
+            if (new_root_num == 0)
+            {
+                return to_ret;
+            }
             std::string new_root_name = "node_" + std::to_string(new_root_num) + ".rsql";
             BNode *new_root = BNode::read_disk(this, new_root_name);
             this->root->destroy();
             this->root = new_root;
             this->root_num = this->root->node_num;
+        }
+        return to_ret;
+    }
+    std::vector<char *> BTree::delete_all_row(const char *key, CompSymbol symbol, Comparison *comp)
+    {
+        std::vector<char *> to_ret;
+        if (key && symbol == CompSymbol::EQ)
+        {
+            char *to_add = nullptr;
+            while ((to_add = this->delete_row(key, comp)))
+            {
+                to_ret.push_back(to_add);
+                to_add = nullptr;
+            }
+        }
+        else
+        {
+            std::vector<char *> to_del = this->search_rows(key, symbol, comp);
+            for (const char *row : to_del)
+            {
+                to_ret.push_back(this->delete_row(row, comp));
+                delete[] row;
+            }
         }
         return to_ret;
     }
@@ -245,9 +294,20 @@ namespace rsql
     }
     void BTree::remove_column(const size_t idx)
     {
+        if (idx == 0)
+        {
+            throw std::invalid_argument("Can't delete the first column");
+            return;
+        }
         this->width -= this->columns[idx].width;
         this->columns.erase(this->columns.begin() + idx);
         this->root->match_columns();
+    }
+    void BTree::destroy()
+    {
+        std::string rm_command = "rm -r " + this->get_path();
+        delete this;
+        std::system(rm_command.c_str());
     }
     void BTree::write_disk()
     {

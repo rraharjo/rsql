@@ -133,16 +133,21 @@ namespace rsql
         std::string to_ret = "node_" + std::to_string(node_num) + ".rsql";
         return to_ret;
     }
-    int BNode::last_child_idx(const char *k)
+    int BNode::last_child_idx(const char *k, CompSymbol symbol)
     {
+        if (symbol == CompSymbol::GEQ || symbol == CompSymbol::GT) // Last item that is GEQ k
+        {
+            return this->size;
+        }
+        CompSymbol new_symbol = symbol == CompSymbol::LT ? CompSymbol::LEQ : CompSymbol::LT;
         int start = 0, end = this->size - 1;
         int mid;
         int to_ret = -1;
         while (start <= end)
         {
             mid = (start + end) / 2;
-            int comp = this->compare_key(k, this->keys[mid], 0);
-            if (comp < 0)
+            bool comp = this->compare_key(k, this->keys[mid], 0, new_symbol);
+            if (comp)
             {
                 end = mid - 1;
             }
@@ -154,16 +159,21 @@ namespace rsql
         }
         return to_ret == -1 ? 0 : to_ret;
     }
-    int BNode::first_child_idx(const char *k)
+    int BNode::first_child_idx(const char *k, CompSymbol symbol)
     {
+        if (symbol == CompSymbol::LEQ || symbol == CompSymbol::LT) // First item that is less than k
+        {
+            return 0;
+        }
+        CompSymbol new_symbol = symbol == CompSymbol::GT ? CompSymbol::GEQ : CompSymbol::GT;
         int start = 0, end = this->size - 1;
         int mid;
         int to_ret = -1;
         while (start <= end)
         {
             mid = (start + end) / 2;
-            int comp = this->compare_key(k, this->keys[mid], 0);
-            if (comp > 0)
+            bool comp = this->compare_key(k, this->keys[mid], 0, new_symbol);
+            if (comp)
             {
                 start = mid + 1;
             }
@@ -176,15 +186,17 @@ namespace rsql
         return to_ret == -1 ? this->size : to_ret;
     }
 
-    inline int BNode::compare_key(const char *k_1, const char *k_2, size_t col_idx)
+    inline bool BNode::compare_key(const char *k_1, const char *k_2, size_t col_idx, CompSymbol symbol)
     {
-        return this->columns[col_idx].compare_key(k_1, k_2);
+        ConstantComparison c(this->columns[col_idx].type, symbol, this->columns[col_idx].width, 0, k_2);
+        return c.compare(k_1);
     }
     BNode *BNode::split_children(const size_t idx, BNode *c_i)
     {
         if (!c_i->full())
         {
             throw std::runtime_error("Can't split a child if it's not full");
+            return nullptr;
         }
         BNode *new_node = new BNode(this->tree, ++this->tree->max_node_num);
         new_node->leaf = c_i->leaf;
@@ -340,7 +352,7 @@ namespace rsql
         this->del_if_not_root();
         return to_ret;
     }
-    char *BNode::delete_row_2(const char *key, const size_t idx)
+    char *BNode::delete_row_2(const char *key, const size_t idx, Comparison *comparison)
     {
         uint32_t c_i_num = this->children[idx];
         std::string c_i_str = BNode::get_file_name(c_i_num);
@@ -369,9 +381,9 @@ namespace rsql
         }
         this->merge(idx, c_i, c_j);
         this->del_if_not_root();
-        return c_i->delete_row(key);
+        return c_i->delete_row(key, comparison);
     }
-    char *BNode::delete_row_3(const char *key, const size_t idx)
+    char *BNode::delete_row_3(const char *key, const size_t idx, Comparison *comparison)
     {
         uint32_t c_i_num = this->children[idx];
         std::string c_i_str = BNode::get_file_name(c_i_num);
@@ -400,7 +412,7 @@ namespace rsql
                     this->changed = true;
                     delete c_l;
                     this->del_if_not_root();
-                    return c_i->delete_row(key);
+                    return c_i->delete_row(key, comparison);
                 }
             }
             if (idx < this->size)
@@ -423,27 +435,25 @@ namespace rsql
                     c_r->changed = true;
                     this->changed = true;
                     delete c_r;
+                    delete c_l;
                     this->del_if_not_root();
-                    return c_i->delete_row(key);
+                    return c_i->delete_row(key, comparison);
                 }
             }
             if (idx > 0)
             {
                 this->merge(idx - 1, c_l, c_i);
-                if (c_r != nullptr)
-                {
-                    delete c_r;
-                }
+                delete c_r;
                 this->del_if_not_root();
-                return c_l->delete_row(key);
+                return c_l->delete_row(key, comparison);
             }
             this->merge(idx, c_i, c_r);
             // idx is definitely 0, c_l is null
             this->del_if_not_root();
-            return c_i->delete_row(key);
+            return c_i->delete_row(key, comparison);
         }
         this->del_if_not_root();
-        return c_i->delete_row(key);
+        return c_i->delete_row(key, comparison);
     }
     inline void BNode::del_if_not_root()
     {
@@ -455,7 +465,8 @@ namespace rsql
     inline void BNode::destroy()
     {
         std::string file_name = BNode::get_file_name(this->node_num);
-        std::remove(file_name.c_str());
+        std::string where = std::filesystem::path(tree->get_path()) / file_name;
+        std::remove(where.c_str());
         this->changed = false;
         delete this;
     }
@@ -538,11 +549,11 @@ namespace rsql
     char *BNode::find(const char *key)
     {
         size_t cur_idx = 0;
-        while (cur_idx < this->size && this->compare_key(key, this->keys[cur_idx], 0) > 0)
+        while (cur_idx < this->size && this->compare_key(key, this->keys[cur_idx], 0, CompSymbol::GT))
         {
             cur_idx++;
         }
-        if (cur_idx < this->size && this->compare_key(key, this->keys[cur_idx], 0) == 0)
+        if (cur_idx < this->size && this->compare_key(key, this->keys[cur_idx], 0))
         {
             char *to_ret = new char[this->tree->width];
             std::memcpy(to_ret, this->keys[cur_idx], this->tree->width);
@@ -571,11 +582,11 @@ namespace rsql
             return nullptr;
         }
     }
-    void BNode::find_all_indexed(const char *key, std::vector<char *> &alls)
+    void BNode::find_all_indexed(const char *k, std::vector<char *> &alls, CompSymbol symbol)
     {
-        int low_proper = this->first_child_idx(key);
-        int high_proper = this->last_child_idx(key);
-        for (int i = low_proper; i < high_proper && this->compare_key(key, this->keys[i], 0) == 0; i++)
+        int low_proper = this->first_child_idx(k, symbol);
+        int high_proper = this->last_child_idx(k, symbol);
+        for (int i = low_proper; i < high_proper && this->compare_key(k, this->keys[i], 0, symbol); i++)
         {
             char *to_add = new char[this->tree->width];
             std::memcpy(to_add, this->keys[i], this->tree->width);
@@ -594,14 +605,14 @@ namespace rsql
         {
             std::string c_i_file_name = BNode::get_file_name(proper_children[i]);
             BNode *c_i = BNode::read_disk(tree, c_i_file_name);
-            c_i->find_all_indexed(key, alls);
+            c_i->find_all_indexed(k, alls, symbol);
         }
     }
     void BNode::find_all_unindexed(const char *k, const size_t col_idx, const size_t preceding_size, std::vector<char *> &alls)
     {
         for (size_t i = 0; i < this->size; i++)
         {
-            if (this->compare_key(k, this->keys[i] + preceding_size, col_idx) == 0) // use compare_key
+            if (this->compare_key(k, this->keys[i] + preceding_size, col_idx))
             {
                 char *to_ret = new char[this->tree->width];
                 std::memcpy(to_ret, this->keys[i], this->tree->width);
@@ -624,12 +635,67 @@ namespace rsql
             c_i->find_all_unindexed(k, col_idx, preceding_size, alls);
         }
     }
+    void BNode::indexed_search(std::vector<char *> &result, const char *const key, const CompSymbol symbol, Comparison *extra_condition)
+    {
+        size_t valid_low = this->first_child_idx(key, symbol);
+        size_t valid_high = this->last_child_idx(key, symbol);
+        for (size_t i = valid_low; i < valid_high; i++)
+        {
+            if (this->compare_key(this->keys[i], key, 0, symbol) && (extra_condition == nullptr || extra_condition->compare(keys[i])))
+            {
+                char *found = new char[this->tree->width];
+                std::memcpy(found, this->keys[i], this->tree->width);
+                result.push_back(found);
+                if (this->tree->unique_key && symbol == CompSymbol::EQ)
+                {
+                    this->del_if_not_root();
+                    return;
+                }
+            }
+        }
+        std::vector<uint32_t> next_nodes;
+        if (!this->leaf)
+        {
+            next_nodes.insert(next_nodes.end(), this->children.begin() + valid_low, this->children.begin() + valid_high + 1);
+        }
+        this->del_if_not_root();
+        for (const uint32_t next_node : next_nodes)
+        {
+            std::string file_name = BNode::get_file_name(next_node);
+            BNode *cur_node = BNode::read_disk(this->tree, file_name);
+            cur_node->indexed_search(result, key, symbol, extra_condition);
+        }
+    }
+    void BNode::linear_search(std::vector<char *> &result, Comparison *condition)
+    {
+        for (uint32_t i = 0; i < this->size; i++)
+        {
+            if (condition->compare(this->keys[i]))
+            {
+                char *found = new char[this->tree->width];
+                std::memcpy(found, this->keys[i], this->tree->width);
+                result.push_back(found);
+            }
+        }
+        std::vector<uint32_t> next_nodes;
+        if (!this->leaf)
+        {
+            next_nodes.insert(next_nodes.end(), this->children.begin(), this->children.begin() + this->size + 1);
+        }
+        this->del_if_not_root();
+        for (const uint32_t next_node : next_nodes)
+        {
+            std::string file_name = BNode::get_file_name(next_node);
+            BNode *cur_node = BNode::read_disk(this->tree, file_name);
+            cur_node->linear_search(result, condition);
+        }
+    }
     void BNode::insert(const char *src)
     {
         if (this->leaf)
         {
             size_t cur_idx = 0;
-            while (cur_idx < this->size && this->compare_key(src, this->keys[cur_idx], 0) > 0)
+            while (cur_idx < this->size && this->compare_key(src, this->keys[cur_idx], 0, CompSymbol::GT))
             {
                 cur_idx++;
             }
@@ -643,7 +709,7 @@ namespace rsql
         else
         {
             size_t cur_idx = 0;
-            while (cur_idx < this->size && this->compare_key(src, this->keys[cur_idx], 0) > 0)
+            while (cur_idx < this->size && this->compare_key(src, this->keys[cur_idx], 0, CompSymbol::GT))
             {
                 cur_idx++;
             }
@@ -653,7 +719,7 @@ namespace rsql
             if (c_i->full())
             {
                 BNode *new_node = this->split_children(cur_idx, c_i);
-                if (this->compare_key(src, this->keys[cur_idx], 0) > 0)
+                if (this->compare_key(src, this->keys[cur_idx], 0, CompSymbol::GT))
                 {
                     delete c_i;
                     c_i = new_node;
@@ -667,24 +733,24 @@ namespace rsql
             c_i->insert(src);
         }
     }
-    char *BNode::delete_row(const char *key)
+    char *BNode::delete_row(const char *key, Comparison *comp)
     {
         size_t idx = 0;
-        while (idx < this->size && this->compare_key(key, this->keys[idx], 0) > 0)
+        while (idx < this->size && this->compare_key(key, this->keys[idx], 0, CompSymbol::GT))
         {
             idx++;
         }
-        if (idx < this->size && this->compare_key(key, this->keys[idx], 0) == 0 && this->leaf)
+        if (idx < this->size && this->leaf && this->compare_key(key, this->keys[idx], 0) && (!comp || comp->compare(this->keys[idx])))
         {
             return this->delete_row_1(idx);
         }
-        else if (idx < this->size && this->compare_key(key, this->keys[idx], 0) == 0 && !this->leaf)
+        else if (idx < this->size && this->compare_key(key, this->keys[idx], 0) && !this->leaf && (!comp || comp->compare(this->keys[idx])))
         {
-            return this->delete_row_2(key, idx);
+            return this->delete_row_2(key, idx, comp);
         }
         else if (!this->leaf)
         {
-            return this->delete_row_3(key, idx);
+            return this->delete_row_3(key, idx, comp);
         }
         else
         {

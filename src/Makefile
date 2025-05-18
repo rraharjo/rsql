@@ -13,6 +13,7 @@ TABLETEST = table_test
 DBTEST = db_test
 TIMETEST = time_test
 LEAKTEST = leak_test
+COMPTEST = comparisons_test
 TARGET = $(BIN_DIR)/main
 BNODETARGET = $(BIN_DIR)/$(BNODETEST)
 BTREETARGET = $(BIN_DIR)/$(BTREETEST)
@@ -20,6 +21,7 @@ TABLETARGET = $(BIN_DIR)/$(TABLETEST)
 DBTARGET = $(BIN_DIR)/$(DBTEST)
 TIMETARGET = $(BIN_DIR)/$(TIMETEST)
 LEAKTARGET = $(BIN_DIR)/$(LEAKTEST)
+COMPTARGET = $(BIN_DIR)/$(COMPTEST)
 
 SRCS = $(wildcard $(SRC_DIR)/*.cpp)
 OBJS = $(SRCS:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
@@ -44,6 +46,10 @@ builddbtest: $(DBTARGET)
 rundbtest: 
 	$(DBTARGET).exe
 
+buildcomptest: $(COMPTARGET)
+runcomptest:
+	$(COMPTARGET).exe
+
 buildtimetest: $(TIMETARGET)
 runtimetest: 
 	time $(TIMETARGET).exe
@@ -52,8 +58,8 @@ buildleaktest: $(LEAKTARGET)
 runleaktest:
 	valgrind $(LEAKTARGET).exe
 
-buildtest: buildnodetest buildtreetest buildtabletest builddbtest buildtimetest
-runtest: runnodetest runtreetest runtabletest rundbtest
+buildtest: buildnodetest buildtreetest buildtabletest builddbtest buildcomptest buildtimetest
+runtest: runnodetest runtreetest runtabletest rundbtest runcomptest
 
 # Rule to build the target
 $(TARGET): $(OBJS)
@@ -70,6 +76,9 @@ $(TABLETARGET): $(OBJS)
 
 $(DBTARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(TEST_DIR)/$(DBTEST).cpp -o $@.exe $^
+
+$(COMPTARGET): $(OBJS)
+	$(CXX) $(CXXFLAGS) $(TEST_DIR)/$(COMPTEST).cpp -o $@.exe $^
 
 $(TIMETARGET): $(OBJS)
 	$(CXX) -std=c++17 -I$(INC_DIR) $(TEST_DIR)/$(TIMETEST).cpp -o $@.exe $^
