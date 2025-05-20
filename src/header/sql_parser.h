@@ -16,7 +16,7 @@ namespace rsql
     protected:
         std::string instruction;
         std::string table_name;
-        size_t processed_char_idx;
+        size_t cur_idx;
         SQLParser(const std::string instruction);
 
     public:
