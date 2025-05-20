@@ -14,6 +14,7 @@ DBTEST = db_test
 TIMETEST = time_test
 LEAKTEST = leak_test
 COMPTEST = comparisons_test
+PARSERTEST = sql_parser_test
 TARGET = $(BIN_DIR)/main
 BNODETARGET = $(BIN_DIR)/$(BNODETEST)
 BTREETARGET = $(BIN_DIR)/$(BTREETEST)
@@ -22,6 +23,7 @@ DBTARGET = $(BIN_DIR)/$(DBTEST)
 TIMETARGET = $(BIN_DIR)/$(TIMETEST)
 LEAKTARGET = $(BIN_DIR)/$(LEAKTEST)
 COMPTARGET = $(BIN_DIR)/$(COMPTEST)
+PARSERTARGET = $(BIN_DIR)/$(PARSERTEST)
 
 SRCS = $(wildcard $(SRC_DIR)/*.cpp)
 OBJS = $(SRCS:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
@@ -49,6 +51,10 @@ rundbtest:
 buildcomptest: $(COMPTARGET)
 runcomptest:
 	$(COMPTARGET).exe
+
+buildparsertest: $(PARSERTARGET)
+runparsertest:
+	$(PARSERTARGET).exe
 
 buildtimetest: $(TIMETARGET)
 runtimetest: 
@@ -79,6 +85,9 @@ $(DBTARGET): $(OBJS)
 
 $(COMPTARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(TEST_DIR)/$(COMPTEST).cpp -o $@.exe $^
+
+$(PARSERTARGET): $(OBJS)
+	$(CXX) $(CXXFLAGS) $(TEST_DIR)/$(PARSERTEST).cpp -o $@.exe $^
 
 $(TIMETARGET): $(OBJS)
 	$(CXX) -std=c++17 -I$(INC_DIR) $(TEST_DIR)/$(TIMETEST).cpp -o $@.exe $^

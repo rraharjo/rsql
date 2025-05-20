@@ -38,9 +38,3 @@ Dependencies:
 
 Reference: 
 1. Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, Clifford Stein Introduction to Algorithms, Third Edition 2009
-
-
-TODO: build composite tree
-    PKEY is always in big endian format
-    create a flag in tree class whether it's a composite tree
-        modify compare_key function inside node.cpp to have additional endianness parameter

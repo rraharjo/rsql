@@ -2,17 +2,19 @@
 #define DRIVER_H
 #include <iostream>
 #include "database.h"
+#include "sql_parser.h"
 
 namespace rsql
 {
-    class Driver
+    class Parser
     {
     private:
         rsql::Database *db = nullptr;
+        std::string current_instruction;
 
     public:
-        Driver();
-        ~Driver();
+        Parser();
+        ~Parser();
         void list_db();
         bool list_tables();
         bool create_db(const std::string db_name);
@@ -22,6 +24,8 @@ namespace rsql
         Table *get_table(const std::string table_name);
         bool delete_table(const std::string table_name);
         void routine();
+
+        friend class SQLParser;
     };
 }
 #endif

@@ -3,14 +3,14 @@ bool inline valid_db(rsql::Database *db);
 std::vector<std::string> split(const std::string &str, const std::string &delimiter);
 namespace rsql
 {
-    Driver::Driver()
+    Parser::Parser()
     {
     }
-    Driver::~Driver()
+    Parser::~Parser()
     {
         delete this->db;
     }
-    void Driver::list_db()
+    void Parser::list_db()
     {
         std::vector<std::string> dbs = Database::list_databases();
         for (const std::string &db : dbs)
@@ -18,7 +18,7 @@ namespace rsql
             std::cout << db << std::endl;
         }
     }
-    bool Driver::list_tables()
+    bool Parser::list_tables()
     {
         if (!valid_db(this->db))
         {
@@ -31,7 +31,7 @@ namespace rsql
         }
         return true;
     }
-    bool Driver::create_db(const std::string db_name)
+    bool Parser::create_db(const std::string db_name)
     {
         try
         {
@@ -45,7 +45,7 @@ namespace rsql
             return false;
         }
     }
-    bool Driver::connect_database(const std::string db_name)
+    bool Parser::connect_database(const std::string db_name)
     {
         try
         {
@@ -63,17 +63,20 @@ namespace rsql
             return false;
         }
     }
-    bool Driver::delete_db(const std::string db_name){
-        try{
+    bool Parser::delete_db(const std::string db_name)
+    {
+        try
+        {
             Database::delete_database(db_name);
             return true;
         }
-        catch(const std::invalid_argument &e){
+        catch (const std::invalid_argument &e)
+        {
             std::cout << e.what() << std::endl;
             return false;
         }
     }
-    Table *Driver::add_table(const std::string table_name)
+    Table *Parser::add_table(const std::string table_name)
     {
         if (!valid_db(this->db))
         {
@@ -89,7 +92,7 @@ namespace rsql
             return nullptr;
         }
     }
-    Table *Driver::get_table(const std::string table_name)
+    Table *Parser::get_table(const std::string table_name)
     {
         if (!valid_db(this->db))
         {
@@ -105,7 +108,7 @@ namespace rsql
             return nullptr;
         }
     }
-    bool Driver::delete_table(const std::string table_name)
+    bool Parser::delete_table(const std::string table_name)
     {
         if (!valid_db(this->db))
         {
@@ -122,7 +125,7 @@ namespace rsql
             return false;
         }
     }
-    void Driver::routine()
+    void Parser::routine()
     {
         std::string input;
         while (input != "end")
@@ -164,7 +167,8 @@ namespace rsql
                         std::cout << "Table Deleted" << std::endl;
                     }
                 }
-                else if (token[0] == "deletedb"){
+                else if (token[0] == "deletedb")
+                {
                     if (this->delete_db(token[1]))
                     {
                         std::cout << "Database Deleted" << std::endl;
