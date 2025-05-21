@@ -4,6 +4,31 @@ typedef boost::multiprecision::cpp_int cpp_int;
 bool compare_symbol(const int type_res, const rsql::CompSymbol symbol);
 namespace rsql
 {
+    CompSymbol get_symbol_from_string(const std::string src)
+    {
+        if (src == "<")
+        {
+            return CompSymbol::LT;
+        }
+        if (src == "<=")
+        {
+            return CompSymbol::LEQ;
+        }
+        if (src == "==")
+        {
+            return CompSymbol::EQ;
+        }
+        if (src == ">=")
+        {
+            return CompSymbol::GEQ;
+        }
+        if (src == ">")
+        {
+            return CompSymbol::GT;
+        }
+        throw std::invalid_argument("Unknown symbol " + src);
+    }
+
     Comparison::Comparison()
     {
     }
@@ -366,6 +391,10 @@ namespace rsql
         return false;
     }
 
+    bool ORComparisons::is_and(){
+        return false;
+    }
+
     ANDComparisons::ANDComparisons() : MultiComparisons()
     {
     }
@@ -392,6 +421,10 @@ namespace rsql
                 return false;
             }
         }
+        return true;
+    }
+
+    bool ANDComparisons::is_and(){
         return true;
     }
 }

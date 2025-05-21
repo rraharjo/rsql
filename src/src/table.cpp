@@ -197,7 +197,31 @@ namespace rsql
         }
         return buff;
     }
-    inline size_t Table::get_width() const
+    Column Table::get_column(std::string col_name){
+        auto it = this->col_name_indexes.find(col_name);
+        if (it == this->col_name_indexes.end())
+        {
+            std::string err_msg = "Table " + this->table_name + " has no column named " + col_name;
+            throw std::invalid_argument(err_msg);
+        }
+        return this->primary_tree->columns[it->second];
+    }
+    size_t Table::get_preceding_length(const std::string col_name) const
+    {
+        auto it = this->col_name_indexes.find(col_name);
+        if (it == this->col_name_indexes.end())
+        {
+            std::string err_msg = "Table " + this->table_name + " has no column named " + col_name;
+            throw std::invalid_argument(err_msg);
+        }
+        size_t to_ret = 0;
+        for (size_t i = 0; i < it->second; i++)
+        {
+            to_ret += this->primary_tree->columns[i].width;
+        }
+        return to_ret;
+    }
+    size_t Table::get_width() const
     {
         return this->primary_tree->width;
     }

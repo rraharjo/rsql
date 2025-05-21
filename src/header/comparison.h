@@ -13,6 +13,8 @@ namespace rsql
         LEQ
     };
 
+    CompSymbol get_symbol_from_string(const std::string src);
+
     class Comparison
     {
     protected:
@@ -103,6 +105,7 @@ namespace rsql
          * @param comparison 
          */
         void add_condition(Comparison *comparison);
+        virtual bool is_and() = 0;
     };
 
     class ORComparisons : public MultiComparisons
@@ -113,6 +116,7 @@ namespace rsql
         ~ORComparisons();
         ORComparisons *clone() override;
         bool compare(const char *const row) override;
+        bool is_and() override;
     };
 
     class ANDComparisons : public MultiComparisons
@@ -123,6 +127,7 @@ namespace rsql
         ~ANDComparisons();
         ANDComparisons *clone() override;
         bool compare(const char *const row) override;
+        bool is_and() override;
     };
 }
 #endif

@@ -1,5 +1,38 @@
 #include "sql_parser.h"
 #include <stdexcept>
+#include <memory>
+
+static std::vector<std::string> where_tokenize(std::string str)
+{
+    size_t l = -1;
+    size_t r = 0;
+    std::vector<std::string> to_ret;
+    while (r < str.length())
+    {
+        unsigned char cur_char = str[r];
+        if (cur_char == ' ')
+        {
+            if (l + 1 != r)
+            {
+                size_t len = r - (l + 1);
+                to_ret.push_back(str.substr(l + 1, len));
+            }
+            l = r;
+        }
+        else if (cur_char == '(' || cur_char == ')')
+        {
+            if (l + 1 != r)
+            {
+                size_t len = r - (l + 1);
+                to_ret.push_back(str.substr(l + 1, len));
+            }
+            to_ret.push_back(str.substr(r, 1));
+            l = r;
+        }
+        r++;
+    }
+    return to_ret;
+}
 
 static std::string strip(std::string str, unsigned char token = ' ')
 {
@@ -19,6 +52,31 @@ static std::string strip(std::string str, unsigned char token = ' ')
         return "";
     }
     return str.substr(left, len);
+}
+
+static rsql::Comparison *get_single_comparison(const std::string l, const std::string sym, const std::string r, rsql::Table *table)
+{
+    rsql::CompSymbol symbol = rsql::get_symbol_from_string(sym);
+    size_t left_preceding = table->get_preceding_length(l);
+    rsql::Column col = table->get_column(l);
+    char *r_val = new char[col.width];
+    if (col.type == rsql::DataType::UINT)
+    {
+        boost::multiprecision::cpp_int temp(r);
+        rsql::ucpp_int_to_char(r_val, col.width, temp);
+    }
+    else if (col.type == rsql::DataType::SINT)
+    {
+        boost::multiprecision::cpp_int temp(r);
+        rsql::scpp_int_to_char(r_val, col.width, temp);
+    }
+    else
+    {
+        std::memcpy(r_val, r.data(), r.length());
+    }
+    rsql::ConstantComparison *to_ret = new rsql::ConstantComparison(col.type, symbol, col.width, left_preceding, r_val);
+    delete[] r_val;
+    return to_ret;
 }
 
 static std::string get_error_msg(const std::string &instruction, const size_t idx)
@@ -101,7 +159,22 @@ namespace rsql
         std::string to_ret = this->instruction.substr(start_point, this->cur_idx - start_point);
         return strip(to_ret);
     }
-    
+    std::string SQLParser::next_token()
+    {
+        size_t start_point = this->cur_idx;
+        size_t moving_point = this->cur_idx;
+        while (this->cur_idx < this->instruction.length() && this->instruction[this->cur_idx] == ' ')
+        {
+            moving_point++;
+        }
+        while (this->cur_idx < this->instruction.length() && this->instruction[this->cur_idx] != ' ')
+        {
+            moving_point++;
+        }
+        std::string to_ret = this->instruction.substr(start_point, moving_point - start_point);
+        return strip(to_ret);
+    }
+
     InsertParser::InsertParser(const std::string instruction) : SQLParser(instruction)
     {
     }
@@ -174,7 +247,87 @@ namespace rsql
         this->extract_values();
     }
 
-    DeleteParser::DeleteParser(const std::string instruction) : SQLParser(instruction)
+    ParserWithWhere::ParserWithWhere(const std::string instruction) : SQLParser(instruction), comparison(nullptr)
+    {
+    }
+    ParserWithWhere::~ParserWithWhere()
+    {
+        delete this->comparison;
+    }
+    void ParserWithWhere::extract_conditions(Table *table)
+    {
+        this->expect(WHERE);
+        std::vector<std::string> conditions = where_tokenize(this->instruction.substr(this->cur_idx));
+        std::stack<size_t> top_size;
+        std::stack<Comparison *> comp;
+        std::stack<std::string> or_or_and;
+        std::vector<std::string> temp;
+        for (size_t i = 0; i < conditions.size(); i++)
+        {
+            if (conditions[i] == "(")
+            {
+                top_size.push(0);
+                or_or_and.push("");
+            }
+            else if (conditions[i] == ")")
+            {
+                size_t to_remove = top_size.top();
+                top_size.pop();
+                std::string comp_type = or_or_and.top();
+                or_or_and.pop();
+
+                rsql::MultiComparisons *and_or_comp = nullptr;
+                if (comp_type == "or")
+                    and_or_comp = new ORComparisons();
+                if (comp_type == "and")
+                    and_or_comp = new ANDComparisons();
+                while (to_remove > 0)
+                {
+                    and_or_comp->add_condition(comp.top());
+                    comp.pop();
+                    to_remove--;
+                }
+                if (top_size.empty())
+                {
+                    top_size.push(1);
+                }
+                else
+                {
+                    size_t cur_size = top_size.top();
+                    cur_size++;
+                    top_size.pop();
+                    top_size.push(cur_size);
+                }
+                comp.push(and_or_comp);
+            }
+            else if (conditions[i] == "or")
+            {
+                or_or_and.pop();
+                or_or_and.push("or");
+            }
+            else if (conditions[i] == "and")
+            {
+                or_or_and.pop();
+                or_or_and.push("and");
+            }
+            else
+            {
+                temp.push_back(conditions[i]);
+                if (temp.size() == 3)
+                {
+                    comp.push(get_single_comparison(temp[0], temp[1], temp[2], table));
+                    size_t cur_size = top_size.top();
+                    cur_size++;
+                    top_size.pop();
+                    top_size.push(cur_size);
+                    temp.clear();
+                }
+            }
+        }
+        this->comparison = comp.top();
+    }
+
+    DeleteParser::DeleteParser(const std::string instruction) : ParserWithWhere(instruction)
     {
     }
     DeleteParser::~DeleteParser()
@@ -182,9 +335,12 @@ namespace rsql
     }
     void DeleteParser::parse()
     {
+        this->expect(DELETE);
+        this->expect(FROM);
+        this->table_name = this->extract_next();
     }
 
-    SearchParser::SearchParser(const std::string instruction) : SQLParser(instruction)
+    SearchParser::SearchParser(const std::string instruction) : ParserWithWhere(instruction)
     {
     }
     SearchParser::~SearchParser()
@@ -192,5 +348,8 @@ namespace rsql
     }
     void SearchParser::parse()
     {
+        this->expect(SELECT);
+        this->expect(FROM);
+        this->table_name = this->extract_next();
     }
 }
