@@ -59,23 +59,9 @@ static rsql::Comparison *get_single_comparison(const std::string l, const std::s
     rsql::CompSymbol symbol = rsql::get_symbol_from_string(sym);
     size_t left_preceding = table->get_preceding_length(l);
     rsql::Column col = table->get_column(l);
-    char *r_val = new char[col.width];
-    if (col.type == rsql::DataType::UINT)
-    {
-        boost::multiprecision::cpp_int temp(r);
-        rsql::ucpp_int_to_char(r_val, col.width, temp);
-    }
-    else if (col.type == rsql::DataType::SINT)
-    {
-        boost::multiprecision::cpp_int temp(r);
-        rsql::scpp_int_to_char(r_val, col.width, temp);
-    }
-    else
-    {
-        std::memcpy(r_val, r.data(), r.length());
-    }
-    rsql::ConstantComparison *to_ret = new rsql::ConstantComparison(col.type, symbol, col.width, left_preceding, r_val);
-    delete[] r_val;
+    std::unique_ptr<char[]> r_val = std::make_unique<char[]>(col.width);
+    col.process_string(r_val.get(), r);
+    rsql::ConstantComparison *to_ret = new rsql::ConstantComparison(col.type, symbol, col.width, left_preceding, r_val.get());
     return to_ret;
 }
 
@@ -259,7 +245,7 @@ namespace rsql
         this->expect(WHERE);
         std::vector<std::string> conditions = where_tokenize(this->instruction.substr(this->cur_idx));
         std::stack<size_t> top_size;
-        std::stack<Comparison *> comp;
+        std::stack<std::unique_ptr<Comparison>> comp_reserve;
         std::stack<std::string> or_or_and;
         std::vector<std::string> temp;
         for (size_t i = 0; i < conditions.size(); i++)
@@ -275,16 +261,16 @@ namespace rsql
                 top_size.pop();
                 std::string comp_type = or_or_and.top();
                 or_or_and.pop();
-
-                rsql::MultiComparisons *and_or_comp = nullptr;
+                std::unique_ptr<rsql::MultiComparisons> and_or_comp;
                 if (comp_type == "or")
-                    and_or_comp = new ORComparisons();
-                if (comp_type == "and")
-                    and_or_comp = new ANDComparisons();
+                    and_or_comp.reset(new ORComparisons());
+                else
+                    and_or_comp.reset(new ANDComparisons());
                 while (to_remove > 0)
                 {
-                    and_or_comp->add_condition(comp.top());
-                    comp.pop();
+                    std::unique_ptr<Comparison> cur_top = std::move(comp_reserve.top());
+                    comp_reserve.pop();
+                    and_or_comp->add_condition(cur_top.get());
                     to_remove--;
                 }
                 if (top_size.empty())
@@ -298,7 +284,7 @@ namespace rsql
                     top_size.pop();
                     top_size.push(cur_size);
                 }
-                comp.push(and_or_comp);
+                comp_reserve.push(std::move(and_or_comp));
             }
             else if (conditions[i] == "or")
             {
@@ -315,7 +301,9 @@ namespace rsql
                 temp.push_back(conditions[i]);
                 if (temp.size() == 3)
                 {
-                    comp.push(get_single_comparison(temp[0], temp[1], temp[2], table));
+                    std::unique_ptr<Comparison> to_add;
+                    to_add.reset(get_single_comparison(temp[0], temp[1], temp[2], table));
+                    comp_reserve.push(std::move(to_add));
                     size_t cur_size = top_size.top();
                     cur_size++;
                     top_size.pop();
@@ -324,7 +312,11 @@ namespace rsql
                 }
             }
         }
-        this->comparison = comp.top();
+        this->cur_idx = this->instruction.length() - 1;
+        if (temp.size() != 0 || comp_reserve.size() != 1 || or_or_and.size() != 0)
+            throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
+        this->comparison = comp_reserve.top().get();
+        comp_reserve.top().release();
     }
 
     DeleteParser::DeleteParser(const std::string instruction) : ParserWithWhere(instruction)

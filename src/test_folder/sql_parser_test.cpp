@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(where_parser_test){
     table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::UINT, 10));
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
     table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::SINT, 4));
-    std::string condition = "where ((col_1 < 10 or col_1 == 10) and (col_2 == 2002/10/10 or col_3 == -100 ))";
+    std::string condition = "where ((col_1 < 10 or col_1 == 10) and (col_2 == 2002-10-10 or col_3 == -100 ))";
     rsql::DeleteParser parser(condition);
     parser.extract_conditions(table);
     delete table;
