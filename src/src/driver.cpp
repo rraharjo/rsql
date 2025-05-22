@@ -2,6 +2,7 @@
 static bool inline valid_db(rsql::Database *db);
 static std::vector<std::string> split(const std::string &str, const std::string &delimiter);
 static std::string get_first_token(const std::string &str);
+static void print_vv(const std::vector<std::vector<std::string>> &vv);
 namespace rsql
 {
     Driver::Driver()
@@ -56,6 +57,7 @@ namespace rsql
                 delete this->db;
             }
             this->db = temp;
+            this->tables.clear();
             return true;
         }
         catch (const std::invalid_argument &e)
@@ -77,7 +79,7 @@ namespace rsql
             return false;
         }
     }
-    Table *Driver::add_table(const std::string table_name)
+    tableptr Driver::add_table(const std::string table_name)
     {
         if (!valid_db(this->db))
         {
@@ -85,7 +87,11 @@ namespace rsql
         }
         try
         {
-            return this->db->create_table(table_name);
+            Table *new_table = this->db->create_table(table_name);
+            tableptr to_add;
+            to_add.reset(new_table);
+            this->tables.insert({table_name, to_add});
+            return to_add;
         }
         catch (const std::invalid_argument &e)
         {
@@ -93,15 +99,27 @@ namespace rsql
             return nullptr;
         }
     }
-    Table *Driver::get_table(const std::string table_name)
+    tableptr Driver::get_table(const std::string table_name)
     {
         if (!valid_db(this->db))
         {
-            return nullptr;
+            throw std::invalid_argument("Invalid table");
         }
         try
         {
-            return this->db->get_table(table_name);
+            auto table_it = this->tables.find(table_name);
+            if (table_it == this->tables.end())
+            {
+                Table *to_ret = this->db->get_table(table_name);
+                tableptr to_add;
+                to_add.reset(to_ret);
+                this->tables.insert({"table_name", to_add});
+                return to_add;
+            }
+            else
+            {
+                return table_it->second;
+            }
         }
         catch (const std::invalid_argument &e)
         {
@@ -129,32 +147,45 @@ namespace rsql
     void Driver::routine()
     {
         std::string input;
-        while (input != "end")
+        while (true)
         {
+            std::cout << "RSQL> ";
             std::getline(std::cin, input);
-            std::string main_token = get_first_token(input);
+            if (input == "exit")
+            {
+                break;
+            }
+            std::vector<std::string> tokens = split(input, " ");
+            std::string main_token = tokens[0];
             try
             {
                 if (main_token == CREATE)
                 {
-                    CreateParser parser(input);
-                    parser.parse();
-                    if (parser.create_db)
-                    {
+                    if (tokens[1] == DATABASE){
+                        CreateDBParser parser(input);
+                        parser.parse();
                         this->create_db(parser.get_target_name());
                     }
-                    else
-                    {
-                        std::unique_ptr<Table> table;
-                        table.reset(this->add_table(parser.get_target_name()));
+                    else if (tokens[1] == TABLE){
+                        CreateTableParser parser(input);
+                        parser.parse();
+                        tableptr table = this->add_table(parser.get_target_name());
+                        for (const std::pair<std::string, Column> &p : parser.columns){
+                            table->add_column(p.first, p.second);
+                        }
                     }
+                }
+                else if (main_token == CONNECT)
+                {
+                    ConnectParser parser(input);
+                    parser.parse();
+                    this->connect_database(parser.get_target_name());
                 }
                 else if (main_token == INSERT)
                 {
                     InsertParser parser(input);
                     parser.parse();
-                    std::unique_ptr<Table> table;
-                    table.reset(this->get_table(parser.get_target_name()));
+                    tableptr table = this->get_table(parser.get_target_name());
                     for (const std::vector<std::string> &row : parser.row_values)
                     {
                         table->insert_row_text(row);
@@ -164,27 +195,31 @@ namespace rsql
                 {
                     SearchParser parser(input);
                     parser.parse();
-                    std::unique_ptr<Table> table;
-                    table.reset(this->get_table(parser.get_target_name()));
+                    tableptr table = this->get_table(parser.get_target_name());
                     parser.extract_conditions(table.get());
                     std::vector<char *> result = table->search_row_single_key(parser.main_col_name, parser.main_val, parser.main_symbol, parser.comparison);
+                    std::vector<std::vector<std::string>> result_str;
                     for (const char *res : result)
                     {
+                        result_str.push_back(table->convert_char_stream_to_texts(res));
                         delete[] res;
                     }
+                    print_vv(result_str);
                 }
                 else if (main_token == DELETE)
                 {
                     DeleteParser parser(input);
                     parser.parse();
-                    std::unique_ptr<Table> table;
-                    table.reset(this->get_table(parser.get_target_name()));
+                    tableptr table = this->get_table(parser.get_target_name());
                     parser.extract_conditions(table.get());
                     std::vector<char *> result = table->delete_row(parser.main_col_name, parser.main_val, parser.main_symbol, parser.comparison);
+                    std::vector<std::vector<std::string>> result_str;
                     for (const char *res : result)
                     {
+                        result_str.push_back(table->convert_char_stream_to_texts(res));
                         delete[] res;
                     }
+                    print_vv(result_str);
                 }
                 else
                 {
@@ -224,7 +259,6 @@ std::vector<std::string> split(const std::string &str, const std::string &delimi
 
     return tokens;
 }
-
 std::string get_first_token(const std::string &str)
 {
     size_t l = 0;
@@ -239,4 +273,16 @@ std::string get_first_token(const std::string &str)
         r++;
     }
     return str.substr(l, r - l);
+}
+void print_vv(const std::vector<std::vector<std::string>> &vv)
+{
+    for (const std::vector<std::string> &v : vv)
+    {
+        for (const std::string &s : v)
+        {
+            std::cout << s << "|";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
 }

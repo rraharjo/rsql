@@ -42,7 +42,7 @@ namespace rsql{
          * @throw std::runtime_error if failed during system call
          * @throw std::invalid_argument if table_name doesn't exist
          * @param table_name
-         * @return Table*
+         * @return Table* - caller's responsibility
          */
         Table *get_table(const std::string table_name);
         /**
@@ -50,7 +50,7 @@ namespace rsql{
          *
          * @throw std::invalid_argument if table already exists
          * @param table_name
-         * @return Table*
+         * @return Table* - caller's responsibility
          */
         Table *create_table(const std::string table_name);
         /**

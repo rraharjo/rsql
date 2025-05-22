@@ -2,8 +2,7 @@
 
 int main()
 {
-    rsql::Driver *driver = new rsql::Driver();
+    std::unique_ptr<rsql::Driver> driver = std::make_unique<rsql::Driver>();
     driver->routine();
     std::cout << "BYE!" << std::endl;
-    delete driver;
 }

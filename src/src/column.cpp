@@ -60,6 +60,34 @@ namespace rsql
         }
         }
     }
+    std::string Column::process_stream(const char *const src)
+    {
+        switch (this->type)
+        {
+        case DataType::CHAR:
+        case DataType::DEFAULT_KEY:
+        case DataType::DATE:
+        {
+            std::string to_ret("", this->width);
+            std::memcpy(to_ret.data(), src, this->width);
+            return to_ret;
+        }
+        case DataType::UINT:
+        {
+            boost::multiprecision::cpp_int temp;
+            char_to_ucpp_int((char *const)src, this->width, temp);
+            return temp.str();
+        }
+        case DataType::SINT:
+        {
+            boost::multiprecision::cpp_int temp;
+            char_to_scpp_int((char *const)src, this->width, temp);
+            return temp.str();
+        }
+        default:
+            throw std::invalid_argument("Unknown data type");
+        }
+    }
     int Column::compare_key(const char *const k1, const char *const k2, CompSymbol symbol)
     {
         ConstantComparison c(this->type, symbol, this->width, 0, k2);

@@ -197,7 +197,20 @@ namespace rsql
         }
         return buff;
     }
-    Column Table::get_column(std::string col_name){
+    std::vector<std::string> Table::convert_char_stream_to_texts(const char *const stream)
+    {
+        size_t cur_position = 0;
+        std::vector<std::string> to_ret;
+        for (size_t i = 0; i < this->primary_tree->columns.size(); i++)
+        {
+            std::string string_view = this->primary_tree->columns[i].process_stream(stream + cur_position);
+            to_ret.push_back(string_view);
+            cur_position += this->primary_tree->columns[i].width;
+        }
+        return to_ret;
+    }
+    Column Table::get_column(std::string col_name)
+    {
         auto it = this->col_name_indexes.find(col_name);
         if (it == this->col_name_indexes.end())
         {

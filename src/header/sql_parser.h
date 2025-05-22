@@ -5,6 +5,7 @@
 #include "comparison.h"
 #include "table.h"
 #define CREATE "create"
+#define CONNECT "connect"
 #define INSERT "insert"
 #define DELETE "delete"
 #define SELECT "select"
@@ -54,15 +55,6 @@ namespace rsql
         std::string next_token();
     };
 
-    class CreateParser : public SQLParser
-    {
-    public:
-        bool create_db;
-        CreateParser(const std::string instruction);
-        ~CreateParser();
-        void parse() override;
-    };
-
     class ParserWithWhere : public SQLParser
     {
     protected:
@@ -104,6 +96,32 @@ namespace rsql
         void parse() override;
         SearchParser(const std::string instruction);
         ~SearchParser();
+    };
+
+    class CreateDBParser : public SQLParser
+    {
+    public:
+        CreateDBParser(const std::string instruction);
+        ~CreateDBParser();
+        void parse() override;
+    };
+
+    class CreateTableParser : public SQLParser
+    {
+    public:
+        std::vector<std::pair<std::string, Column>> columns;
+        CreateTableParser(const std::string instruction);
+        ~CreateTableParser();
+        void parse() override;
+        void parse_columns();
+    };
+
+    class ConnectParser : public SQLParser
+    {
+    public:
+        ConnectParser(const std::string instruction);
+        ~ConnectParser();
+        void parse() override;
     };
 }
 #endif

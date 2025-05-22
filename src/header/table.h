@@ -85,6 +85,7 @@ namespace rsql
          * @return char* dynamically allocated. Ownership belongs to caller
          */
         char *convert_texts_to_char_stream(const std::vector<std::string> &values);
+        std::vector<std::string> convert_char_stream_to_texts(const char *const stream);
         Column get_column(std::string col_name);
         size_t get_preceding_length(const std::string col_name) const;
         /**

@@ -2,7 +2,7 @@
 #include <stdexcept>
 #include <memory>
 
-static std::vector<std::string> where_tokenize(std::string str)
+static std::vector<std::string> tokenize_sp_and_parenthesis(std::string str)
 {
     size_t l = -1;
     size_t r = 0;
@@ -90,7 +90,7 @@ namespace rsql
 {
     SQLParser::SQLParser(const std::string instruction) : instruction(instruction), cur_idx(0)
     {
-        to_lower_case(this->instruction);
+        //to_lower_case(this->instruction);
     }
     SQLParser::~SQLParser()
     {
@@ -113,7 +113,7 @@ namespace rsql
                 throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
                 return;
             }
-            if (this->instruction[this->cur_idx] == token[cur_token_size])
+            if (tolower(this->instruction[this->cur_idx]) == tolower(token[cur_token_size]))
             {
                 this->cur_idx++;
                 cur_token_size++;
@@ -233,33 +233,6 @@ namespace rsql
         this->extract_values();
     }
 
-    CreateParser::CreateParser(const std::string instruction) : SQLParser(instruction)
-    {
-    }
-    CreateParser::~CreateParser()
-    {
-    }
-    void CreateParser::parse()
-    {
-        this->expect(CREATE);
-        std::string next_token = this->extract_next();
-        if (next_token == DATABASE)
-        {
-            this->create_db = true;
-            this->expect(DATABASE);
-        }
-        else if (next_token == TABLE)
-        {
-            this->create_db = false;
-            this->expect(TABLE);
-        }
-        else
-        {
-            throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
-        }
-        this->target_name = this->extract_next();
-    }
-
     ParserWithWhere::ParserWithWhere(const std::string instruction) : SQLParser(instruction), comparison(nullptr)
     {
     }
@@ -271,6 +244,7 @@ namespace rsql
     void ParserWithWhere::extract_conditions(Table *table)
     {
         this->expect(WHERE);
+
         this->main_col_name = this->extract_next();
         this->main_symbol = get_symbol_from_string(this->extract_next());
         std::string str_val = this->extract_next();
@@ -278,33 +252,39 @@ namespace rsql
         this->main_val = new char[main_column.width];
         main_column.process_string(this->main_val, str_val);
         std::string optional_token = this->next_token();
-        if (optional_token.length() == 0){
+        to_lower_case(optional_token);
+        if (optional_token.length() == 0)
+        {
             return;
         }
-        else if (optional_token != AND){
+        else if (optional_token != AND)
+        {
             throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
         }
         this->extract_next();
-        std::vector<std::string> conditions = where_tokenize(this->instruction.substr(this->cur_idx));
+
+        std::vector<std::string> conditions = tokenize_sp_and_parenthesis(this->instruction.substr(this->cur_idx));
         std::stack<size_t> top_size;
         std::stack<std::unique_ptr<Comparison>> comp_reserve;
         std::stack<std::string> or_or_and;
         std::vector<std::string> temp;
         for (size_t i = 0; i < conditions.size(); i++)
         {
-            if (conditions[i] == "(")
+            std::string condition_lower = conditions[i];
+            to_lower_case(condition_lower);
+            if (condition_lower == "(")
             {
                 top_size.push(0);
                 or_or_and.push("");
             }
-            else if (conditions[i] == ")")
+            else if (condition_lower == ")")
             {
                 size_t to_remove = top_size.top();
                 top_size.pop();
                 std::string comp_type = or_or_and.top();
                 or_or_and.pop();
                 std::unique_ptr<rsql::MultiComparisons> and_or_comp;
-                if (comp_type == "or")
+                if (comp_type == OR)
                     and_or_comp.reset(new ORComparisons());
                 else
                     and_or_comp.reset(new ANDComparisons());
@@ -328,15 +308,15 @@ namespace rsql
                 }
                 comp_reserve.push(std::move(and_or_comp));
             }
-            else if (conditions[i] == "or")
+            else if (condition_lower == OR)
             {
                 or_or_and.pop();
-                or_or_and.push("or");
+                or_or_and.push(OR);
             }
-            else if (conditions[i] == "and")
+            else if (condition_lower == AND)
             {
                 or_or_and.pop();
-                or_or_and.push("and");
+                or_or_and.push(AND);
             }
             else
             {
@@ -384,6 +364,106 @@ namespace rsql
     {
         this->expect(SELECT);
         this->expect(FROM);
+        this->target_name = this->extract_next();
+    }
+
+    CreateDBParser::CreateDBParser(const std::string instruction) : SQLParser(instruction)
+    {
+    }
+    CreateDBParser::~CreateDBParser()
+    {
+    }
+    void CreateDBParser::parse()
+    {
+        this->expect(CREATE);
+        this->expect(DATABASE);
+        this->target_name = this->extract_next();
+    }
+
+    CreateTableParser::CreateTableParser(const std::string instruction) : SQLParser(instruction)
+    {
+    }
+    CreateTableParser::~CreateTableParser()
+    {
+    }
+    void CreateTableParser::parse()
+    {
+        this->expect(CREATE);
+        this->expect(TABLE);
+        this->target_name = this->extract_next();
+        this->parse_columns();
+    }
+    void CreateTableParser::parse_columns()
+    {
+        bool parenthesis = false;
+        std::vector<std::string> tokens = tokenize_sp_and_parenthesis(this->instruction.substr(this->cur_idx));
+        std::vector<std::string> temp;
+        for (size_t i = 0; i < tokens.size(); i++)
+        {
+            if (tokens[i] == "(")
+            {
+                if (parenthesis)
+                    throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
+                parenthesis = true;
+            }
+            else if (tokens[i] == ")")
+            {
+                if (!parenthesis)
+                    throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
+                parenthesis = false;
+                try
+                {
+                    std::string col_name = temp[0];
+                    std::string type_str = temp[1];
+                    DataType type = str_to_dt(type_str);
+                    if (type == DataType::DEFAULT_KEY || type == DataType::DATE)
+                    {
+                        if (temp.size() != 2)
+                        {
+                            throw std::exception();
+                        }
+                        Column to_add = Column::get_column(0, type, 0);
+                        this->columns.push_back(std::make_pair(col_name, to_add));
+                    }
+                    else
+                    {
+                        if (temp.size() != 3)
+                        {
+                            throw std::exception();
+                        }
+                        std::string width_str = temp[2];
+                        size_t width = std::stoul(width_str);
+                        Column to_add = Column::get_column(0, type, width);
+                        this->columns.push_back(std::make_pair(col_name, to_add));
+                    }
+                    temp.clear();
+                }
+                catch (const std::exception &e)
+                {
+                    throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
+                }
+            }
+            else
+            {
+                temp.push_back(tokens[i]);
+            }
+        }
+        if (parenthesis || temp.size() != 0)
+        {
+            throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
+        }
+    }
+
+    ConnectParser::ConnectParser(const std::string instruction) : SQLParser(instruction)
+    {
+    }
+    ConnectParser::~ConnectParser()
+    {
+    }
+    void ConnectParser::parse()
+    {
+        this->expect(CONNECT);
+        this->expect(DATABASE);
         this->target_name = this->extract_next();
     }
 }

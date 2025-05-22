@@ -25,6 +25,7 @@ namespace rsql
          * @param src
          */
         void process_string(char *const dest, const std::string src);
+        std::string process_stream(const char *const src);
         int compare_key(const char *const k1, const char *const k2, CompSymbol symbol = CompSymbol::EQ);
         bool operator==(const Column &other) const;
         bool operator!=(const Column &other) const;
