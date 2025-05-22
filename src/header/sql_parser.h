@@ -4,6 +4,7 @@
 #include <string>
 #include "comparison.h"
 #include "table.h"
+#define CREATE "create"
 #define INSERT "insert"
 #define DELETE "delete"
 #define SELECT "select"
@@ -13,14 +14,17 @@
 #define WHERE "where"
 #define AND "and"
 #define OR "or"
+#define DATABASE "database"
+#define TABLE "table"
 
 namespace rsql
 {
+    class Driver;
     class SQLParser
     {
     protected:
         std::string instruction;
-        std::string table_name;
+        std::string target_name;
         size_t cur_idx;
         SQLParser(const std::string instruction);
 
@@ -30,28 +34,48 @@ namespace rsql
 
         static bool parse_driver();
 
-        inline std::string get_table_name()
+        inline std::string get_target_name()
         {
-            return this->table_name;
+            return this->target_name;
         }
-        
+
         void expect(const std::string token);
+        /**
+         * @brief extract the next token (index changes)
+         *
+         * @return std::string
+         */
         std::string extract_next();
         /**
          * @brief Find out what the next token is without extracting it (the index does not change)
-         * 
-         * @return std::string 
+         *
+         * @return std::string
          */
         std::string next_token();
     };
 
-    class ParserWithWhere : public SQLParser {
-        protected:
-            Comparison *comparison;
-            ParserWithWhere(const std::string instruction);
-        public:
-            virtual ~ParserWithWhere();
-            void extract_conditions(Table *table);
+    class CreateParser : public SQLParser
+    {
+    public:
+        bool create_db;
+        CreateParser(const std::string instruction);
+        ~CreateParser();
+        void parse() override;
+    };
+
+    class ParserWithWhere : public SQLParser
+    {
+    protected:
+        std::string main_col_name = "";
+        rsql::CompSymbol main_symbol = rsql::CompSymbol::EQ;
+        char *main_val = nullptr;
+        Comparison *comparison;
+        ParserWithWhere(const std::string instruction);
+
+    public:
+        virtual ~ParserWithWhere();
+        void extract_conditions(Table *table);
+        friend class Driver;
     };
 
     class InsertParser : public SQLParser

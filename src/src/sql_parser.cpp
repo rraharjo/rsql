@@ -149,11 +149,11 @@ namespace rsql
     {
         size_t start_point = this->cur_idx;
         size_t moving_point = this->cur_idx;
-        while (this->cur_idx < this->instruction.length() && this->instruction[this->cur_idx] == ' ')
+        while (moving_point < this->instruction.length() && this->instruction[moving_point] == ' ')
         {
             moving_point++;
         }
-        while (this->cur_idx < this->instruction.length() && this->instruction[this->cur_idx] != ' ')
+        while (moving_point < this->instruction.length() && this->instruction[moving_point] != ' ')
         {
             moving_point++;
         }
@@ -228,9 +228,36 @@ namespace rsql
     {
         this->expect(INSERT);
         this->expect(INTO);
-        this->table_name = this->extract_next();
+        this->target_name = this->extract_next();
         this->expect(VALUES);
         this->extract_values();
+    }
+
+    CreateParser::CreateParser(const std::string instruction) : SQLParser(instruction)
+    {
+    }
+    CreateParser::~CreateParser()
+    {
+    }
+    void CreateParser::parse()
+    {
+        this->expect(CREATE);
+        std::string next_token = this->extract_next();
+        if (next_token == DATABASE)
+        {
+            this->create_db = true;
+            this->expect(DATABASE);
+        }
+        else if (next_token == TABLE)
+        {
+            this->create_db = false;
+            this->expect(TABLE);
+        }
+        else
+        {
+            throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
+        }
+        this->target_name = this->extract_next();
     }
 
     ParserWithWhere::ParserWithWhere(const std::string instruction) : SQLParser(instruction), comparison(nullptr)
@@ -239,10 +266,25 @@ namespace rsql
     ParserWithWhere::~ParserWithWhere()
     {
         delete this->comparison;
+        delete[] this->main_val;
     }
     void ParserWithWhere::extract_conditions(Table *table)
     {
         this->expect(WHERE);
+        this->main_col_name = this->extract_next();
+        this->main_symbol = get_symbol_from_string(this->extract_next());
+        std::string str_val = this->extract_next();
+        Column main_column = table->get_column(this->main_col_name);
+        this->main_val = new char[main_column.width];
+        main_column.process_string(this->main_val, str_val);
+        std::string optional_token = this->next_token();
+        if (optional_token.length() == 0){
+            return;
+        }
+        else if (optional_token != AND){
+            throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
+        }
+        this->extract_next();
         std::vector<std::string> conditions = where_tokenize(this->instruction.substr(this->cur_idx));
         std::stack<size_t> top_size;
         std::stack<std::unique_ptr<Comparison>> comp_reserve;
@@ -329,7 +371,7 @@ namespace rsql
     {
         this->expect(DELETE);
         this->expect(FROM);
-        this->table_name = this->extract_next();
+        this->target_name = this->extract_next();
     }
 
     SearchParser::SearchParser(const std::string instruction) : ParserWithWhere(instruction)
@@ -342,6 +384,6 @@ namespace rsql
     {
         this->expect(SELECT);
         this->expect(FROM);
-        this->table_name = this->extract_next();
+        this->target_name = this->extract_next();
     }
 }

@@ -6,15 +6,15 @@
 
 namespace rsql
 {
-    class Parser
+    class Driver
     {
     private:
         rsql::Database *db = nullptr;
         std::string current_instruction;
 
     public:
-        Parser();
-        ~Parser();
+        Driver();
+        ~Driver();
         void list_db();
         bool list_tables();
         bool create_db(const std::string db_name);

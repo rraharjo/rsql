@@ -1,16 +1,17 @@
 #include "driver.h"
-bool inline valid_db(rsql::Database *db);
-std::vector<std::string> split(const std::string &str, const std::string &delimiter);
+static bool inline valid_db(rsql::Database *db);
+static std::vector<std::string> split(const std::string &str, const std::string &delimiter);
+static std::string get_first_token(const std::string &str);
 namespace rsql
 {
-    Parser::Parser()
+    Driver::Driver()
     {
     }
-    Parser::~Parser()
+    Driver::~Driver()
     {
         delete this->db;
     }
-    void Parser::list_db()
+    void Driver::list_db()
     {
         std::vector<std::string> dbs = Database::list_databases();
         for (const std::string &db : dbs)
@@ -18,7 +19,7 @@ namespace rsql
             std::cout << db << std::endl;
         }
     }
-    bool Parser::list_tables()
+    bool Driver::list_tables()
     {
         if (!valid_db(this->db))
         {
@@ -31,7 +32,7 @@ namespace rsql
         }
         return true;
     }
-    bool Parser::create_db(const std::string db_name)
+    bool Driver::create_db(const std::string db_name)
     {
         try
         {
@@ -45,7 +46,7 @@ namespace rsql
             return false;
         }
     }
-    bool Parser::connect_database(const std::string db_name)
+    bool Driver::connect_database(const std::string db_name)
     {
         try
         {
@@ -63,7 +64,7 @@ namespace rsql
             return false;
         }
     }
-    bool Parser::delete_db(const std::string db_name)
+    bool Driver::delete_db(const std::string db_name)
     {
         try
         {
@@ -76,7 +77,7 @@ namespace rsql
             return false;
         }
     }
-    Table *Parser::add_table(const std::string table_name)
+    Table *Driver::add_table(const std::string table_name)
     {
         if (!valid_db(this->db))
         {
@@ -92,7 +93,7 @@ namespace rsql
             return nullptr;
         }
     }
-    Table *Parser::get_table(const std::string table_name)
+    Table *Driver::get_table(const std::string table_name)
     {
         if (!valid_db(this->db))
         {
@@ -108,7 +109,7 @@ namespace rsql
             return nullptr;
         }
     }
-    bool Parser::delete_table(const std::string table_name)
+    bool Driver::delete_table(const std::string table_name)
     {
         if (!valid_db(this->db))
         {
@@ -125,55 +126,74 @@ namespace rsql
             return false;
         }
     }
-    void Parser::routine()
+    void Driver::routine()
     {
         std::string input;
         while (input != "end")
         {
-            std::cout << "> ";
             std::getline(std::cin, input);
-            std::vector<std::string> token = split(input, " ");
-            if (token.size() < 2)
+            std::string main_token = get_first_token(input);
+            try
             {
-                std::cout << "Failed" << std::endl;
+                if (main_token == CREATE)
+                {
+                    CreateParser parser(input);
+                    parser.parse();
+                    if (parser.create_db)
+                    {
+                        this->create_db(parser.get_target_name());
+                    }
+                    else
+                    {
+                        std::unique_ptr<Table> table;
+                        table.reset(this->add_table(parser.get_target_name()));
+                    }
+                }
+                else if (main_token == INSERT)
+                {
+                    InsertParser parser(input);
+                    parser.parse();
+                    std::unique_ptr<Table> table;
+                    table.reset(this->get_table(parser.get_target_name()));
+                    for (const std::vector<std::string> &row : parser.row_values)
+                    {
+                        table->insert_row_text(row);
+                    }
+                }
+                else if (main_token == SELECT)
+                {
+                    SearchParser parser(input);
+                    parser.parse();
+                    std::unique_ptr<Table> table;
+                    table.reset(this->get_table(parser.get_target_name()));
+                    parser.extract_conditions(table.get());
+                    std::vector<char *> result = table->search_row_single_key(parser.main_col_name, parser.main_val, parser.main_symbol, parser.comparison);
+                    for (const char *res : result)
+                    {
+                        delete[] res;
+                    }
+                }
+                else if (main_token == DELETE)
+                {
+                    DeleteParser parser(input);
+                    parser.parse();
+                    std::unique_ptr<Table> table;
+                    table.reset(this->get_table(parser.get_target_name()));
+                    parser.extract_conditions(table.get());
+                    std::vector<char *> result = table->delete_row(parser.main_col_name, parser.main_val, parser.main_symbol, parser.comparison);
+                    for (const char *res : result)
+                    {
+                        delete[] res;
+                    }
+                }
+                else
+                {
+                    throw std::invalid_argument("Unknown command " + main_token);
+                }
             }
-            else
+            catch (const std::invalid_argument &e)
             {
-                if (token[0] == "connect")
-                {
-                    if (this->connect_database(token[1]))
-                    {
-                        std::cout << "Database Connected" << std::endl;
-                    };
-                }
-                else if (token[0] == "createdb")
-                {
-                    if (this->create_db(token[1]))
-                    {
-                        std::cout << "Database Created" << std::endl;
-                    };
-                }
-                else if (token[0] == "createtable")
-                {
-                    if (this->add_table(token[1]))
-                    {
-                        std::cout << "Table Created" << std::endl;
-                    }
-                }
-                else if (token[0] == "deletetable")
-                {
-                    if (this->delete_table(token[1]))
-                    {
-                        std::cout << "Table Deleted" << std::endl;
-                    }
-                }
-                else if (token[0] == "deletedb")
-                {
-                    if (this->delete_db(token[1]))
-                    {
-                        std::cout << "Database Deleted" << std::endl;
-                    }
-                }
+                std::cout << e.what() << std::endl;
             }
         }
     }
@@ -203,4 +223,20 @@ std::vector<std::string> split(const std::string &str, const std::string &delimi
     tokens.push_back(str.substr(last));
 
     return tokens;
+}
+
+std::string get_first_token(const std::string &str)
+{
+    size_t l = 0;
+    size_t r = 0;
+    while (r < str.length() && str[r] == ' ')
+    {
+        r++;
+    }
+    l = r;
+    while (r < str.length() && str[r] != ' ')
+    {
+        r++;
+    }
+    return str.substr(l, r - l);
 }
