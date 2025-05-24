@@ -4,6 +4,30 @@ typedef boost::multiprecision::cpp_int cpp_int;
 
 namespace rsql
 {
+    std::ostream &operator<<(std::ostream &os, const DataType &dt)
+    {
+        switch (dt)
+        {
+        case DataType::DEFAULT_KEY:
+            os << DEF_KEY_STR;
+            break;
+        case DataType::CHAR:
+            os << CHAR_STR;
+            break;
+        case DataType::UINT:
+            os << UINT_STR;
+            break;
+        case DataType::SINT:
+            os << SINT_STR;
+            break;
+        case DataType::DATE:
+            os << DATE_STR;
+            break;
+        default:
+            os << "";
+        }
+        return os;
+    }
     DataType str_to_dt(std::string string_repr)
     {
         if (string_repr.compare(DEF_KEY_STR) == 0)
@@ -115,10 +139,12 @@ namespace rsql
     void ucpp_int_to_char(char *const dest, const size_t dest_len, cpp_int &ucpp_int)
     {
         size_t total_bits;
-        if (ucpp_int.sign() == 0){
+        if (ucpp_int.sign() == 0)
+        {
             total_bits = 1;
         }
-        else{
+        else
+        {
             total_bits = boost::multiprecision::msb(ucpp_int) + 1;
         }
         size_t total_bytes = total_bits / 8;
@@ -126,7 +152,8 @@ namespace rsql
         {
             total_bytes += 1;
         }
-        if (total_bytes > dest_len){
+        if (total_bytes > dest_len)
+        {
             std::string err_msg = ucpp_int.str() + " need " + std::to_string(total_bytes) + " bytes of char. Destination only has " + std::to_string(dest_len);
             throw std::invalid_argument(err_msg);
             return;
@@ -138,10 +165,12 @@ namespace rsql
     {
         cpp_int absolute = boost::multiprecision::abs(scpp_int);
         size_t total_bits;
-        if (scpp_int.sign() == 0){
+        if (scpp_int.sign() == 0)
+        {
             total_bits = 1;
         }
-        else{
+        else
+        {
             total_bits = boost::multiprecision::msb(absolute) + 1;
         }
         size_t total_bytes = total_bits / 8;
@@ -149,8 +178,9 @@ namespace rsql
         {
             total_bytes += 1;
         }
-        total_bytes += 1; //Sign byte
-        if (total_bytes > dest_len){
+        total_bytes += 1; // Sign byte
+        if (total_bytes > dest_len)
+        {
             std::string err_msg = scpp_int.str() + " need " + std::to_string(total_bytes) + " bytes of char. Destination only has " + std::to_string(dest_len);
             throw std::invalid_argument(err_msg);
             return;
@@ -168,7 +198,8 @@ namespace rsql
     void char_to_scpp_int(char *const src, const size_t src_len, cpp_int &scpp_int)
     {
         int sign = static_cast<int>(*src);
-        if (sign != 0 && sign != 1 && sign != -1){
+        if (sign != 0 && sign != 1 && sign != -1)
+        {
             throw std::invalid_argument("Invalid source");
             return;
         }

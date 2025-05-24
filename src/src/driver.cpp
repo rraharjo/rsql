@@ -1,7 +1,6 @@
 #include "driver.h"
 static bool inline valid_db(rsql::Database *db);
 static std::vector<std::string> split(const std::string &str, const std::string &delimiter);
-static std::string get_first_token(const std::string &str);
 static void print_vv(const std::vector<std::vector<std::string>> &vv);
 static inline void to_lower_case(std::string &str);
 namespace rsql
@@ -176,7 +175,8 @@ namespace rsql
                             table->add_column(p.first, p.second);
                         }
                     }
-                    else{
+                    else
+                    {
                         throw std::invalid_argument("Unknown command");
                     }
                 }
@@ -226,6 +226,21 @@ namespace rsql
                     }
                     print_vv(result_str);
                 }
+                else if (main_token == INFO)
+                {
+                    TableInfoParser parser(input);
+                    parser.parse();
+                    tableptr table = this->get_table(parser.get_target_name());
+                    std::vector<std::pair<std::string, Column>> table_columns = table->get_columns();
+                    std::cout << "Table name: " << parser.get_target_name() << std::endl << std::endl;;
+                    for (const std::pair<std::string, Column> &column : table_columns)
+                    {
+                        std::cout << "Column    : " << column.first << std::endl;
+                        std::cout << "Type      : " << column.second.type << std::endl;
+                        std::cout << "Width     : " << column.second.width << std::endl;
+                        std::cout << std::endl;
+                    }
+                }
                 else
                 {
                     throw std::invalid_argument("Unknown command " + main_token);
@@ -238,7 +253,8 @@ namespace rsql
         }
         this->cleanup();
     }
-    void Driver::cleanup(){
+    void Driver::cleanup()
+    {
         this->tables.clear();
         delete this->db;
         this->db = nullptr;
@@ -270,21 +286,6 @@ std::vector<std::string> split(const std::string &str, const std::string &delimi
     tokens.push_back(str.substr(last));
 
     return tokens;
-}
-std::string get_first_token(const std::string &str)
-{
-    size_t l = 0;
-    size_t r = 0;
-    while (r < str.length() && str[r] == ' ')
-    {
-        r++;
-    }
-    l = r;
-    while (r < str.length() && str[r] != ' ')
-    {
-        r++;
-    }
-    return str.substr(l, r - l);
 }
 void print_vv(const std::vector<std::vector<std::string>> &vv)
 {

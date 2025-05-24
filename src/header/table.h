@@ -40,7 +40,7 @@ namespace rsql
         rsql::BTree *primary_tree;
         /**
          * @brief key is the index, value is the pointer to the tree. If a column does not have a tree, that column does not belong in this attribute
-         * 
+         *
          */
         std::unordered_map<uint32_t, rsql::BTree *> optional_trees;
         std::unordered_map<uintuint32, rsql::BTree *, PairComp> composite_trees;
@@ -54,6 +54,7 @@ namespace rsql
          * @param table_name
          */
         Table(const Database *db, const std::string table_name);
+
     public:
         /**
          * @brief Create a new table object.
@@ -79,14 +80,15 @@ namespace rsql
         ~Table();
         /**
          * @brief Convert a vector of values (in text format) to binary format. Number of values has to match number of columns. Does not count default key column
-         * 
-         * @param values 
+         *
+         * @param values
          * @throw std::invalid_argument if the number of entries does not match the number of columns
          * @return char* dynamically allocated. Ownership belongs to caller
          */
         char *convert_texts_to_char_stream(const std::vector<std::string> &values);
         std::vector<std::string> convert_char_stream_to_texts(const char *const stream);
         Column get_column(std::string col_name);
+        std::vector<std::pair<std::string, Column>> get_columns();
         size_t get_preceding_length(const std::string col_name) const;
         /**
          * @brief Get the width of the table
@@ -104,9 +106,9 @@ namespace rsql
         size_t get_col_width(const std::string col_name) const;
         /**
          * @brief Add new column to the table
-         * 
-         * @param name 
-         * @param col 
+         *
+         * @param name
+         * @param col
          */
         void add_column(const std::string name, const rsql::Column col);
         /**
@@ -134,21 +136,21 @@ namespace rsql
         void insert_row_text(const std::vector<std::string> &row);
         /**
          * @brief Search all the rows within this table that matches the criteria provided
-         * 
+         *
          * @param key_col Key column for comparison
          * @param key value of key column - binary format
-         * @param symbol 
-         * @param comparison 
-         * @return std::vector<char *> 
+         * @param symbol
+         * @param comparison
+         * @return std::vector<char *>
          */
         std::vector<char *> search_row_single_key(std::string key_col, const char *key, CompSymbol symbol = CompSymbol::EQ, Comparison *comparison = nullptr);
         /**
          * @brief Delete all the rows within this table that matches the criteria provided
-         * 
-         * @param key_col 
+         *
+         * @param key_col
          * @param key key to find - binary format
-         * @param comparison 
-         * @return std::vector<char *> 
+         * @param comparison
+         * @return std::vector<char *>
          */
         std::vector<char *> delete_row(std::string key_col, const char *key, CompSymbol = CompSymbol::EQ, Comparison *comparison = nullptr);
         /**

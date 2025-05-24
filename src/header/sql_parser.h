@@ -17,6 +17,7 @@
 #define OR "or"
 #define DATABASE "database"
 #define TABLE "table"
+#define INFO "info"
 
 namespace rsql
 {
@@ -121,6 +122,13 @@ namespace rsql
     public:
         ConnectParser(const std::string instruction);
         ~ConnectParser();
+        void parse() override;
+    };
+
+    class TableInfoParser : public SQLParser{
+        public:
+        TableInfoParser(const std::string instruction);
+        ~TableInfoParser();
         void parse() override;
     };
 }

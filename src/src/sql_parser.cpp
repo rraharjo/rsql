@@ -265,10 +265,10 @@ namespace rsql
         {
             return;
         }
-        else if (has_primary_comparison){
+        else if (has_primary_comparison)
+        {
             this->expect(AND);
         }
-        //this->extract_next();
 
         std::vector<std::string> conditions = tokenize_sp_and_parenthesis(this->instruction.substr(this->cur_idx));
         std::stack<size_t> top_size;
@@ -472,6 +472,18 @@ namespace rsql
     {
         this->expect(CONNECT);
         this->expect(DATABASE);
+        this->target_name = this->extract_next();
+    }
+
+    TableInfoParser::TableInfoParser(const std::string instruction) : SQLParser(instruction)
+    {
+    }
+    TableInfoParser::~TableInfoParser()
+    {
+    }
+    void TableInfoParser::parse()
+    {
+        this->expect(INFO);
         this->target_name = this->extract_next();
     }
 }

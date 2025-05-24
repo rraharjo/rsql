@@ -1,6 +1,10 @@
 #include <memory>
 #include "table.h"
 #include "database.h"
+static inline bool name_idx_comp(const std::pair<std::string, uint32_t> &l, const std::pair<std::string, uint32_t> &r)
+{
+    return l.second < r.second;
+}
 namespace rsql
 {
     bool operator==(const uintuint32 &left, const uintuint32 &right)
@@ -218,6 +222,15 @@ namespace rsql
             throw std::invalid_argument(err_msg);
         }
         return this->primary_tree->columns[it->second];
+    }
+    std::vector<std::pair<std::string, Column>> Table::get_columns()
+    {
+        std::vector<std::pair<std::string, uint32_t>> name_idx_vec(this->col_name_indexes.begin(), this->col_name_indexes.end());
+        std::sort(name_idx_vec.begin(), name_idx_vec.end(), name_idx_comp);
+        std::vector<std::pair<std::string, Column>> to_ret;
+        for (const std::pair<std::string, uint32_t> &name_idx : name_idx_vec)
+            to_ret.push_back(std::make_pair(name_idx.first, this->primary_tree->columns[name_idx.second]));
+        return to_ret;
     }
     size_t Table::get_preceding_length(const std::string col_name) const
     {

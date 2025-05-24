@@ -4,6 +4,7 @@
 #include <string>
 #include <stdexcept>
 #include <cstring>
+#include <iostream>
 #include <boost/multiprecision/cpp_int.hpp>
 
 #define DT_STR_LEN 4
@@ -24,6 +25,7 @@ namespace rsql
         CHAR,
         DATE
     };
+    std::ostream& operator<<(std::ostream& os, const DataType &dt);
     DataType str_to_dt(std::string);
     std::string dt_to_str(DataType);
     bool valid_date(const std::string &);
