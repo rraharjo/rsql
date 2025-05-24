@@ -54,11 +54,8 @@ namespace rsql
         {
             Database *temp = Database::load_database(db_name);
             if (this->db)
-            {
-                delete this->db;
-            }
+                this->cleanup();
             this->db = temp;
-            this->tables.clear();
             return true;
         }
         catch (const std::invalid_argument &e)
@@ -178,6 +175,9 @@ namespace rsql
                         {
                             table->add_column(p.first, p.second);
                         }
+                    }
+                    else{
+                        throw std::invalid_argument("Unknown command");
                     }
                 }
                 else if (main_token == CONNECT)

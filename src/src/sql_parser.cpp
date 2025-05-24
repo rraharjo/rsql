@@ -90,7 +90,7 @@ namespace rsql
 {
     SQLParser::SQLParser(const std::string instruction) : instruction(instruction), cur_idx(0)
     {
-        //to_lower_case(this->instruction);
+        // to_lower_case(this->instruction);
     }
     SQLParser::~SQLParser()
     {
@@ -243,25 +243,32 @@ namespace rsql
     }
     void ParserWithWhere::extract_conditions(Table *table)
     {
+        if (this->next_token() == "")
+            return;
         this->expect(WHERE);
+        std::string n_token = this->next_token();
+        bool has_primary_comparison = false;
+        if (n_token != "" && n_token[0] != '(')
+        {
+            this->main_col_name = this->extract_next();
+            this->main_symbol = get_symbol_from_string(this->extract_next());
+            std::string str_val = this->extract_next();
+            Column main_column = table->get_column(this->main_col_name);
+            this->main_val = new char[main_column.width];
+            main_column.process_string(this->main_val, str_val);
+            has_primary_comparison = true;
+        }
 
-        this->main_col_name = this->extract_next();
-        this->main_symbol = get_symbol_from_string(this->extract_next());
-        std::string str_val = this->extract_next();
-        Column main_column = table->get_column(this->main_col_name);
-        this->main_val = new char[main_column.width];
-        main_column.process_string(this->main_val, str_val);
         std::string optional_token = this->next_token();
         to_lower_case(optional_token);
         if (optional_token.length() == 0)
         {
             return;
         }
-        else if (optional_token != AND)
-        {
-            throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
+        else if (has_primary_comparison){
+            this->expect(AND);
         }
-        this->extract_next();
+        //this->extract_next();
 
         std::vector<std::string> conditions = tokenize_sp_and_parenthesis(this->instruction.substr(this->cur_idx));
         std::stack<size_t> top_size;
@@ -293,6 +300,7 @@ namespace rsql
                     std::unique_ptr<Comparison> cur_top = std::move(comp_reserve.top());
                     comp_reserve.pop();
                     and_or_comp->add_condition(cur_top.get());
+                    cur_top.release();
                     to_remove--;
                 }
                 if (top_size.empty())

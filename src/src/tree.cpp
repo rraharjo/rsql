@@ -165,7 +165,7 @@ namespace rsql
         {
             if (comparison == nullptr)
             {
-                comparison = new ORComparisons();
+                comparison = new ANDComparisons();
                 this->root->linear_search(result, comparison);
                 delete comparison;
             }

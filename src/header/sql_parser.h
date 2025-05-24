@@ -58,7 +58,7 @@ namespace rsql
     class ParserWithWhere : public SQLParser
     {
     protected:
-        std::string main_col_name = "";
+        std::string main_col_name = DEF_KEY_COL_NAME;
         rsql::CompSymbol main_symbol = rsql::CompSymbol::EQ;
         char *main_val = nullptr;
         Comparison *comparison;

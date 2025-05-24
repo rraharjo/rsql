@@ -63,7 +63,7 @@ namespace rsql
         /**
          * @brief Search all rows that satisfy both key and comparison. if both arguments are null, then all rows will always satisfy the condition
          * 
-         * @param key null by default. This function does not take ownership of this pointer
+         * @param key null by default - if this is null, a linear search will be performed. This function does not take ownership of this pointer
          * @param symbol equal by default. Specify which key is valid. e.g. GEQ means takes all row of which key is greater or equal than the key argument
          * @param comparison null by default. This function does not take ownership of this pointer
          * @return std::vector<char *> each item is dynamically allocated. Ownership of pointers goes to the caller.
