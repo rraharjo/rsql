@@ -3,6 +3,7 @@ static bool inline valid_db(rsql::Database *db);
 static std::vector<std::string> split(const std::string &str, const std::string &delimiter);
 static std::string get_first_token(const std::string &str);
 static void print_vv(const std::vector<std::vector<std::string>> &vv);
+static inline void to_lower_case(std::string &str);
 namespace rsql
 {
     Driver::Driver()
@@ -157,20 +158,24 @@ namespace rsql
             }
             std::vector<std::string> tokens = split(input, " ");
             std::string main_token = tokens[0];
+            to_lower_case(main_token);
             try
             {
                 if (main_token == CREATE)
                 {
-                    if (tokens[1] == DATABASE){
+                    if (tokens[1] == DATABASE)
+                    {
                         CreateDBParser parser(input);
                         parser.parse();
                         this->create_db(parser.get_target_name());
                     }
-                    else if (tokens[1] == TABLE){
+                    else if (tokens[1] == TABLE)
+                    {
                         CreateTableParser parser(input);
                         parser.parse();
                         tableptr table = this->add_table(parser.get_target_name());
-                        for (const std::pair<std::string, Column> &p : parser.columns){
+                        for (const std::pair<std::string, Column> &p : parser.columns)
+                        {
                             table->add_column(p.first, p.second);
                         }
                     }
@@ -231,8 +236,15 @@ namespace rsql
                 std::cout << e.what() << std::endl;
             }
         }
+        this->cleanup();
+    }
+    void Driver::cleanup(){
+        this->tables.clear();
+        delete this->db;
+        this->db = nullptr;
     }
 }
+
 bool inline valid_db(rsql::Database *db)
 {
     if (db == nullptr)
@@ -285,4 +297,11 @@ void print_vv(const std::vector<std::vector<std::string>> &vv)
         std::cout << std::endl;
     }
     std::cout << std::endl;
+}
+void to_lower_case(std::string &str)
+{
+    for (size_t i = 0; i < str.length(); i++)
+    {
+        str[i] = std::tolower(str[i]);
+    }
 }

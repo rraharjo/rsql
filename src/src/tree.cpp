@@ -126,6 +126,7 @@ namespace rsql
         to_ret->tree_num = tree_num;
         to_ret->unique_key = unique_key;
         to_ret->get_root_node();
+        to_ret->write_disk();
         return to_ret;
     }
     std::vector<char *> BTree::find_all_row(const char *key, const size_t col_idx)

@@ -25,6 +25,7 @@ namespace rsql
         tableptr get_table(const std::string table_name);
         bool delete_table(const std::string table_name);
         void routine();
+        void cleanup();
 
         friend class SQLParser;
     };
