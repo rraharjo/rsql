@@ -186,7 +186,7 @@ namespace rsql
             {
                 if (cur_char == '(')
                 {
-                    if (inside_bracket)
+                    if (inside_bracket || !expect_new_row)
                         throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
                     l = this->cur_idx;
                     inside_bracket = true;
@@ -211,6 +211,8 @@ namespace rsql
                     }
                     else
                     {
+                        if (expect_new_row)
+                            throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
                         expect_new_row = true;
                     }
                 }
@@ -233,21 +235,22 @@ namespace rsql
         this->extract_values();
     }
 
-    ParserWithWhere::ParserWithWhere(const std::string instruction) : SQLParser(instruction), comparison(nullptr)
+    ParserWithComparison::ParserWithComparison(const std::string instruction) : SQLParser(instruction), comparison(nullptr)
     {
     }
-    ParserWithWhere::~ParserWithWhere()
+    ParserWithComparison::~ParserWithComparison()
     {
         delete this->comparison;
         delete[] this->main_val;
     }
-    void ParserWithWhere::extract_conditions(Table *table)
+    void ParserWithComparison::extract_conditions(Table *table)
     {
         if (this->next_token() == "")
             return;
         this->expect(WHERE);
         std::string n_token = this->next_token();
         bool has_primary_comparison = false;
+        // extracting primary col
         if (n_token != "" && n_token[0] != '(')
         {
             this->main_col_name = this->extract_next();
@@ -349,7 +352,7 @@ namespace rsql
         comp_reserve.top().release();
     }
 
-    DeleteParser::DeleteParser(const std::string instruction) : ParserWithWhere(instruction)
+    DeleteParser::DeleteParser(const std::string instruction) : ParserWithComparison(instruction)
     {
     }
     DeleteParser::~DeleteParser()
@@ -362,7 +365,7 @@ namespace rsql
         this->target_name = this->extract_next();
     }
 
-    SearchParser::SearchParser(const std::string instruction) : ParserWithWhere(instruction)
+    SearchParser::SearchParser(const std::string instruction) : ParserWithComparison(instruction)
     {
     }
     SearchParser::~SearchParser()
@@ -403,22 +406,22 @@ namespace rsql
     }
     void CreateTableParser::parse_columns()
     {
-        bool parenthesis = false;
+        bool in_parenthesis = false;
         std::vector<std::string> tokens = tokenize_sp_and_parenthesis(this->instruction.substr(this->cur_idx));
         std::vector<std::string> temp;
         for (size_t i = 0; i < tokens.size(); i++)
         {
             if (tokens[i] == "(")
             {
-                if (parenthesis)
+                if (in_parenthesis)
                     throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
-                parenthesis = true;
+                in_parenthesis = true;
             }
             else if (tokens[i] == ")")
             {
-                if (!parenthesis)
+                if (!in_parenthesis)
                     throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
-                parenthesis = false;
+                in_parenthesis = false;
                 try
                 {
                     std::string col_name = temp[0];
@@ -456,7 +459,7 @@ namespace rsql
                 temp.push_back(tokens[i]);
             }
         }
-        if (parenthesis || temp.size() != 0)
+        if (in_parenthesis || temp.size() != 0)
         {
             throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
         }

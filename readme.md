@@ -33,6 +33,37 @@ Structure:
     next 4 bytes                    : number of composite trees
     next n * 12 bytes               : composite trees information (col_idx(4), col_idx(4), tree_num(4))
 
+Parser guide
+1. keywords are case-insensitive, except for data type
+2. list of suppported data type:
+    UINT -> unsigned integer
+    SINT -> signed integer
+    CHAR -> array of character (string)
+    DATE -> date
+3. creating a database: 
+    CREATE DATABASE $database_name
+    Ex: CREATE DATABASE db_1
+4. connect to a database:
+    CONNECT DATABASE $database_name
+    Ex: CONNECT DATABASE db_1
+5. create a table (must be connected to a database to create a table):
+    CREATE TABLE $table_name ($col_name_1 $data_type_1 $length_1) ($col_name_2 $data_type_2 $length_2)...
+    Ex: CREATE TABLE table_1 (unsigned_int_col UINT 10) (date_col DATE)
+    Note: when the data type is DATE, length should not be mentioned, it should just be ($col_name DATE)
+6. insert row:
+    INSERT INTO $table_name VALUES ($val_1, $val_2, ...), ($val_1, val_2, ...), ...
+    Ex: INSERT INTO table_1 VALUES (10000, "2002-10-10"), (50000, 2002-10-10)
+    Note: any leading/trailing space to the values will be removed. Use quotation marks would override this behavior.
+7. search row:
+    SELECT FROM $table_name WHERE $primary_col $symbol $values AND ($col $symbol $values OR ($col $symbol $values AND $col $symbol %values))
+    Note: the WHERE clause is optional - ignoring it would return everything on the table. The primary_col is also optional - this is the column used for indexed search - if this is not null, any additional condition must be connected with AND keyword. The additional conditions must be enclosed in parenthesis, and can be nested as many times as needed. In a single parenthesis, the connectors (AND/OR) must be the same - (a AND b OR c) is an invalid expression, but (a AND (b OR c)) is valid. 
+8. delete row:
+    DELETE FROM $table_name WHERE $primary_col $symbol $values AND ($col $symbol $values OR ($col $symbol $values AND $col $symbol %values))
+    Note: The WHERE clause use the same rules as search
+9. alter table add column
+10. alter table remove column
+11. alter table index column
+
 Dependencies:
 1. C++ Boost libraries: https://www.boost.org/
 

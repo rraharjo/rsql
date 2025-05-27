@@ -56,17 +56,17 @@ namespace rsql
         std::string next_token();
     };
 
-    class ParserWithWhere : public SQLParser
+    class ParserWithComparison : public SQLParser
     {
     protected:
         std::string main_col_name = DEF_KEY_COL_NAME;
         rsql::CompSymbol main_symbol = rsql::CompSymbol::EQ;
         char *main_val = nullptr;
         Comparison *comparison;
-        ParserWithWhere(const std::string instruction);
+        ParserWithComparison(const std::string instruction);
 
     public:
-        virtual ~ParserWithWhere();
+        virtual ~ParserWithComparison();
         void extract_conditions(Table *table);
         friend class Driver;
     };
@@ -83,7 +83,7 @@ namespace rsql
         ~InsertParser();
     };
 
-    class DeleteParser : public ParserWithWhere
+    class DeleteParser : public ParserWithComparison
     {
     public:
         void parse() override;
@@ -91,7 +91,7 @@ namespace rsql
         ~DeleteParser();
     };
 
-    class SearchParser : public ParserWithWhere
+    class SearchParser : public ParserWithComparison
     {
     public:
         void parse() override;
