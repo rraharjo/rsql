@@ -61,6 +61,17 @@ namespace rsql
     {
     }
 
+    bool SingleComparison::operator==(const Comparison &other) const
+    {
+        if (this->get_comparison_type() != other.get_comparison_type())
+            return false;
+        const SingleComparison *other_ptr = static_cast<const SingleComparison *>(&other);
+        return this->type == other_ptr->type &&
+               this->symbol == other_ptr->symbol &&
+               this->left_preceding == other_ptr->left_preceding &&
+               this->left_len == other_ptr->left_len;
+    }
+
     SingleComparison::~SingleComparison()
     {
     }
@@ -211,6 +222,16 @@ namespace rsql
         return compare_symbol(type_result, this->symbol);
     }
 
+    bool ColumnComparison::operator==(const Comparison &other) const 
+    {
+        if (this->get_comparison_type() != other.get_comparison_type())
+            return false;
+        const ColumnComparison *other_ptr = static_cast<const ColumnComparison *>(&other);
+        return SingleComparison::operator==(other) &&
+               this->right_len == other_ptr->right_len &&
+               this->right_preceding == other_ptr->right_preceding;
+    };
+
     ConstantComparison::ConstantComparison(DataType type, CompSymbol symbol, size_t len, const size_t left_preceding, const char *right_val)
         : SingleComparison(type, symbol, left_preceding, len)
     {
@@ -333,6 +354,16 @@ namespace rsql
         std::memcpy(this->constant_val, new_right_val, this->left_len);
     }
 
+    bool ConstantComparison::operator==(const Comparison &other) const
+    {
+        if (this->get_comparison_type() != other.get_comparison_type())
+            return false;
+        const ConstantComparison *other_ptr = static_cast<const ConstantComparison *>(&other);
+        bool to_ret = SingleComparison::operator==(other);
+        bool cmp_ret = std::memcmp(this->constant_val, other_ptr->constant_val, this->left_len) == 0;
+        return to_ret && cmp_ret;
+    };
+
     MultiComparisons::MultiComparisons()
     {
     }
@@ -356,6 +387,22 @@ namespace rsql
     void MultiComparisons::add_condition(Comparison *comp)
     {
         this->conditions.push_back(comp->clone());
+    }
+
+    bool MultiComparisons::operator==(const Comparison &other) const
+    {
+        if (other.get_comparison_type() != this->get_comparison_type())
+            return false;
+        const MultiComparisons *other_ptr = static_cast<const MultiComparisons *>(&other);
+        const size_t this_size = this->conditions.size();
+        if (this_size != other_ptr->conditions.size())
+            return false;
+        for (size_t i = 0; i < this_size; i++)
+        {
+            if (*(this->conditions[i]) != *(other_ptr->conditions[i]))
+                return false;
+        }
+        return true;
     }
 
     ORComparisons::ORComparisons() : MultiComparisons()
@@ -391,7 +438,8 @@ namespace rsql
         return false;
     }
 
-    bool ORComparisons::is_and(){
+    bool ORComparisons::is_and()
+    {
         return false;
     }
 
@@ -424,7 +472,8 @@ namespace rsql
         return true;
     }
 
-    bool ANDComparisons::is_and(){
+    bool ANDComparisons::is_and()
+    {
         return true;
     }
 }

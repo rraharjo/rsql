@@ -201,7 +201,7 @@ namespace rsql
                     SearchParser parser(input);
                     parser.parse();
                     tableptr table = this->get_table(parser.get_target_name());
-                    parser.extract_conditions(table.get());
+                    parser.extract_comparisons(table.get());
                     std::vector<char *> result = table->search_row_single_key(parser.main_col_name, parser.main_val, parser.main_symbol, parser.comparison);
                     std::vector<std::vector<std::string>> result_str;
                     for (const char *res : result)
@@ -216,7 +216,7 @@ namespace rsql
                     DeleteParser parser(input);
                     parser.parse();
                     tableptr table = this->get_table(parser.get_target_name());
-                    parser.extract_conditions(table.get());
+                    parser.extract_comparisons(table.get());
                     std::vector<char *> result = table->delete_row(parser.main_col_name, parser.main_val, parser.main_symbol, parser.comparison);
                     std::vector<std::vector<std::string>> result_str;
                     for (const char *res : result)

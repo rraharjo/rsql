@@ -55,7 +55,10 @@ Parser guide
     Ex: INSERT INTO table_1 VALUES (10000, "2002-10-10"), (50000, 2002-10-10)
     Note: any leading/trailing space to the values will be removed. Use quotation marks would override this behavior.
 7. search row:
-    SELECT FROM $table_name WHERE $primary_col $symbol $values AND ($col $symbol $values OR ($col $symbol $values AND $col $symbol %values))
+    v1 = SELECT FROM $table_name
+    v2 = SELECT FROM $table_name WHERE $primary_col $symbol $values AND ($col $symbol $values OR ($col $symbol $values AND $col $symbol %values))
+    v3 = SELECT FROM $table_name WHERE ($col $symbol $values OR ($col $symbol $values AND $col $symbol %values))
+    v4 = SELECT FROM $table_name WHERE $primary_col $symbol $values
     Note: the WHERE clause is optional - ignoring it would return everything on the table. The primary_col is also optional - this is the column used for indexed search - if this is not null, any additional condition must be connected with AND keyword. The additional conditions must be enclosed in parenthesis, and can be nested as many times as needed. In a single parenthesis, the connectors (AND/OR) must be the same - (a AND b OR c) is an invalid expression, but (a AND (b OR c)) is valid. 
 8. delete row:
     DELETE FROM $table_name WHERE $primary_col $symbol $values AND ($col $symbol $values OR ($col $symbol $values AND $col $symbol %values))
@@ -63,6 +66,8 @@ Parser guide
 9. alter table add column
 10. alter table remove column
 11. alter table index column
+12. exit: EXIT
+    exit the program
 
 Dependencies:
 1. C++ Boost libraries: https://www.boost.org/

@@ -2,6 +2,10 @@
 #define COMPARISON_H
 #include <vector>
 #include "data_type.h"
+#define COL_COMP_TYPE 1
+#define CONST_COMP_TYPE 2
+#define AND_COMP_TYPE 3
+#define OR_COMP_TYPE 4
 namespace rsql
 {
     enum class CompSymbol
@@ -25,6 +29,12 @@ namespace rsql
         virtual ~Comparison();
         virtual Comparison *clone() = 0;
         virtual bool compare(const char *const row) = 0;
+        virtual uint8_t get_comparison_type() const = 0;
+        virtual bool operator==(const Comparison &other) const = 0;
+        inline bool operator!=(const Comparison &other)
+        {
+            return !(*this == other);
+        }
     };
 
     class SingleComparison : public Comparison
@@ -38,6 +48,7 @@ namespace rsql
         SingleComparison(const SingleComparison &other);
 
     public:
+        virtual bool operator==(const Comparison &other) const override;
         virtual ~SingleComparison();
     };
 
@@ -50,7 +61,7 @@ namespace rsql
     public:
         /**
          * @brief Construct a new Column Comparison object. Compare left to right
-         * 
+         *
          * @param type DataType being compared
          * @param symbol <, <=, ==, >=, >
          * @param left_len the length of the left column
@@ -64,6 +75,11 @@ namespace rsql
 
         ColumnComparison *clone() override;
         bool compare(const char *const row) override;
+        inline uint8_t get_comparison_type() const override
+        {
+            return COL_COMP_TYPE;
+        };
+        bool operator==(const Comparison &other) const override;
     };
 
     class ConstantComparison : public SingleComparison
@@ -74,7 +90,7 @@ namespace rsql
     public:
         /**
          * @brief Construct a new Constant Comparison object. compare left to constant. Does not take ownership of right_val
-         * 
+         *
          * @param type data type being compared
          * @param symbol <, <=, ==, >=, >
          * @param len length of the data being compared
@@ -87,6 +103,11 @@ namespace rsql
 
         ConstantComparison *clone() override;
         bool compare(const char *const row) override;
+        inline uint8_t get_comparison_type() const override
+        {
+            return CONST_COMP_TYPE;
+        };
+        bool operator==(const Comparison &other) const override;
         void change_right_val(const char *new_right_val);
     };
 
@@ -99,10 +120,11 @@ namespace rsql
 
     public:
         virtual ~MultiComparisons();
+        virtual bool operator==(const Comparison &other) const override;
         /**
          * @brief Add condition to the multicomparison. Does not take ownership of the pointer
-         * 
-         * @param comparison 
+         *
+         * @param comparison
          */
         void add_condition(Comparison *comparison);
         virtual bool is_and() = 0;
@@ -116,6 +138,10 @@ namespace rsql
         ~ORComparisons();
         ORComparisons *clone() override;
         bool compare(const char *const row) override;
+        uint8_t get_comparison_type() const override
+        {
+            return OR_COMP_TYPE;
+        };
         bool is_and() override;
     };
 
@@ -127,6 +153,10 @@ namespace rsql
         ~ANDComparisons();
         ANDComparisons *clone() override;
         bool compare(const char *const row) override;
+        uint8_t get_comparison_type() const override
+        {
+            return AND_COMP_TYPE;
+        };
         bool is_and() override;
     };
 }

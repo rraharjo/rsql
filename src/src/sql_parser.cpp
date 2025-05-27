@@ -243,7 +243,7 @@ namespace rsql
         delete this->comparison;
         delete[] this->main_val;
     }
-    void ParserWithComparison::extract_conditions(Table *table)
+    void ParserWithComparison::extract_comparisons(Table *table)
     {
         if (this->next_token() == "")
             return;
@@ -298,14 +298,15 @@ namespace rsql
                     and_or_comp.reset(new ORComparisons());
                 else
                     and_or_comp.reset(new ANDComparisons());
+                std::vector<std::unique_ptr<Comparison>> reverse_buffer;
                 while (to_remove > 0)
                 {
-                    std::unique_ptr<Comparison> cur_top = std::move(comp_reserve.top());
+                    reverse_buffer.push_back(std::move(comp_reserve.top()));
                     comp_reserve.pop();
-                    and_or_comp->add_condition(cur_top.get());
-                    cur_top.release();
                     to_remove--;
                 }
+                for (int i = static_cast<int>(reverse_buffer.size()) - 1 ; i >= 0 ; i--)
+                    and_or_comp->add_condition(reverse_buffer[i].get());
                 if (top_size.empty())
                 {
                     top_size.push(1);

@@ -67,7 +67,12 @@ namespace rsql
 
     public:
         virtual ~ParserWithComparison();
-        void extract_conditions(Table *table);
+        void extract_comparisons(Table *table);
+        inline const Comparison *get_comparison() const { return this->comparison; }
+        inline const std::string &get_main_col_name() const { return this->main_col_name; }
+        inline const rsql::CompSymbol &get_main_symbol() const { return this->main_symbol; }
+        inline const char *get_main_val() const { return this->main_val; }
+
         friend class Driver;
     };
 
@@ -125,8 +130,9 @@ namespace rsql
         void parse() override;
     };
 
-    class TableInfoParser : public SQLParser{
-        public:
+    class TableInfoParser : public SQLParser
+    {
+    public:
         TableInfoParser(const std::string instruction);
         ~TableInfoParser();
         void parse() override;
