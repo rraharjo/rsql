@@ -1,6 +1,9 @@
 #include "driver.h"
+#include <iomanip>
 static bool inline valid_db(rsql::Database *db);
 static std::vector<std::string> split(const std::string &str, const std::string &delimiter);
+static void print_table(const std::vector<std::string> &columns, const std::vector<std::vector<std::string>> &val);
+static void print_fixed_width(const std::string &str, const size_t &width);
 static void print_vv(const std::vector<std::vector<std::string>> &vv);
 static inline void to_lower_case(std::string &str);
 namespace rsql
@@ -154,7 +157,11 @@ namespace rsql
                         result_str.push_back(table->convert_char_stream_to_texts(res));
                         delete[] res;
                     }
-                    print_vv(result_str);
+                    //print_vv(result_str);
+                    std::vector<std::string> col_names;
+                    for (const std::pair<std::string, Column> &column : table->get_columns())
+                        col_names.push_back(column.first);
+                    print_table(col_names, result_str);
                 }
                 else if (main_token == DELETE)
                 {
@@ -170,7 +177,10 @@ namespace rsql
                         delete[] res;
                     }
                     std::cout << "Deleted: " << std::endl;
-                    print_vv(result_str);
+                    std::vector<std::string> col_names;
+                    for (const std::pair<std::string, Column> &column : table->get_columns())
+                        col_names.push_back(column.first);
+                    print_table(col_names, result_str);
                 }
                 else if (main_token == ALTER)
                 {
@@ -207,7 +217,8 @@ namespace rsql
                         std::cout << std::endl;
                     }
                 }
-                else if (main_token == LIST_DB){
+                else if (main_token == LIST_DB)
+                {
                     DatabaseInfoParser parser(input);
                     parser.parse();
                     if (parser.get_target_name() == TABLE)
@@ -275,6 +286,50 @@ void print_vv(const std::vector<std::vector<std::string>> &vv)
         std::cout << std::endl;
     }
     std::cout << std::endl;
+}
+void print_fixed_width(const std::string &str, const size_t &width)
+{
+    if (str.length() <= width)
+    {
+        std::string padded = str;
+        while (padded.length() < width)
+            padded.push_back(' ');
+        std::cout << padded;
+    }
+    else
+    {
+        std::string cut = str.substr(0, width - 3);
+        cut.append("...");
+        std::cout << cut;
+    }
+}
+void print_table(const std::vector<std::string> &columns, const std::vector<std::vector<std::string>> &val)
+{
+    static const size_t max_col_width = 15;
+    if (val.size() != 0 && columns.size() != val[0].size())
+        throw std::invalid_argument("Column size and value size don't match");
+    size_t size = columns.size();
+    size_t total_print_width = 0;
+    std::cout << "|";
+    total_print_width++;
+    for (const std::string &column : columns)
+    {
+        print_fixed_width(column, max_col_width);
+        std::cout << "|";
+        total_print_width += max_col_width + 1;
+    }
+    std::cout << std::endl;
+    std::string gate("", total_print_width);
+    std::memset(gate.data(), '-', total_print_width);
+    std::cout << gate << std::endl;
+    for (const std::vector<std::string> &row : val){
+        std::cout << "|";
+        for (const std::string &col : row){
+            print_fixed_width(col, max_col_width);
+            std::cout << "|";
+        }
+        std::cout << std::endl;
+    }
 }
 void to_lower_case(std::string &str)
 {

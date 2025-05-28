@@ -411,6 +411,8 @@ namespace rsql
             }
             else
             {
+                if (!in_parenthesis)
+                    throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
                 temp.push_back(tokens[i]);
             }
         }

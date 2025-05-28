@@ -75,6 +75,8 @@ namespace rsql
         {
             std::string to_ret("", this->width);
             std::memcpy(to_ret.data(), src, this->width);
+            if (to_ret[to_ret.length() - 1] == '\0')
+                to_ret.resize(std::strlen(to_ret.data()));
             return to_ret;
         }
         case DataType::UINT:
