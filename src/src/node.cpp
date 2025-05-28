@@ -342,7 +342,7 @@ namespace rsql
         this->del_if_not_root();
         return c_i->delete_right();
     }
-    inline char *BNode::delete_row_1(const size_t idx)
+    char *BNode::delete_row_1(const size_t idx)
     {
         char *to_ret = this->keys[idx];
         shift_left(this->keys, idx + 1, this->size);
@@ -455,14 +455,14 @@ namespace rsql
         this->del_if_not_root();
         return c_i->delete_row(key, comparison);
     }
-    inline void BNode::del_if_not_root()
+    void BNode::del_if_not_root()
     {
         if (this->node_num != this->tree->root_num)
         {
             delete this;
         }
     }
-    inline void BNode::destroy()
+    void BNode::destroy()
     {
         std::string file_name = BNode::get_file_name(this->node_num);
         std::string where = std::filesystem::path(tree->get_path()) / file_name;

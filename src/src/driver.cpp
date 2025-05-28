@@ -20,61 +20,29 @@ namespace rsql
             std::cout << db << std::endl;
         }
     }
-    bool Driver::list_tables()
+    void Driver::list_tables()
     {
         if (!valid_db(this->db))
-        {
-            return false;
-        }
+            return;
         std::vector<std::string> tables = this->db->list_tables();
         for (const std::string &table : tables)
-        {
             std::cout << table << std::endl;
-        }
-        return true;
     }
-    bool Driver::create_db(const std::string db_name)
+    void Driver::create_db(const std::string db_name)
     {
-        try
-        {
-            Database *temp = Database::create_new_database(db_name);
-            delete temp;
-            return true;
-        }
-        catch (const std::invalid_argument &e)
-        {
-            std::cout << e.what() << std::endl;
-            return false;
-        }
+        Database *temp = Database::create_new_database(db_name);
+        delete temp;
     }
-    bool Driver::connect_database(const std::string db_name)
+    void Driver::connect_database(const std::string db_name)
     {
-        try
-        {
-            Database *temp = Database::load_database(db_name);
-            if (this->db)
-                this->cleanup();
-            this->db = temp;
-            return true;
-        }
-        catch (const std::invalid_argument &e)
-        {
-            std::cout << e.what() << std::endl;
-            return false;
-        }
+        Database *temp = Database::load_database(db_name);
+        if (this->db)
+            this->cleanup();
+        this->db = temp;
     }
-    bool Driver::delete_db(const std::string db_name)
+    void Driver::delete_db(const std::string db_name)
     {
-        try
-        {
-            Database::delete_database(db_name);
-            return true;
-        }
-        catch (const std::invalid_argument &e)
-        {
-            std::cout << e.what() << std::endl;
-            return false;
-        }
+        Database::delete_database(db_name);
     }
     tableptr Driver::add_table(const std::string table_name)
     {
@@ -102,44 +70,25 @@ namespace rsql
         {
             throw std::invalid_argument("Invalid table");
         }
-        try
+        auto table_it = this->tables.find(table_name);
+        if (table_it == this->tables.end())
         {
-            auto table_it = this->tables.find(table_name);
-            if (table_it == this->tables.end())
-            {
-                Table *to_ret = this->db->get_table(table_name);
-                tableptr to_add;
-                to_add.reset(to_ret);
-                this->tables.insert({"table_name", to_add});
-                return to_add;
-            }
-            else
-            {
-                return table_it->second;
-            }
+            Table *to_ret = this->db->get_table(table_name);
+            tableptr to_add;
+            to_add.reset(to_ret);
+            this->tables.insert({"table_name", to_add});
+            return to_add;
         }
-        catch (const std::invalid_argument &e)
+        else
         {
-            std::cout << e.what() << std::endl;
-            return nullptr;
+            return table_it->second;
         }
     }
-    bool Driver::delete_table(const std::string table_name)
+    void Driver::delete_table(const std::string table_name)
     {
         if (!valid_db(this->db))
-        {
-            return false;
-        }
-        try
-        {
-            this->db->remove_table(table_name);
-            return true;
-        }
-        catch (const std::invalid_argument &e)
-        {
-            std::cout << e.what() << std::endl;
-            return false;
-        }
+            return;
+        this->db->remove_table(table_name);
     }
     void Driver::routine()
     {
@@ -170,10 +119,8 @@ namespace rsql
                         CreateTableParser parser(input);
                         parser.parse();
                         tableptr table = this->add_table(parser.get_target_name());
-                        for (const std::pair<std::string, Column> &p : parser.columns)
-                        {
+                        for (const std::pair<std::string, Column> &p : parser.get_columns())
                             table->add_column(p.first, p.second);
-                        }
                     }
                     else
                     {
@@ -191,10 +138,10 @@ namespace rsql
                     InsertParser parser(input);
                     parser.parse();
                     tableptr table = this->get_table(parser.get_target_name());
+                    if (!table)
+                        continue;
                     for (const std::vector<std::string> &row : parser.row_values)
-                    {
                         table->insert_row_text(row);
-                    }
                 }
                 else if (main_token == SELECT)
                 {
@@ -226,13 +173,33 @@ namespace rsql
                     }
                     print_vv(result_str);
                 }
+                else if (main_token == ALTER)
+                {
+                    std::vector<std::string> tokens = split(input, " ");
+                    AlterTableParser parser(input);
+                    parser.parse();
+                    tableptr table = this->get_table(parser.get_target_name());
+                    if (tokens[3] == ADD)
+                    {
+                        for (const std::pair<std::string, Column> &p : parser.get_columns())
+                            table->add_column(p.first, p.second);
+                    }
+                    else if (tokens[3] == DELETE)
+                        for (const std::string &col_name : parser.get_col_names())
+                            table->remove_column(col_name);
+                    else if (tokens[3] == INDEX_COL)
+                        for (const std::string &col_name : parser.get_col_names())
+                            table->index_column(col_name);
+                }
                 else if (main_token == INFO)
                 {
                     TableInfoParser parser(input);
                     parser.parse();
                     tableptr table = this->get_table(parser.get_target_name());
                     std::vector<std::pair<std::string, Column>> table_columns = table->get_columns();
-                    std::cout << "Table name: " << parser.get_target_name() << std::endl << std::endl;;
+                    std::cout << "Table name: " << parser.get_target_name() << std::endl
+                              << std::endl;
+                    ;
                     for (const std::pair<std::string, Column> &column : table_columns)
                     {
                         std::cout << "Column    : " << column.first << std::endl;
@@ -253,6 +220,7 @@ namespace rsql
         }
         this->cleanup();
     }
+
     void Driver::cleanup()
     {
         this->tables.clear();

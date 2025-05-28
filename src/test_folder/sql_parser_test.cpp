@@ -64,15 +64,18 @@ BOOST_AUTO_TEST_CASE(where_parser_test){
     cpp_int first_val = 10;
     cpp_int second_val = 10;
     cpp_int fourth_val = -100;
+    cpp_int main_val = 1000;
     char first_val_char[10];
     char second_val_char[10];
     char third_val_char[10];
     char fourth_val_char[4];
+    char main_val_char[4];
 
     rsql::ucpp_int_to_char(first_val_char, 10, first_val);
     rsql::ucpp_int_to_char(second_val_char, 10, second_val);
     std::memcpy(third_val_char, "2002-10-10", 10);
     rsql::scpp_int_to_char(fourth_val_char, 4, fourth_val);
+    rsql::scpp_int_to_char(main_val_char, 4, main_val);
 
     rsql::MultiComparisons *optional_comparison = new rsql::ANDComparisons();
     rsql::MultiComparisons *left_comparison = new rsql::ORComparisons();
@@ -87,6 +90,9 @@ BOOST_AUTO_TEST_CASE(where_parser_test){
     right_comparison->add_condition(fourth_comp);
     optional_comparison->add_condition(left_comparison);
     optional_comparison->add_condition(right_comparison);
+    BOOST_CHECK(parser.get_main_col_name() == "col_3");
+    BOOST_CHECK(parser.get_main_symbol() == rsql::CompSymbol::GT);
+    BOOST_CHECK(std::memcmp(parser.get_main_val(), main_val_char, 4) == 0);
     BOOST_CHECK(*(parser.get_comparison()) == *optional_comparison);
     delete left_comparison;
     delete right_comparison;

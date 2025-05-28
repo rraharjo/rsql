@@ -305,7 +305,7 @@ namespace rsql
                     comp_reserve.pop();
                     to_remove--;
                 }
-                for (int i = static_cast<int>(reverse_buffer.size()) - 1 ; i >= 0 ; i--)
+                for (int i = static_cast<int>(reverse_buffer.size()) - 1; i >= 0; i--)
                     and_or_comp->add_condition(reverse_buffer[i].get());
                 if (top_size.empty())
                 {
@@ -353,6 +353,73 @@ namespace rsql
         comp_reserve.top().release();
     }
 
+    ParserWithColumns::ParserWithColumns(const std::string instruction) : SQLParser(instruction)
+    {
+    }
+    ParserWithColumns::~ParserWithColumns()
+    {
+    }
+    void ParserWithColumns::parse_columns()
+    {
+        bool in_parenthesis = false;
+        std::vector<std::string> tokens = tokenize_sp_and_parenthesis(this->instruction.substr(this->cur_idx));
+        std::vector<std::string> temp;
+        for (size_t i = 0; i < tokens.size(); i++)
+        {
+            if (tokens[i] == "(")
+            {
+                if (in_parenthesis)
+                    throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
+                in_parenthesis = true;
+            }
+            else if (tokens[i] == ")")
+            {
+                if (!in_parenthesis)
+                    throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
+                in_parenthesis = false;
+                try
+                {
+                    std::string col_name = temp[0];
+                    std::string type_str = temp[1];
+                    DataType type = str_to_dt(type_str);
+                    if (type == DataType::DEFAULT_KEY || type == DataType::DATE)
+                    {
+                        if (temp.size() != 2)
+                        {
+                            throw std::exception();
+                        }
+                        Column to_add = Column::get_column(0, type, 0);
+                        this->new_columns.push_back(std::make_pair(col_name, to_add));
+                    }
+                    else
+                    {
+                        if (temp.size() != 3)
+                        {
+                            throw std::exception();
+                        }
+                        std::string width_str = temp[2];
+                        size_t width = std::stoul(width_str);
+                        Column to_add = Column::get_column(0, type, width);
+                        this->new_columns.push_back(std::make_pair(col_name, to_add));
+                    }
+                    temp.clear();
+                }
+                catch (const std::exception &e)
+                {
+                    throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
+                }
+            }
+            else
+            {
+                temp.push_back(tokens[i]);
+            }
+        }
+        if (in_parenthesis || temp.size() != 0)
+        {
+            throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
+        }
+    }
+
     DeleteParser::DeleteParser(const std::string instruction) : ParserWithComparison(instruction)
     {
     }
@@ -392,7 +459,7 @@ namespace rsql
         this->target_name = this->extract_next();
     }
 
-    CreateTableParser::CreateTableParser(const std::string instruction) : SQLParser(instruction)
+    CreateTableParser::CreateTableParser(const std::string instruction) : ParserWithColumns(instruction)
     {
     }
     CreateTableParser::~CreateTableParser()
@@ -405,62 +472,42 @@ namespace rsql
         this->target_name = this->extract_next();
         this->parse_columns();
     }
-    void CreateTableParser::parse_columns()
+
+    AlterTableParser::AlterTableParser(const std::string instruction) : ParserWithColumns(instruction)
     {
-        bool in_parenthesis = false;
-        std::vector<std::string> tokens = tokenize_sp_and_parenthesis(this->instruction.substr(this->cur_idx));
-        std::vector<std::string> temp;
-        for (size_t i = 0; i < tokens.size(); i++)
+    }
+    AlterTableParser::~AlterTableParser()
+    {
+    }
+    void AlterTableParser::parse()
+    {
+        this->expect(ALTER);
+        this->expect(TABLE);
+        this->target_name = this->extract_next();
+        std::string alter_command = this->extract_next();
+        if (alter_command == ADD)
         {
-            if (tokens[i] == "(")
+            this->parse_columns();
+        }
+        else if (alter_command == DELETE)
+        {
+            std::string next_col = this->extract_next();
+            while (next_col != "")
             {
-                if (in_parenthesis)
-                    throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
-                in_parenthesis = true;
-            }
-            else if (tokens[i] == ")")
-            {
-                if (!in_parenthesis)
-                    throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
-                in_parenthesis = false;
-                try
-                {
-                    std::string col_name = temp[0];
-                    std::string type_str = temp[1];
-                    DataType type = str_to_dt(type_str);
-                    if (type == DataType::DEFAULT_KEY || type == DataType::DATE)
-                    {
-                        if (temp.size() != 2)
-                        {
-                            throw std::exception();
-                        }
-                        Column to_add = Column::get_column(0, type, 0);
-                        this->columns.push_back(std::make_pair(col_name, to_add));
-                    }
-                    else
-                    {
-                        if (temp.size() != 3)
-                        {
-                            throw std::exception();
-                        }
-                        std::string width_str = temp[2];
-                        size_t width = std::stoul(width_str);
-                        Column to_add = Column::get_column(0, type, width);
-                        this->columns.push_back(std::make_pair(col_name, to_add));
-                    }
-                    temp.clear();
-                }
-                catch (const std::exception &e)
-                {
-                    throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
-                }
-            }
-            else
-            {
-                temp.push_back(tokens[i]);
+                this->col_names.push_back(next_col);
+                next_col = this->extract_next();
             }
         }
-        if (in_parenthesis || temp.size() != 0)
+        else if (alter_command == INDEX_COL)
+        {
+            std::string next_col = this->extract_next();
+            while (next_col != "")
+            {
+                this->col_names.push_back(next_col);
+                next_col = this->extract_next();
+            }
+        }
+        else
         {
             throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
         }

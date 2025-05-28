@@ -54,7 +54,7 @@ namespace rsql
     Table *Table::load_table(Database *db, const std::string table_name)
     {
         std::string where = std::filesystem::path(ROOT_FOLDER) / db->db_name / table_name;
-        if (!std::filesystem::exists(where))
+        if (!std::filesystem::exists(where) || table_name == "")
         {
             throw std::invalid_argument("Table does not exist");
             return nullptr;
@@ -354,6 +354,7 @@ namespace rsql
             delete[] new_key;
         }
         increment_default_key(this->next_default_key);
+        this->changed = true;
         delete[] buffer;
     }
     void Table::insert_row_text(const std::vector<std::string> &row)

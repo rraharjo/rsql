@@ -9,12 +9,15 @@
 #define INSERT "insert"
 #define DELETE "delete"
 #define SELECT "select"
+#define ALTER "alter"
 #define FROM "from"
 #define INTO "into"
 #define VALUES "values"
 #define WHERE "where"
 #define AND "and"
 #define OR "or"
+#define ADD "add"
+#define INDEX_COL "index"
 #define DATABASE "database"
 #define TABLE "table"
 #define INFO "info"
@@ -76,6 +79,18 @@ namespace rsql
         friend class Driver;
     };
 
+    class ParserWithColumns : public SQLParser
+    {
+    protected:
+        std::vector<std::pair<std::string, Column>> new_columns;
+        ParserWithColumns(const std::string instruction);
+        virtual ~ParserWithColumns();
+
+    public:
+        void parse_columns();
+        inline const std::vector<std::pair<std::string, Column>> get_columns() const { return this->new_columns; }
+    };
+
     class InsertParser : public SQLParser
     {
     private:
@@ -112,14 +127,23 @@ namespace rsql
         void parse() override;
     };
 
-    class CreateTableParser : public SQLParser
+    class CreateTableParser : public ParserWithColumns
     {
     public:
-        std::vector<std::pair<std::string, Column>> columns;
         CreateTableParser(const std::string instruction);
         ~CreateTableParser();
         void parse() override;
-        void parse_columns();
+    };
+
+    class AlterTableParser : public ParserWithColumns
+    {
+    private:
+        std::vector<std::string> col_names;
+    public:
+        AlterTableParser(const std::string instruction);
+        ~AlterTableParser();
+        void parse() override;
+        inline const std::vector<std::string> &get_col_names() const { return this->col_names; }
     };
 
     class ConnectParser : public SQLParser
