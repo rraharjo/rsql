@@ -76,7 +76,7 @@ namespace rsql
             Table *to_ret = this->db->get_table(table_name);
             tableptr to_add;
             to_add.reset(to_ret);
-            this->tables.insert({"table_name", to_add});
+            this->tables.insert({table_name, to_add});
             return to_add;
         }
         else
@@ -207,6 +207,16 @@ namespace rsql
                         std::cout << "Width     : " << column.second.width << std::endl;
                         std::cout << std::endl;
                     }
+                }
+                else if (main_token == LIST_DB){
+                    DatabaseInfoParser parser(input);
+                    parser.parse();
+                    if (parser.get_target_name() == TABLE)
+                        this->list_tables();
+                    else if (parser.get_target_name() == DATABASE)
+                        this->list_db();
+                    else
+                        throw std::invalid_argument("Unknown command");
                 }
                 else
                 {

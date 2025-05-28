@@ -537,4 +537,16 @@ namespace rsql
         this->expect(INFO);
         this->target_name = this->extract_next();
     }
+
+    DatabaseInfoParser::DatabaseInfoParser(const std::string instruction) : SQLParser(instruction)
+    {
+    }
+    DatabaseInfoParser::~DatabaseInfoParser()
+    {
+    }
+    void DatabaseInfoParser::parse()
+    {
+        this->expect(LIST_DB);
+        this->target_name = this->extract_next();
+    }
 }

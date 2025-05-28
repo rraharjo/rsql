@@ -21,6 +21,7 @@
 #define DATABASE "database"
 #define TABLE "table"
 #define INFO "info"
+#define LIST_DB "list"
 
 namespace rsql
 {
@@ -159,6 +160,14 @@ namespace rsql
     public:
         TableInfoParser(const std::string instruction);
         ~TableInfoParser();
+        void parse() override;
+    };
+
+    class DatabaseInfoParser : public SQLParser
+    {
+    public:
+        DatabaseInfoParser(const std::string instruction);
+        ~DatabaseInfoParser();
         void parse() override;
     };
 }
