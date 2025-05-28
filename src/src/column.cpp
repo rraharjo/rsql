@@ -64,8 +64,13 @@ namespace rsql
     {
         switch (this->type)
         {
-        case DataType::CHAR:
         case DataType::DEFAULT_KEY:
+        {
+            boost::multiprecision::cpp_int dkey_val;
+            boost::multiprecision::import_bits(dkey_val, src, src + DEFAULT_KEY_WIDTH, 8, true);
+            return dkey_val.str();
+        }
+        case DataType::CHAR:
         case DataType::DATE:
         {
             std::string to_ret("", this->width);

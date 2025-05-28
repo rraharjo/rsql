@@ -15,18 +15,18 @@ namespace rsql
     void Driver::list_db()
     {
         std::vector<std::string> dbs = Database::list_databases();
+        size_t counter = 0;
         for (const std::string &db : dbs)
-        {
-            std::cout << db << std::endl;
-        }
+            std::cout << ++counter << ". " << db << std::endl;
     }
     void Driver::list_tables()
     {
         if (!valid_db(this->db))
             return;
         std::vector<std::string> tables = this->db->list_tables();
+        size_t counter = 0;
         for (const std::string &table : tables)
-            std::cout << table << std::endl;
+            std::cout << ++counter << ". " << table << std::endl;
     }
     void Driver::create_db(const std::string db_name)
     {
@@ -67,9 +67,7 @@ namespace rsql
     tableptr Driver::get_table(const std::string table_name)
     {
         if (!valid_db(this->db))
-        {
             throw std::invalid_argument("Invalid table");
-        }
         auto table_it = this->tables.find(table_name);
         if (table_it == this->tables.end())
         {
@@ -171,6 +169,7 @@ namespace rsql
                         result_str.push_back(table->convert_char_stream_to_texts(res));
                         delete[] res;
                     }
+                    std::cout << "Deleted: " << std::endl;
                     print_vv(result_str);
                 }
                 else if (main_token == ALTER)

@@ -438,11 +438,6 @@ namespace rsql
         return false;
     }
 
-    bool ORComparisons::is_and()
-    {
-        return false;
-    }
-
     ANDComparisons::ANDComparisons() : MultiComparisons()
     {
     }
@@ -469,11 +464,6 @@ namespace rsql
                 return false;
             }
         }
-        return true;
-    }
-
-    bool ANDComparisons::is_and()
-    {
         return true;
     }
 }

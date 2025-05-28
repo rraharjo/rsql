@@ -31,10 +31,7 @@ namespace rsql
         virtual bool compare(const char *const row) = 0;
         virtual uint8_t get_comparison_type() const = 0;
         virtual bool operator==(const Comparison &other) const = 0;
-        inline bool operator!=(const Comparison &other)
-        {
-            return !(*this == other);
-        }
+        inline bool operator!=(const Comparison &other) const { return !(*this == other); }
     };
 
     class SingleComparison : public Comparison
@@ -75,10 +72,7 @@ namespace rsql
 
         ColumnComparison *clone() override;
         bool compare(const char *const row) override;
-        inline uint8_t get_comparison_type() const override
-        {
-            return COL_COMP_TYPE;
-        };
+        inline uint8_t get_comparison_type() const override { return COL_COMP_TYPE; };
         bool operator==(const Comparison &other) const override;
     };
 
@@ -103,10 +97,7 @@ namespace rsql
 
         ConstantComparison *clone() override;
         bool compare(const char *const row) override;
-        inline uint8_t get_comparison_type() const override
-        {
-            return CONST_COMP_TYPE;
-        };
+        inline uint8_t get_comparison_type() const override { return CONST_COMP_TYPE; };
         bool operator==(const Comparison &other) const override;
         void change_right_val(const char *new_right_val);
     };
@@ -127,7 +118,6 @@ namespace rsql
          * @param comparison
          */
         void add_condition(Comparison *comparison);
-        virtual bool is_and() = 0;
     };
 
     class ORComparisons : public MultiComparisons
@@ -138,11 +128,7 @@ namespace rsql
         ~ORComparisons();
         ORComparisons *clone() override;
         bool compare(const char *const row) override;
-        uint8_t get_comparison_type() const override
-        {
-            return OR_COMP_TYPE;
-        };
-        bool is_and() override;
+        inline uint8_t get_comparison_type() const override { return OR_COMP_TYPE; };
     };
 
     class ANDComparisons : public MultiComparisons
@@ -153,11 +139,7 @@ namespace rsql
         ~ANDComparisons();
         ANDComparisons *clone() override;
         bool compare(const char *const row) override;
-        uint8_t get_comparison_type() const override
-        {
-            return AND_COMP_TYPE;
-        };
-        bool is_and() override;
+        inline uint8_t get_comparison_type() const override { return AND_COMP_TYPE; };
     };
 }
 #endif
