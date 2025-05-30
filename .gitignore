@@ -1,5 +1,8 @@
 .vscode
 src/test_folder/*.exe
+src/test_folder/scratch*
+src/test_folder/find_test.cpp
+src/header/dotenv.h
 rsql
 src/bin
 src/build

@@ -11,7 +11,7 @@ typedef boost::multiprecision::cpp_int cpp_int;
  * @param idx
  */
 template <typename T>
-void shift_right(std::vector<T> &v, const size_t idx, const size_t size);
+static void shift_right(std::vector<T> &v, const size_t idx, const size_t size);
 /**
  * @brief Shift all item starting at idx (inclusive) to the left by 1 unit
  *
@@ -20,8 +20,8 @@ void shift_right(std::vector<T> &v, const size_t idx, const size_t size);
  * @param idx
  */
 template <typename T>
-void shift_left(std::vector<T> &v, const size_t idx, const size_t size);
-unsigned int get_node_no(const std::string &file_name);
+static void shift_left(std::vector<T> &v, const size_t idx, const size_t size);
+static unsigned int get_node_no(const std::string &file_name);
 
 namespace rsql
 {

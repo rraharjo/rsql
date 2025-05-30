@@ -2,7 +2,7 @@
 #define DATABASE_RSQL_H
 #include <string>
 #include "table.h"
-#define ROOT_FOLDER "/home/raharjo/project/database/rsql"
+#include "dotenv.h"
 namespace rsql{
     class Table;
     class BTree;

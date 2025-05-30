@@ -22,11 +22,11 @@ namespace rsql
 
     std::string Database::get_path() const
     {
-        return std::filesystem::path(ROOT_FOLDER) / this->db_name;
+        return std::filesystem::path(DATABASE_FILE_ROOT_FOLDER) / this->db_name;
     }
     Database *Database::create_new_database(const std::string db_name)
     {
-        std::string where = std::filesystem::path(ROOT_FOLDER) / db_name;
+        std::string where = std::filesystem::path(DATABASE_FILE_ROOT_FOLDER) / db_name;
         if (std::filesystem::exists(where))
         {
             throw std::invalid_argument("Database already exists");
@@ -38,7 +38,7 @@ namespace rsql
     }
     Database *Database::load_database(const std::string db_name)
     {
-        std::string where = std::filesystem::path(ROOT_FOLDER) / db_name;
+        std::string where = std::filesystem::path(DATABASE_FILE_ROOT_FOLDER) / db_name;
         if (!std::filesystem::exists(where))
         {
             throw std::invalid_argument("Database does not exist");
@@ -48,7 +48,7 @@ namespace rsql
     }
     std::vector<std::string> Database::list_databases()
     {
-        std::string where = std::filesystem::path(ROOT_FOLDER);
+        std::string where = std::filesystem::path(DATABASE_FILE_ROOT_FOLDER);
         std::vector<std::string> to_ret;
         for (const auto &entry : std::filesystem::directory_iterator(where))
         {
@@ -61,7 +61,7 @@ namespace rsql
     }
     void Database::delete_database(const std::string db_name)
     {
-        std::string where = std::filesystem::path(ROOT_FOLDER) / db_name;
+        std::string where = std::filesystem::path(DATABASE_FILE_ROOT_FOLDER) / db_name;
         if (!std::filesystem::exists(where))
         {
             throw std::invalid_argument("Database does not exist");
@@ -70,7 +70,7 @@ namespace rsql
     }
     std::vector<std::string> Database::list_tables()
     {
-        std::string where = std::filesystem::path(ROOT_FOLDER) / this->db_name;
+        std::string where = std::filesystem::path(DATABASE_FILE_ROOT_FOLDER) / this->db_name;
         std::vector<std::string> to_ret;
         for (const auto &entry : std::filesystem::directory_iterator(where))
         {
@@ -91,7 +91,7 @@ namespace rsql
     }
     void Database::remove_table(const std::string table_name)
     {
-        std::string where = std::filesystem::path(ROOT_FOLDER) / this->db_name / table_name;
+        std::string where = std::filesystem::path(DATABASE_FILE_ROOT_FOLDER) / this->db_name / table_name;
         if (!std::filesystem::exists(where))
         {
             throw std::invalid_argument("Table does not exist");
