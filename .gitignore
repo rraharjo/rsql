@@ -4,5 +4,6 @@ src/test_folder/scratch*
 src/test_folder/find_test.cpp
 src/header/dotenv.h
 rsql
+todo.txt
 src/bin
 src/build

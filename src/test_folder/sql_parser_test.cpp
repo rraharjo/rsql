@@ -17,7 +17,7 @@ BOOST_AUTO_TEST_CASE(insert_parser_test_extract_values){
 
 BOOST_AUTO_TEST_CASE(insert_parser_test_values_with_quotes){
     std::string values = "insert into some_table values  (asd, \"13(( ))))))) some crazy values\", 3 3, asds), (asdf, ddd, \"   33333()()()3333\", 0x1f)  ";
-    std::vector<std::vector<std::string>> expected_values = {{"asd", "13(( ))))))) some crazy values", "3 3", "asds"}, {"asdf", "ddd", "   33333()()()3333", "0x1f"}};
+    std::vector<std::vector<std::string>> expected_values = {{"asd", "\"13(( ))))))) some crazy values\"", "3 3", "asds"}, {"asdf", "ddd", "\"   33333()()()3333\"", "0x1f"}};
     rsql::InsertParser insert_parser(values);
     insert_parser.parse();
 
@@ -57,7 +57,8 @@ BOOST_AUTO_TEST_CASE(where_parser_test){
     table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::UINT, 10));
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
     table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::SINT, 4));
-    std::string condition = "delete from test_table where col_3 > 1000 and ((col_1 < 10 or col_1 == 10) and (col_2 == 2002-10-10 or col_3 == -100 ))";
+    table->add_column("col_4", rsql::Column::get_column(0, rsql::DataType::SINT, 4));
+    std::string condition = "delete from test_table where col_3 > 1000 and ((col_1 < 10 or col_1 == 10) and (col_2 == \"2002-10-10\" or col_3 == -100 or col_3 < col_4 ))";
     rsql::DeleteParser parser(condition);
     parser.parse();
     parser.extract_comparisons(table);
@@ -84,10 +85,12 @@ BOOST_AUTO_TEST_CASE(where_parser_test){
     rsql::Comparison *second_comp = new rsql::ConstantComparison(rsql::DataType::UINT, rsql::CompSymbol::EQ, 10, 32, second_val_char);
     rsql::Comparison *third_comp = new rsql::ConstantComparison(rsql::DataType::DATE, rsql::CompSymbol::EQ, 10, 42, third_val_char);
     rsql::Comparison *fourth_comp = new rsql::ConstantComparison(rsql::DataType::SINT, rsql::CompSymbol::EQ, 4, 52, fourth_val_char);
+    rsql::Comparison *fifth_comp = new rsql::ColumnComparison(rsql::DataType::SINT, rsql::CompSymbol::LT, 4, 52, 4, 56);
     left_comparison->add_condition(first_comp);
     left_comparison->add_condition(second_comp);
     right_comparison->add_condition(third_comp);
     right_comparison->add_condition(fourth_comp);
+    right_comparison->add_condition(fifth_comp);
     optional_comparison->add_condition(left_comparison);
     optional_comparison->add_condition(right_comparison);
     BOOST_CHECK(parser.get_main_col_name() == "col_3");
@@ -100,6 +103,7 @@ BOOST_AUTO_TEST_CASE(where_parser_test){
     delete second_comp;
     delete third_comp;
     delete fourth_comp;
+    delete fifth_comp;
     delete optional_comparison;
     delete table;
     delete db;

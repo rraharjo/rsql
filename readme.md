@@ -1,14 +1,15 @@
 Project: Database engine written in C++, with BTree as the building block. 
 
 How to run:
-1. install all dependencies (see below)
-2. Create a file named "dotenv.h" under src/header. Define a constant DATABASE_FILE_ROOT_FOLDER. This will be the folder where the database file will be stored. Example:\
+1. Make sure OS is linux
+2. Install all dependencies (see below)
+3. Create a file named "dotenv.h" under src/header. Define a constant DATABASE_FILE_ROOT_FOLDER. This will be the folder where the database file will be stored. Example:\
 #ifndef DOTENV_H\
 #define DOTENV_H\
 #define DATABASE_FILE_ROOT_FOLDER "/some/directory/path"\
 #endif
-3. Go to "src" folder, and type "make"
-4. run "bin/main.exe"
+4. Go to "src" folder, and type "make"
+5. Run "bin/main.exe"
 
 Parser guide
 1. keywords are case-insensitive, except for data type
@@ -30,7 +31,7 @@ Parser guide
 6. insert row:
     - Syntax: INSERT INTO $table_name VALUES ($val_1, $val_2, ...), ($val_1, val_2, ...), ...
     - Ex: INSERT INTO table_1 VALUES (10000, "2002-10-10"), (50000, 2002-10-10)
-    - Note: any leading/trailing space to the values will be removed. Use quotation marks would override this behavior.
+    - Note: any leading/trailing space to the values will be removed. Use quotation marks to override this behavior.
 7. search row:
     - syntax (v1): SELECT FROM $table_name
     - syntax (v2): SELECT FROM $table_name WHERE $primary_col $symbol $values AND ($col $symbol $values OR ($col $symbol $values AND $col $symbol %values))

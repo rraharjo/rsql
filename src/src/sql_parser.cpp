@@ -54,14 +54,48 @@ static std::string strip(std::string str, unsigned char token = ' ')
     return str.substr(left, len);
 }
 
+static bool valid_numeric(const std::string &str)
+{
+    if (str.length() == 0)
+        return true;
+    bool is_negative = str[0] == '-' ? true : false;
+    bool valid_number = true;
+    size_t i = 0;
+    if (is_negative)
+        i = 1;
+    while (i < str.length())
+    {
+        valid_number = valid_number && str[i] >= '0' && str[i] <= '9';
+        i++;
+    }
+    return valid_number;
+}
+
+inline static bool quoted(const std::string &str)
+{
+    if (str.length() < 2)
+        return false;
+    return str[0] == '"' && str[str.length() - 1] == '"';
+}
+
 static rsql::Comparison *get_single_comparison(const std::string l, const std::string sym, const std::string r, rsql::Table *table)
 {
     rsql::CompSymbol symbol = rsql::get_symbol_from_string(sym);
     size_t left_preceding = table->get_preceding_length(l);
-    rsql::Column col = table->get_column(l);
-    std::unique_ptr<char[]> r_val = std::make_unique<char[]>(col.width);
-    col.process_string(r_val.get(), r);
-    rsql::ConstantComparison *to_ret = new rsql::ConstantComparison(col.type, symbol, col.width, left_preceding, r_val.get());
+    rsql::Column left_col = table->get_column(l);
+    std::unique_ptr<char[]> r_val = std::make_unique<char[]>(left_col.width);
+    rsql::Comparison *to_ret = nullptr;
+    if (valid_numeric(r) || quoted(r))
+    {
+        left_col.process_string(r_val.get(), r);
+        to_ret = new rsql::ConstantComparison(left_col.type, symbol, left_col.width, left_preceding, r_val.get());
+    }
+    else
+    {
+        rsql::Column right_col = table->get_column(r);
+        size_t right_preceding = table->get_preceding_length(r);
+        to_ret = new rsql::ColumnComparison(left_col.type, symbol, left_col.width, left_preceding, right_col.width, right_preceding);
+    }
     return to_ret;
 }
 
@@ -195,7 +229,7 @@ namespace rsql
                 {
                     if (!inside_bracket)
                         throw std::invalid_argument(get_error_msg(this->instruction, this->cur_idx));
-                    temp.push_back(strip(strip(this->instruction.substr(l + 1, this->cur_idx - l - 1)), '"'));
+                    temp.push_back(strip(this->instruction.substr(l + 1, this->cur_idx - l - 1)));
                     l = -1;
                     inside_bracket = false;
                     this->row_values.push_back(temp);
@@ -206,7 +240,7 @@ namespace rsql
                 {
                     if (inside_bracket)
                     {
-                        temp.push_back(strip(strip(this->instruction.substr(l + 1, this->cur_idx - l - 1)), '"'));
+                        temp.push_back(strip(this->instruction.substr(l + 1, this->cur_idx - l - 1)));
                         l = this->cur_idx;
                     }
                     else

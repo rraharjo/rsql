@@ -25,7 +25,6 @@
 
 namespace rsql
 {
-    class Driver;
     class SQLParser
     {
     protected:

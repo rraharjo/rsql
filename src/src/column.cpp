@@ -10,15 +10,39 @@ namespace rsql
         switch (this->type)
         {
         case DataType::DATE:
-            if (!valid_date(src))
+        {
+            if (src.length() > 1 && (src[0] != '"' || src[src.length() - 1] != '"'))
             {
                 std::string err_msg = src + " is not a valid date";
                 throw std::invalid_argument(err_msg);
             }
+            std::string stripped = src.substr(1, src.length() - 2);
+            if (!valid_date(stripped))
+            {
+                std::string err_msg = stripped + " is not a valid date";
+                throw std::invalid_argument(err_msg);
+            }
             std::memset(dest, 0, this->width);
-            std::memcpy(dest, src.c_str(), src.length());
+            std::memcpy(dest, stripped.c_str(), stripped.length());
             break;
+        }
         case DataType::CHAR:
+        {
+            if (src.length() > 1 && (src[0] != '"' || src[src.length() - 1] != '"'))
+            {
+                std::string err_msg = src + " is not a valid string";
+                throw std::invalid_argument(err_msg);
+            }
+            std::string stripped = src.substr(1, src.length() - 2);
+            if (stripped.length() > this->width)
+            {
+                throw std::invalid_argument("byte overflow");
+                return;
+            }
+            std::memset(dest, 0, this->width);
+            std::memcpy(dest, stripped.c_str(), stripped.length());
+            break;
+        }
         case DataType::DEFAULT_KEY:
             if (src.length() > this->width)
             {

@@ -64,8 +64,8 @@ buildleaktest: $(LEAKTARGET)
 runleaktest:
 	valgrind $(LEAKTARGET).exe
 
-buildtest: buildnodetest buildtreetest buildtabletest builddbtest buildcomptest buildtimetest
-runtest: runnodetest runtreetest runtabletest rundbtest runcomptest
+buildtest: buildnodetest buildtreetest buildtabletest builddbtest buildcomptest buildtimetest buildparsertest
+runtest: runnodetest runtreetest runtabletest rundbtest runcomptest runparsertest
 
 # Rule to build the target
 $(TARGET): $(OBJS)

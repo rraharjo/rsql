@@ -81,8 +81,8 @@ BOOST_AUTO_TEST_CASE(insert_row_text_test)
     table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::UINT, 32));
     table->add_column("col_4", rsql::Column::get_column(0, rsql::DataType::SINT, 8));
 
-    std::vector<std::string> row_1 = {"abcdefghij", "2002-01-01", "1234567890", "-10000"};
-    std::vector<std::string> row_2 = {"klmnopqrst", "2002-01-12", "1000000000", "20000"};
+    std::vector<std::string> row_1 = {"\"abcdefghij\"", "\"2002-01-01\"", "1234567890", "-10000"};
+    std::vector<std::string> row_2 = {"\"klmnopqrst\"", "\"2002-01-12\"", "1000000000", "20000"};
 
     char *buff_1 = table->convert_texts_to_char_stream(row_1);
     char *buff_2 = table->convert_texts_to_char_stream(row_2);
@@ -112,15 +112,15 @@ BOOST_AUTO_TEST_CASE(insert_row_text_test)
     std::memset(key, 0, DEFAULT_KEY_WIDTH);
     BOOST_CHECK(vec_row_1.size() == 1);
     BOOST_CHECK(strncmp(vec_row_1[0], key, 32) == 0);
-    BOOST_CHECK(strncmp(vec_row_1[0] + 32, row_1[0].c_str(), 10) == 0);
-    BOOST_CHECK(strncmp(vec_row_1[0] + 42, row_1[1].c_str(), 10) == 0);
+    BOOST_CHECK(strncmp(vec_row_1[0] + 32, row_1[0].c_str() + 1, 10) == 0);
+    BOOST_CHECK(strncmp(vec_row_1[0] + 42, row_1[1].c_str() + 1, 10) == 0);
     BOOST_CHECK(uint1 == 1234567890);
     BOOST_CHECK(signed_int_1 == cpp_int("-10000"));
     key[DEFAULT_KEY_WIDTH - 1] = 1;
     BOOST_CHECK(vec_row_2.size() == 1);
     BOOST_CHECK(strncmp(vec_row_2[0], key, 32) == 0);
-    BOOST_CHECK(strncmp(vec_row_2[0] + 32, row_2[0].c_str(), 10) == 0);
-    BOOST_CHECK(strncmp(vec_row_2[0] + 42, row_2[1].c_str(), 10) == 0);
+    BOOST_CHECK(strncmp(vec_row_2[0] + 32, row_2[0].c_str() + 1, 10) == 0);
+    BOOST_CHECK(strncmp(vec_row_2[0] + 42, row_2[1].c_str() + 1, 10) == 0);
     BOOST_CHECK(uint2 == 1000000000);
     BOOST_CHECK(signed_int_2 == cpp_int("20000"));
 
@@ -145,8 +145,8 @@ BOOST_AUTO_TEST_CASE(insert_row_exceeding_column_size_test)
     table->add_column("col_3", rsql::Column::get_column(0, rsql::DataType::UINT, 32));
     table->add_column("col_4", rsql::Column::get_column(0, rsql::DataType::SINT, 4));
 
-    std::vector<std::string> row_1 = {"abcdefghij", "2002-01-01", "1234567890", "-16777216"}; // 0x01 00 00 00
-    std::vector<std::string> row_2 = {"klmnopqrst", "2002-01-01", "1000000000", "-16777215"}; // 0xff ff ff
+    std::vector<std::string> row_1 = {"\"abcdefghij\"", "\"2002-01-01\"", "1234567890", "-16777216"}; // 0x01 00 00 00
+    std::vector<std::string> row_2 = {"\"klmnopqrst\"", "\"2002-01-01\"", "1000000000", "-16777215"}; // 0xff ff ff
 
     BOOST_CHECK_THROW(table->insert_row_text(row_1), std::invalid_argument);
     table->insert_row_text(row_2);
@@ -164,8 +164,8 @@ BOOST_AUTO_TEST_CASE(insert_row_exceeding_column_size_test)
     signed_int_2 *= sign_2;
     BOOST_CHECK(vec_row_2.size() == 1);
     BOOST_CHECK(strncmp(vec_row_2[0], key, DEFAULT_KEY_WIDTH) == 0);
-    BOOST_CHECK(strncmp(vec_row_2[0] + 32, row_2[0].c_str(), 10) == 0);
-    BOOST_CHECK(strncmp(vec_row_2[0] + 42, row_2[1].c_str(), 10) == 0);
+    BOOST_CHECK(strncmp(vec_row_2[0] + 32, row_2[0].c_str() + 1, 10) == 0);
+    BOOST_CHECK(strncmp(vec_row_2[0] + 42, row_2[1].c_str() + 1, 10) == 0);
     BOOST_CHECK(unsigned_int == 1000000000);
     BOOST_CHECK(signed_int_2 == cpp_int("-16777215"));
     delete[] vec_row_2[0];
@@ -421,7 +421,7 @@ BOOST_AUTO_TEST_CASE(load_table_test)
     table->add_column("col_1", rsql::Column::get_column(0, rsql::DataType::UINT, 10));
     table->add_column("col_2", rsql::Column::get_column(0, rsql::DataType::DATE, 0));
     std::string num = "10";
-    std::vector<std::string> row = {num, "2002-01-01"};
+    std::vector<std::string> row = {num, "\"2002-01-01\""};
     for (int i = 0; i < 5; i++)
     {
         table->insert_row_text(row);
