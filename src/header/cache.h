@@ -27,7 +27,7 @@ namespace rsql
     };
 
     template <typename K, typename V>
-    class LRUCache : public Cache<K, V>
+    class LRUSetCache : public Cache<K, V>
     {
     private:
         struct LRUStruct
@@ -38,14 +38,39 @@ namespace rsql
         std::unordered_map<K, LRUStruct> cache;
 
     public:
-        LRUCache(const size_t capacity);
-        ~LRUCache();
+        LRUSetCache(const size_t capacity);
+        ~LRUSetCache();
         std::optional<V> get(K key) override;
         std::optional<V> put(K key, V value) override;
         V evict() override;
     };
 
-    // Implementation
+    template <typename K, typename V>
+    class LRULinkedListCache : public Cache<K, V>
+    {
+    private:
+        struct LRULinkedList
+        {
+            LRULinkedList *next;
+            LRULinkedList *prev;
+            V val;
+        };
+        LRULinkedList *head;
+        LRULinkedList *tail;
+        std::unordered_map<K, LRULinkedList *> cache;
+
+        void insert_front(LRULinkedList *node);
+        void remove(LRULinkedList *node);
+
+    public:
+        LRULinkedListCache(const size_t capacity);
+        ~LRULinkedListCache();
+        std::optional<V> get(K key) override;
+        std::optional<V> put(K key, V value) override;
+        V evict() override;
+    };
+
+    // Cache (parent)
     template <typename K, typename V>
     Cache<K, V>::Cache(const size_t capacity) : capacity(capacity)
     {
@@ -58,18 +83,19 @@ namespace rsql
     {
     }
 
+    // LRU Set Cache
     template <typename K, typename V>
-    LRUCache<K, V>::LRUCache(const size_t capacity) : Cache<K, V>(capacity)
+    LRUSetCache<K, V>::LRUSetCache(const size_t capacity) : Cache<K, V>(capacity)
     {
     }
 
     template <typename K, typename V>
-    LRUCache<K, V>::~LRUCache()
+    LRUSetCache<K, V>::~LRUSetCache()
     {
     }
 
     template <typename K, typename V>
-    std::optional<V> LRUCache<K, V>::get(K key)
+    std::optional<V> LRUSetCache<K, V>::get(K key)
     {
         auto val_it = this->cache.find(key);
         if (val_it == this->cache.end())
@@ -79,7 +105,7 @@ namespace rsql
     }
 
     template <typename K, typename V>
-    std::optional<V> LRUCache<K, V>::put(K key, V val)
+    std::optional<V> LRUSetCache<K, V>::put(K key, V val)
     {
         auto val_it = this->cache.find(key);
         std::optional<V> to_ret = std::nullopt;
@@ -98,13 +124,13 @@ namespace rsql
         return to_ret;
     }
     template <typename K, typename V>
-    V LRUCache<K, V>::evict()
+    V LRUSetCache<K, V>::evict()
     {
         if (this->cur_size == 0)
             throw std::runtime_error("Can't evict - cache is empty");
         size_t min_count = this->cur_count;
         std::optional<K> evict_key = std::nullopt;
-        for (auto &pair : this->cache)
+        for (const auto &pair : this->cache)
             if (pair.second.count < min_count)
             {
                 min_count = pair.second.count;
@@ -113,6 +139,95 @@ namespace rsql
         V to_ret = this->cache[evict_key.value()].val;
         this->cache.erase(evict_key.value());
         this->cur_size--;
+        return to_ret;
+    }
+
+    // LinkedList LRU
+    template <typename K, typename V>
+    LRULinkedListCache<K, V>::LRULinkedListCache(const size_t capacity) : Cache<K, V>(capacity)
+    {
+        this->head = new LRULinkedList();
+        this->tail = new LRULinkedList();
+        head->next = tail;
+        head->prev = nullptr;
+        tail->next = nullptr;
+        tail->prev = head;
+    }
+
+    template <typename K, typename V>
+    LRULinkedListCache<K, V>::~LRULinkedListCache()
+    {
+        while (!this->empty())
+            this->evict();
+        delete this->head;
+        delete this->tail;
+    }
+
+    template <typename K, typename V>
+    void LRULinkedListCache<K, V>::insert_front(LRULinkedListCache::LRULinkedList *node)
+    {
+        LRULinkedListCache::LRULinkedList *next_next = this->head->next;
+        this->head->next = node;
+        node->prev = this->head;
+        next_next->prev = node;
+        node->next = next_next;
+        this->cur_size++;
+    }
+
+    template <typename K, typename V>
+    void LRULinkedListCache<K, V>::remove(LRULinkedListCache::LRULinkedList *node)
+    {
+        LRULinkedListCache::LRULinkedList *prev = node->prev;
+        LRULinkedListCache::LRULinkedList *next = node->next;
+        prev->next = next;
+        next->prev = prev;
+        this->cur_size--;
+    }
+
+    template <typename K, typename V>
+    std::optional<V> LRULinkedListCache<K, V>::get(K key)
+    {
+        auto node_it = this->cache.find(key);
+        if (node_it == this->cache.end())
+            return std::nullopt;
+        LRULinkedListCache::LRULinkedList *target_node = node_it->second;
+        this->remove(target_node);
+        this->insert_front(target_node);
+        return std::make_optional<V>(target_node->val);
+    }
+
+    template <typename K, typename V>
+    std::optional<V> LRULinkedListCache<K, V>::put(K key, V val)
+    {
+        auto node_it = this->cache.find(key);
+        std::optional<V> to_ret = std::nullopt;
+        if (node_it == this->cache.end())
+        {
+            if (this->full())
+                to_ret = std::make_optional<V>(this->evict());
+            LRULinkedListCache::LRULinkedList *new_node = new LRULinkedListCache::LRULinkedList();
+            new_node->val = val;
+            this->insert_front(new_node);
+        }
+        else
+        {
+            LRULinkedListCache::LRULinkedList *old_node = node_it->second;
+            to_ret = std::make_optional<V>(old_node->val);
+            old_node->val = val;
+            this->remove(old_node);
+            this->insert_front(old_node);
+        }
+        return to_ret;
+    }
+    template <typename K, typename V>
+    V LRULinkedListCache<K, V>::evict()
+    {
+        if (this->empty())
+            throw std::runtime_error("Cache is empty");
+        LRULinkedListCache::LRULinkedList *to_evict = this->tail->prev;
+        this->remove(to_evict);
+        V to_ret = to_evict->val;
+        delete to_evict;
         return to_ret;
     }
 }
