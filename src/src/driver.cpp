@@ -308,7 +308,6 @@ void print_table(const std::vector<std::string> &columns, const std::vector<std:
     static const size_t max_col_width = 15;
     if (val.size() != 0 && columns.size() != val[0].size())
         throw std::invalid_argument("Column size and value size don't match");
-    size_t size = columns.size();
     size_t total_print_width = 0;
     std::cout << "|";
     total_print_width++;
