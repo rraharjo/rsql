@@ -2,11 +2,13 @@
 #define BTREE_H
 #include "node.h"
 #include "comparison.h"
+#include "cache.h"
 #include <iostream>
 #include <unistd.h>
 #include <fcntl.h>
 // Can be changed to any number >= 2
 #define DEGREE 24
+#define NODE_CACHE_SIZE 50
 #define DISK_BUFFER_SZ 4096
 #define TREE_FILE "tree.rsql"
 namespace rsql
@@ -27,8 +29,9 @@ namespace rsql
         const Table *table;
         const size_t t;
         size_t width;
+        Cache<uint32_t, BNode *> *node_cache;
         BTree(Table *table = nullptr);
-        void get_root_node();
+        void initialize_root();
 
     public:
         /**

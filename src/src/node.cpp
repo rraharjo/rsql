@@ -542,6 +542,22 @@ namespace rsql
         }
     }
 
+    BNode *BNode::get_node(const uint32_t node_num)
+    {
+        if (this->tree == nullptr)
+            return BNode::read_disk(nullptr, BNode::get_file_name(node_num));
+        if (node_num == this->tree->root_num)
+            return this->tree->root;
+        std::optional<BNode *> from_cache = this->tree->node_cache->get(node_num);
+        if (from_cache.has_value())
+            return from_cache.value();
+        std::string node_file_name = BNode::get_file_name(node_num);
+        BNode *from_disk = BNode::read_disk(this->tree, node_file_name);
+        std::optional<BNode *> evicted = this->tree->node_cache->put(node_num, from_disk);
+        if (evicted.has_value())
+            delete evicted.value();
+        return from_disk;
+    }
     inline bool BNode::full()
     {
         return this->size == this->keys.capacity();

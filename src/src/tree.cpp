@@ -6,13 +6,17 @@ namespace rsql
     BTree::BTree(Table *table)
         : root_num(1), max_node_num(1), t(DEGREE), root(nullptr), max_col_id(0), width(0), table(table), tree_num(0)
     {
+        this->node_cache = new LRULinkedListCache<uint32_t, BNode *>(NODE_CACHE_SIZE);
     }
     BTree::~BTree()
     {
         this->write_disk();
         delete this->root;
+        while (!this->node_cache->empty())
+            delete this->node_cache->evict();
+        delete this->node_cache;
     }
-    void BTree::get_root_node()
+    void BTree::initialize_root()
     {
         if (this->root == nullptr)
         {
@@ -117,7 +121,7 @@ namespace rsql
             to_ret->width += (size_t)col_width;
         }
         close(tree_file_fd);
-        to_ret->get_root_node();
+        to_ret->initialize_root();
         return to_ret;
     }
     BTree *BTree::create_new_tree(Table *table, const uint32_t tree_num, bool unique_key)
@@ -125,7 +129,7 @@ namespace rsql
         BTree *to_ret = new BTree(table);
         to_ret->tree_num = tree_num;
         to_ret->unique_key = unique_key;
-        to_ret->get_root_node();
+        to_ret->initialize_root();
         return to_ret;
     }
     std::vector<char *> BTree::find_all_row(const char *key, const size_t col_idx)

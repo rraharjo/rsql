@@ -131,6 +131,7 @@ namespace rsql
          */
         static std::string get_file_name(const uint32_t node_num);
         BNode(BTree *tree, const uint32_t node_num);
+        BNode *get_node(const uint32_t node_num);
         ~BNode();
         bool full();
         /**
