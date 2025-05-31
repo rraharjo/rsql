@@ -1,4 +1,23 @@
 #include "column.h"
+static bool valid_numeric(const std::string &str, bool with_sign = true)
+{
+    if (str.length() == 0)
+        return true;
+    bool is_negative = str[0] == '-' ? true : false;
+    if (!with_sign && is_negative)
+        return false;
+    bool valid_number = true;
+    size_t i = 0;
+    if (is_negative)
+        i = 1;
+    while (i < str.length())
+    {
+        valid_number = valid_number && str[i] >= '0' && str[i] <= '9';
+        i++;
+    }
+    return valid_number;
+}
+
 namespace rsql
 {
     Column::Column(unsigned int col_id, size_t width, DataType type) : col_id(col_id), width(width), type(type)
@@ -54,6 +73,8 @@ namespace rsql
             break;
         case DataType::UINT:
         {
+            if (!valid_numeric(src, false))
+                throw std::invalid_argument("Invalid unsigned number " + src);
             boost::multiprecision::cpp_int int_val(src);
             std::vector<unsigned char> buff;
             std::memset(dest, 0, this->width);
@@ -68,6 +89,8 @@ namespace rsql
         }
         case DataType::SINT:
         {
+            if (!valid_numeric(src))
+                throw std::invalid_argument("Invalid number " + src);
             boost::multiprecision::cpp_int magnitude(src);
             int8_t sign = (int8_t)magnitude.sign();
             std::vector<unsigned char> buff;
