@@ -53,14 +53,15 @@ namespace rsql
         {
             LRULinkedList *next;
             LRULinkedList *prev;
+            K key;
             V val;
         };
         LRULinkedList *head;
         LRULinkedList *tail;
         std::unordered_map<K, LRULinkedList *> cache;
 
-        void insert_front(LRULinkedList *node);
-        void remove(LRULinkedList *node);
+        void insert_front_ll(LRULinkedList *node);
+        void remove_ll(LRULinkedList *node);
 
     public:
         LRULinkedListCache(const size_t capacity);
@@ -164,24 +165,22 @@ namespace rsql
     }
 
     template <typename K, typename V>
-    void LRULinkedListCache<K, V>::insert_front(LRULinkedListCache::LRULinkedList *node)
+    void LRULinkedListCache<K, V>::insert_front_ll(LRULinkedListCache::LRULinkedList *node)
     {
         LRULinkedListCache::LRULinkedList *next_next = this->head->next;
         this->head->next = node;
         node->prev = this->head;
         next_next->prev = node;
         node->next = next_next;
-        this->cur_size++;
     }
 
     template <typename K, typename V>
-    void LRULinkedListCache<K, V>::remove(LRULinkedListCache::LRULinkedList *node)
+    void LRULinkedListCache<K, V>::remove_ll(LRULinkedListCache::LRULinkedList *node)
     {
         LRULinkedListCache::LRULinkedList *prev = node->prev;
         LRULinkedListCache::LRULinkedList *next = node->next;
         prev->next = next;
         next->prev = prev;
-        this->cur_size--;
     }
 
     template <typename K, typename V>
@@ -191,8 +190,8 @@ namespace rsql
         if (node_it == this->cache.end())
             return std::nullopt;
         LRULinkedListCache::LRULinkedList *target_node = node_it->second;
-        this->remove(target_node);
-        this->insert_front(target_node);
+        this->remove_ll(target_node);
+        this->insert_front_ll(target_node);
         return std::make_optional<V>(target_node->val);
     }
 
@@ -207,15 +206,18 @@ namespace rsql
                 to_ret = std::make_optional<V>(this->evict());
             LRULinkedListCache::LRULinkedList *new_node = new LRULinkedListCache::LRULinkedList();
             new_node->val = val;
-            this->insert_front(new_node);
+            new_node->key = key;
+            this->insert_front_ll(new_node);
+            this->cache.insert({key, new_node});
+            this->cur_size++;
         }
         else
         {
             LRULinkedListCache::LRULinkedList *old_node = node_it->second;
             to_ret = std::make_optional<V>(old_node->val);
             old_node->val = val;
-            this->remove(old_node);
-            this->insert_front(old_node);
+            this->remove_ll(old_node);
+            this->insert_front_ll(old_node);
         }
         return to_ret;
     }
@@ -225,8 +227,10 @@ namespace rsql
         if (this->empty())
             throw std::runtime_error("Cache is empty");
         LRULinkedListCache::LRULinkedList *to_evict = this->tail->prev;
-        this->remove(to_evict);
+        this->remove_ll(to_evict);
+        this->cache.erase(to_evict->key);
         V to_ret = to_evict->val;
+        this->cur_size--;
         delete to_evict;
         return to_ret;
     }
