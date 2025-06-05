@@ -6,14 +6,17 @@
 #include <iostream>
 #include <unistd.h>
 #include <fcntl.h>
+// #include <memory>
 // Can be changed to any number >= 2
-#define DEGREE 24
+#define DEGREE 2
 #define NODE_CACHE_SIZE 50
 #define DISK_BUFFER_SZ 4096
 #define TREE_FILE "tree.rsql"
+// typedef std::shared_ptr<rsql::BNode> nodeptr;
+typedef std::pair<rsql::BNode *, rsql::BNode *> NodePair;
 namespace rsql
 {
-    class BNode;
+    //class BNode;
     class Table;
     class BTree
     {
@@ -31,6 +34,16 @@ namespace rsql
         size_t width;
         Cache<uint32_t, BNode *> *node_cache;
         BTree(Table *table = nullptr);
+        /**
+         * @brief Get the node object either from cache or disk. 
+         * Either way, the new node is updated in the cache. 
+         * pair.first is the requested object while pair.second is the evicted object.
+         * Evicted object is caller's responsibility
+         * 
+         * @param node_num 
+         * @return NodePair - pair.first is the requested node, pair.second is the evicted node or nullptr 
+         */
+        NodePair get_node(const uint32_t node_num);
         void initialize_root();
 
     public:

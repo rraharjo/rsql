@@ -6,8 +6,13 @@
 #include <cstdint>
 #include <fcntl.h>
 #include <unistd.h>
+#include <memory>
 #include "column.h"
 #include "comparison.h"
+namespace rsql{
+    class BNode;
+}
+typedef std::shared_ptr<rsql::BNode> nodeptr;
 namespace rsql
 {
     class BTree;
@@ -41,7 +46,8 @@ namespace rsql
          */
         bool compare_key(const char *k_1, const char *k_2, size_t col_idx, CompSymbol symbol = CompSymbol::EQ);
         /**
-         * @brief merge c_j to c_i, where c_i is the children number idx and c_j is children number (idx + 1). c_j is destroyed afterward.
+         * @brief merge c_j to c_i, where c_i is the children number idx and c_j is children number (idx + 1). 
+         * c_j is destroyed afterward. c_j will not be inside cache nor the eviction notice 
          *
          * @param idx
          * @param c_i
@@ -83,7 +89,7 @@ namespace rsql
          * @brief delete this node if this node is not a root node
          *
          */
-        void del_if_not_root();
+        void del_if_not_in_cache();
         /**
          * @brief Delete this node along with the file
          *
@@ -102,6 +108,22 @@ namespace rsql
          *
          */
         void match_columns();
+        /**
+         * @brief Check the eviction vector. If the eviction has the object, it's put on the cache.
+         * Otherwise, it will ask the cache for the object.
+         * 
+         * @param node_num 
+         * @return BNode* 
+         */
+        BNode *get_node(const uint32_t node_num);
+        /**
+         * @brief Make sure that node is available on the cache, and remove from eviction vector
+         * 
+         * @param node 
+         */
+        void move_to_cache(BNode *node);
+        void extract_eviction(BNode *node);
+        void clear_eviction();
 
     public:
         std::vector<Column> columns;
@@ -113,6 +135,7 @@ namespace rsql
         uint32_t node_num;
         bool changed;
         BTree *tree;
+        std::vector<BNode *> eviction_notice;
 
     public:
         /**
@@ -131,7 +154,7 @@ namespace rsql
          */
         static std::string get_file_name(const uint32_t node_num);
         BNode(BTree *tree, const uint32_t node_num);
-        BNode *get_node(const uint32_t node_num);
+        
         ~BNode();
         bool full();
         /**

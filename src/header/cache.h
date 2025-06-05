@@ -19,11 +19,13 @@ namespace rsql
         virtual ~Cache();
         virtual std::optional<V> get(K key) = 0;
         virtual std::optional<V> put(K key, V value) = 0;
+        virtual std::optional<V> evict(K key) = 0;
         virtual V evict() = 0;
 
         inline bool empty() const { return this->cur_size == 0; }
         inline bool full() const { return this->cur_size == this->capacity; }
         inline size_t get_size() const { return this->cur_size; }
+        inline virtual std::string str() { return ""; }
     };
 
     template <typename K, typename V>
@@ -42,6 +44,7 @@ namespace rsql
         ~LRUSetCache();
         std::optional<V> get(K key) override;
         std::optional<V> put(K key, V value) override;
+        std::optional<V> evict(K key) override;
         V evict() override;
     };
 
@@ -68,7 +71,9 @@ namespace rsql
         ~LRULinkedListCache();
         std::optional<V> get(K key) override;
         std::optional<V> put(K key, V value) override;
+        std::optional<V> evict(K key) override;
         V evict() override;
+        std::string str() override;
     };
 
     // Cache (parent)
@@ -119,9 +124,20 @@ namespace rsql
         }
         else
         {
-            to_ret = std::make_optional<V>(this->cache[key].val);
+            if (this->cache[key].val != val)
+                to_ret = std::make_optional<V>(this->cache[key].val);
             this->cache[key] = {val, this->cur_count++};
         }
+        return to_ret;
+    }
+    template <typename K, typename V>
+    std::optional<V> LRUSetCache<K, V>::evict(K key)
+    {
+        auto evict_it = this->cache.find(key);
+        if (evict_it == this->cache.end())
+            return std::nullopt;
+        std::optional<V> to_ret = std::make_optional<V>(evict_it->second.val);
+        this->cache.erase(evict_it);
         return to_ret;
     }
     template <typename K, typename V>
@@ -214,13 +230,32 @@ namespace rsql
         else
         {
             LRULinkedListCache::LRULinkedList *old_node = node_it->second;
-            to_ret = std::make_optional<V>(old_node->val);
-            old_node->val = val;
+            if (old_node->val != val)
+            {
+                to_ret = std::make_optional<V>(old_node->val);
+                old_node->val = val;
+            }
             this->remove_ll(old_node);
             this->insert_front_ll(old_node);
         }
         return to_ret;
     }
+
+    template <typename K, typename V>
+    std::optional<V> LRULinkedListCache<K, V>::evict(K key)
+    {
+        auto evict_it = this->cache.find(key);
+        if (evict_it == this->cache.end())
+            return std::nullopt;
+        LRULinkedList *evict_ll = evict_it->second;
+        this->remove_ll(evict_ll);
+        this->cache.erase(evict_it);
+        this->cur_size--;
+        std::optional<V> to_ret = std::make_optional<V>(evict_ll->val);
+        delete evict_ll;
+        return to_ret;
+    }
+
     template <typename K, typename V>
     V LRULinkedListCache<K, V>::evict()
     {
@@ -233,6 +268,21 @@ namespace rsql
         this->cur_size--;
         delete to_evict;
         return to_ret;
+    }
+
+    template <typename K, typename V>
+    std::string LRULinkedListCache<K, V>::str()
+    {
+        std::stringstream ss;
+        ss << "Size: " << this->cur_size << std::endl;
+        ss << "Item: " << std::endl;
+        LRULinkedListCache::LRULinkedList *cur_node = this->head->next;
+        while (cur_node != this->tail)
+        {
+            ss << "Key: " << cur_node->key << "| Val: " << cur_node->val << std::endl;
+            cur_node = cur_node->next;
+        }
+        return ss.str();
     }
 }
 #endif

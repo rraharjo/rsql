@@ -13,8 +13,26 @@ namespace rsql
         this->write_disk();
         delete this->root;
         while (!this->node_cache->empty())
-            delete this->node_cache->evict();
+        {
+            BNode *evicted = this->node_cache->evict();
+            delete evicted;
+        }
         delete this->node_cache;
+    }
+    NodePair BTree::get_node(const uint32_t node_num)
+    {
+        if (node_num == this->root_num)
+        {
+            return std::make_pair(this->root, nullptr);
+        }
+        std::optional<BNode *> from_cache = this->node_cache->get(node_num);
+        if (from_cache.has_value())
+            return std::make_pair(from_cache.value(), nullptr);
+        std::string node_file_name = BNode::get_file_name(node_num);
+        BNode *from_disk = BNode::read_disk(this, node_file_name);
+        ;
+        std::optional<BNode *> evicted = this->node_cache->put(node_num, from_disk);
+        return std::make_pair(from_disk, evicted.value_or(nullptr));
     }
     void BTree::initialize_root()
     {
@@ -212,10 +230,12 @@ namespace rsql
             {
                 return to_ret;
             }
-            std::string new_root_name = "node_" + std::to_string(new_root_num) + ".rsql";
-            BNode *new_root = BNode::read_disk(this, new_root_name);
+            // std::string new_root_name = "node_" + std::to_string(new_root_num) + ".rsql";
+            NodePair new_pair = this->get_node(new_root_num);
+            if (new_pair.second)
+                delete new_pair.second;
             this->root->destroy();
-            this->root = new_root;
+            this->root = new_pair.first;
             this->root_num = this->root->node_num;
         }
         return to_ret;
