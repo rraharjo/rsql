@@ -524,32 +524,29 @@ namespace rsql
         new_tree->add_column(indexed_col);
         new_tree->add_column(primary_col);
         for (size_t i = 0; i < indexed_col_index; i++)
-        {
             preceding_size += this->primary_tree->columns[i].width;
-        }
 
         char *new_row = new char[new_tree->width];
         std::queue<uint32_t> children;
-        for (size_t i = 0; i < this->primary_tree->root->size; i++)
+        for (size_t i = 0; i < this->primary_tree->get_root()->size; i++)
         {
-            std::memcpy(new_row, this->primary_tree->root->keys[i] + preceding_size, indexed_col.width);
-            std::memcpy(new_row + indexed_col.width, this->primary_tree->root->keys[i], primary_col.width);
+            std::memcpy(new_row, this->primary_tree->get_root()->keys[i] + preceding_size, indexed_col.width);
+            std::memcpy(new_row + indexed_col.width, this->primary_tree->get_root()->keys[i], primary_col.width);
             new_tree->insert_row(new_row);
         }
-        if (!this->primary_tree->root->leaf)
+        if (!this->primary_tree->get_root()->leaf)
         {
-            for (size_t i = 0; i <= this->primary_tree->root->size; i++)
-            {
-                children.push(this->primary_tree->root->children[i]);
-            }
+            for (size_t i = 0; i <= this->primary_tree->get_root()->size; i++)
+                children.push(this->primary_tree->get_root()->children[i]);
         }
         while (!children.empty())
         {
             uint32_t this_child = children.front();
             children.pop();
-            std::string cur_node_name = BNode::get_file_name(this_child);
-            BNode *cur_node = BNode::read_disk(this->primary_tree, cur_node_name);
-            cur_node->match_columns();
+            NodePair from_primary_cache = this->primary_tree->get_node(this_child);
+            BNode *cur_node = from_primary_cache.first;
+            if (from_primary_cache.second)
+                delete from_primary_cache.second;
             for (size_t i = 0; i < cur_node->size; i++)
             {
                 std::memcpy(new_row, cur_node->keys[i] + preceding_size, indexed_col.width);
@@ -559,11 +556,8 @@ namespace rsql
             if (!cur_node->leaf)
             {
                 for (size_t i = 0; i <= cur_node->size; i++)
-                {
                     children.push(cur_node->children[i]);
-                }
             }
-            delete cur_node;
         }
         this->changed = true;
         delete[] new_row;
@@ -621,31 +615,33 @@ namespace rsql
 
         char *buff = new char[composite_tree->width];
         std::queue<uint32_t> children;
-        for (size_t i = 0; i < this->primary_tree->root->size; i++)
+        for (size_t i = 0; i < this->primary_tree->get_root()->size; i++)
         {
-            char *val_1 = this->primary_tree->root->keys[i] + preceding_size_1;
-            char *val_2 = this->primary_tree->root->keys[i] + preceding_size_2;
+            char *val_1 = this->primary_tree->get_root()->keys[i] + preceding_size_1;
+            char *val_2 = this->primary_tree->get_root()->keys[i] + preceding_size_2;
             int comp = comparison_col.compare_key(val_1, val_2);
             boost::multiprecision::cpp_int boost_comp = comp;
             int boost_sign = boost_comp.sign();
             std::memcpy(buff, &boost_sign, 1);
             boost::multiprecision::import_bits(boost_comp, buff + 1, buff + COMPOSITE_KEY_SIZE, 8, false);
-            std::memcpy(buff + COMPOSITE_KEY_SIZE, this->primary_tree->root->keys[i], first_column.width);
+            std::memcpy(buff + COMPOSITE_KEY_SIZE, this->primary_tree->get_root()->keys[i], first_column.width);
             composite_tree->insert_row(buff);
         }
-        if (!this->primary_tree->root->leaf)
+        if (!this->primary_tree->get_root()->leaf)
         {
-            for (size_t i = 0; i <= this->primary_tree->root->size; i++)
+            for (size_t i = 0; i <= this->primary_tree->get_root()->size; i++)
             {
-                children.push(this->primary_tree->root->children[i]);
+                children.push(this->primary_tree->get_root()->children[i]);
             }
         }
         while (!children.empty())
         {
             uint32_t cur_node_num = children.front();
             children.pop();
-            std::string node_file_name = BNode::get_file_name(cur_node_num);
-            BNode *cur_node = BNode::read_disk(this->primary_tree, node_file_name);
+            NodePair from_cache = this->primary_tree->get_node(cur_node_num);
+            BNode *cur_node = from_cache.first;
+            if (from_cache.second)
+                delete from_cache.second;
             for (size_t i = 0; i < cur_node->size; i++)
             {
                 char *val_1 = cur_node->keys[i] + preceding_size_1;
@@ -655,17 +651,14 @@ namespace rsql
                 int boost_sign = boost_comp.sign();
                 std::memcpy(buff, &boost_sign, 1);
                 boost::multiprecision::import_bits(boost_comp, buff + 1, buff + COMPOSITE_KEY_SIZE, 8, false);
-                std::memcpy(buff + COMPOSITE_KEY_SIZE, this->primary_tree->root->keys[i], first_column.width);
+                std::memcpy(buff + COMPOSITE_KEY_SIZE, this->primary_tree->get_root()->keys[i], first_column.width);
                 composite_tree->insert_row(buff);
             }
             if (!cur_node->leaf)
             {
                 for (size_t i = 0; i <= cur_node->size; i++)
-                {
                     children.push(cur_node->children[i]);
-                }
             }
-            delete cur_node;
         }
         delete[] buff;
         this->composite_trees[composite_key] = composite_tree;
@@ -674,22 +667,16 @@ namespace rsql
     void Table::write_disk()
     {
         if (!this->changed)
-        {
             return;
-        }
         static char write_buffer[DISK_BUFFER_SZ];
         size_t bytes_processed = 0;
         std::string where = std::filesystem::path(this->db->get_path()) / this->table_name;
         if (!std::filesystem::exists(where))
-        {
             std::filesystem::create_directory(where);
-        }
         std::string file_name = std::filesystem::path(where) / TABLE_FILE_NAME;
         int fd = open(file_name.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_APPEND, 0644);
         if (fd < 0)
-        {
             throw std::runtime_error("Failed to open file");
-        }
         std::memset(write_buffer, 0, TABLE_NAME_SIZE);
         std::memcpy(write_buffer, this->table_name.c_str(), this->table_name.size());
         bytes_processed += TABLE_NAME_SIZE;

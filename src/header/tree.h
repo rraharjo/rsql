@@ -28,7 +28,6 @@ namespace rsql
         uint32_t tree_num;
         bool unique_key;
 
-        BNode *root;
         const Table *table;
         const size_t t;
         size_t width;
@@ -44,7 +43,13 @@ namespace rsql
          * @return NodePair - pair.first is the requested node, pair.second is the evicted node or nullptr 
          */
         NodePair get_node(const uint32_t node_num);
-        void initialize_root();
+        inline BNode *get_root() 
+        {
+            NodePair pair = this->get_node(this->root_num);
+            if (pair.second)
+                delete pair.second;
+            return pair.first;
+        };
 
     public:
         /**

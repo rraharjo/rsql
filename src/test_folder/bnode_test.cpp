@@ -49,9 +49,10 @@ BOOST_AUTO_TEST_CASE(merge_node_test)
     BOOST_CHECK(strncmp(c_1->keys[2], "00000000000000000000000000000002", DEFAULT_KEY_WIDTH) == 0);
     BOOST_CHECK(c_3->size == 1);
     BOOST_CHECK(strncmp(c_3->keys[0], "00000000000000000000000000000004", DEFAULT_KEY_WIDTH) == 0);
-    delete tree;
-    delete c_1;
     delete c_3;
+    delete tree;
+    //delete c_1;
+    
     std::system(clean_this_cache.c_str());
 }
 
