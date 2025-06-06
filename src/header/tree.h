@@ -6,11 +6,17 @@
 #include <iostream>
 #include <unistd.h>
 #include <fcntl.h>
+// Modifiable values
+
 // Can be changed to any number >= 2
 #define DEGREE 128
 // can be changed to any number >= 1
-#define NODE_CACHE_SIZE 25
+#define NODE_CACHE_SIZE 32
+#define BTREE_CACHE rsql::LRUSetCache<uint32_t, rsql::BNode *>
+//#define BTREE_CACHE rsql::LRULinkedListCache<uint32_t, rsql::BNode *>
 #define DISK_BUFFER_SZ 4096
+
+// Can't be changed
 #define TREE_FILE "tree.rsql"
 typedef std::pair<rsql::BNode *, rsql::BNode *> NodePair;
 namespace rsql

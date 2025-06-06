@@ -6,7 +6,7 @@ namespace rsql
     BTree::BTree(Table *table)
         : root_num(1), max_node_num(1), t(DEGREE), max_col_id(0), width(0), table(table), tree_num(0)
     {
-        this->node_cache = new LRULinkedListCache<uint32_t, BNode *>(NODE_CACHE_SIZE);
+        this->node_cache = new BTREE_CACHE(NODE_CACHE_SIZE);
     }
     BTree::~BTree()
     {

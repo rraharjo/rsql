@@ -138,6 +138,7 @@ namespace rsql
             return std::nullopt;
         std::optional<V> to_ret = std::make_optional<V>(evict_it->second.val);
         this->cache.erase(evict_it);
+        this->cur_size--;
         return to_ret;
     }
     template <typename K, typename V>
