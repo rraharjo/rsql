@@ -206,7 +206,11 @@ namespace rsql
     char *BTree::delete_row(const char *key, Comparison *comp)
     {
         BNode *root = this->get_root();
+        this->node_cache->evict(root->node_num);
         char *to_ret = root->delete_row(key, comp);
+        std::optional<BNode *> evicted = this->node_cache->put(root->node_num, root);
+        if (evicted.has_value())
+            delete evicted.value();
         if (root->size == 0)
         {
             uint32_t new_root_num = root->children[0];

@@ -49,16 +49,10 @@ void increment_key(char *key)
     {
         cur_idx--;
         if (key[cur_idx] == '9')
-        {
             key[cur_idx] = '0';
-        }
         else
-        {
             key[cur_idx]++;
-        }
         if (key[cur_idx] != '0')
-        {
             move_left = false;
-        }
     }
 }

@@ -9,7 +9,8 @@
 #include <memory>
 #include "column.h"
 #include "comparison.h"
-namespace rsql{
+namespace rsql
+{
     class BNode;
 }
 typedef std::shared_ptr<rsql::BNode> nodeptr;
@@ -20,7 +21,7 @@ namespace rsql
     {
     public:
         /**
-         * @brief return the first proper child idx that matches the symbol. 
+         * @brief return the first proper child idx that matches the symbol.
          *
          * @param k
          * @param symbol
@@ -46,8 +47,8 @@ namespace rsql
          */
         bool compare_key(const char *k_1, const char *k_2, size_t col_idx, CompSymbol symbol = CompSymbol::EQ);
         /**
-         * @brief merge c_j to c_i, where c_i is the children number idx and c_j is children number (idx + 1). 
-         * c_j is destroyed afterward. c_j will not be inside cache nor the eviction notice 
+         * @brief merge c_j to c_i, where c_i is the children number idx and c_j is children number (idx + 1).
+         * BNode::destroy() will be called on c_j
          *
          * @param idx
          * @param c_i
@@ -55,13 +56,15 @@ namespace rsql
          */
         void merge(const size_t idx, BNode *c_i, BNode *c_j);
         /**
-         * @brief recuresively perform tree balancing on the left most children and remove the left most key on the left most leaf node, rooted at current node
+         * @brief recuresively perform tree balancing on the left most children and 
+         * remove the left most key on the left most leaf node, rooted at current node
          *
          * @return char* the left most key of the left most leaf node, rooted at current node
          */
         char *delete_left();
         /**
-         * @brief recuresively perform tree balancing on the right most children and remove the right most key on the right most leaf node, rooted at current node
+         * @brief recuresively perform tree balancing on the right most children and 
+         * remove the right most key on the right most leaf node, rooted at current node
          *
          * @return char* the right most key of the right most leaf node, rooted at current node
          */
@@ -87,16 +90,19 @@ namespace rsql
         char *delete_row_3(const char *key, const size_t idx, Comparison *comparison);
         /**
          * @brief delete this node if this node is not a root node
+         * @deprecated
          *
          */
         void del_if_not_in_cache();
         /**
          * @brief Delete this node along with the file
+         * @warning this object will be removed from the cache and eviction_notice
          *
          */
         void destroy();
         /**
          * @brief Split the children node c_i, which has to be this children at index idx
+         * @warning newly created object is not inserted to the cache
          *
          * @param idx position of the target child
          * @param c_i a pointer to the child node (c_i has to be in index idx)
@@ -110,20 +116,32 @@ namespace rsql
         void match_columns();
         /**
          * @brief Check the eviction vector. If the eviction has the object, it's put on the cache.
-         * Otherwise, it will ask the cache for the object. 
-         * @warning There's a good chance this function will put this object to the eviction_notice
-         * 
-         * @param node_num 
-         * @return BNode* 
+         * Otherwise, it will ask the cache for the object.
+         * @warning Calling this function will not guarantee ownership of this object. 
+         * this object may be placed in the cache or eviction_notice
+         *
+         * @param node_num
+         * @return BNode*
          */
         BNode *get_node(const uint32_t node_num);
         /**
          * @brief Make sure that node is available on the cache, and remove from eviction vector
          * 
-         * @param node 
+         * @param node
          */
         void move_to_cache(BNode *node);
+        /**
+         * @brief remove the node object from the eviction_notice
+         * 
+         * @param node 
+         * @return true 
+         * @return false 
+         */
         bool extract_eviction(BNode *node);
+        /**
+         * @brief delete all object inside the eviction_notice and clear the vector
+         * 
+         */
         void clear_eviction();
 
     public:
@@ -136,7 +154,7 @@ namespace rsql
         uint32_t node_num;
         bool changed;
         BTree *tree;
-        std::vector<BNode *> eviction_notice;
+        static std::vector<BNode *> eviction_notice;
 
     public:
         /**
@@ -149,13 +167,13 @@ namespace rsql
         static BNode *read_disk(BTree *tree, const std::string file_name);
         /**
          * @brief Get the file name of the node with the stated node number
-         * 
-         * @param node_num 
-         * @return std::string 
+         *
+         * @param node_num
+         * @return std::string
          */
         static std::string get_file_name(const uint32_t node_num);
         BNode(BTree *tree, const uint32_t node_num);
-        
+
         ~BNode();
         bool full();
         /**
@@ -187,6 +205,8 @@ namespace rsql
         void insert(const char *row);
         char *delete_row(const char *key, Comparison *comp = nullptr);
         void write_disk();
+
+        friend std::ostream &operator<<(std::ostream &stream, const BNode &obj);
 
         friend class BTree;
     };

@@ -33,6 +33,7 @@ static unsigned int get_node_no(const std::string &file_name);
 
 namespace rsql
 {
+    std::vector<BNode *> BNode::eviction_notice = std::vector<BNode *>();
     BNode *BNode::read_disk(BTree *tree, const std::string file_name)
     {
         static char read_buffer[DISK_BUFFER_SZ];
@@ -261,8 +262,6 @@ namespace rsql
         this->size--;
         c_i->changed = true;
         this->changed = true;
-        this->tree->node_cache->evict(c_j->node_num);
-        this->extract_eviction(c_j);
         c_j->destroy();
     }
     char *BNode::delete_left()
@@ -380,7 +379,7 @@ namespace rsql
         if (c_j->size >= this->tree->t)
         {
             this->tree->node_cache->evict(this->node_num);
-            this->extract_eviction(this); // prevention: Make sure this is not deleted
+            this->extract_eviction(this);
             char *successor = c_j->delete_left();
             char *to_ret = this->keys[idx];
             this->keys[idx] = successor;
@@ -708,25 +707,15 @@ namespace rsql
     {
         size_t idx = 0;
         while (idx < this->size && this->compare_key(key, this->keys[idx], 0, CompSymbol::GT))
-        {
             idx++;
-        }
         if (idx < this->size && this->leaf && this->compare_key(key, this->keys[idx], 0) && (!comp || comp->compare(this->keys[idx])))
-        {
             return this->delete_row_1(idx);
-        }
         else if (idx < this->size && this->compare_key(key, this->keys[idx], 0) && !this->leaf && (!comp || comp->compare(this->keys[idx])))
-        {
             return this->delete_row_2(key, idx, comp);
-        }
         else if (!this->leaf)
-        {
             return this->delete_row_3(key, idx, comp);
-        }
         else
-        {
             return nullptr;
-        }
     }
     void BNode::write_disk()
     {
@@ -869,12 +858,23 @@ namespace rsql
 
     void BNode::clear_eviction()
     {
-        bool removed_this = this->extract_eviction(this);
+        //bool removed_this = this->extract_eviction(this);
         for (const BNode *evict : this->eviction_notice)
             delete evict;
         this->eviction_notice.clear();
-        if (removed_this)
-            delete this;
+        // if (removed_this)
+        //     delete this;
+    }
+
+    std::ostream &operator<<(std::ostream &stream, const BNode &obj)
+    {
+        stream << "Node number  : " << obj.node_num << std::endl;
+        stream << "Node size    : " << obj.size << std::endl;
+        stream << "Children     : ";
+        for (size_t i = 0 ; i <= obj.size ; i++)
+            stream << obj.children[i] << " ";
+        stream << std::endl;
+        return stream;
     }
 }
 
