@@ -870,12 +870,11 @@ BOOST_AUTO_TEST_CASE(delete_row_test_with_comparison)
         BOOST_CHECK(std::strncmp(found_some[i] + 36, "2025/05/14", 10) == 0);
         BOOST_CHECK(std::strncmp(found_some[i] + 46, "SUPERBAD", 8) == 0);
     }
-    for (size_t i = 0 ; i < res.size() ; i++){
+    delete ucpp_gt_10;
+    for (size_t i = 0 ; i < res.size() ; i++)
         delete[] res[i];
-    }
-    for (size_t i = 0 ; i < found_some.size() ; i++){
+    for (size_t i = 0 ; i < found_some.size() ; i++)
         delete[] found_some[i];
-    }
     delete tree;
     std::system(clean_this_cache.c_str());
 }
@@ -934,12 +933,11 @@ BOOST_AUTO_TEST_CASE(delete_row_with_linear_search)
         BOOST_CHECK(std::strncmp(found_some[i] + 36, "2025/05/14", 10) == 0);
         BOOST_CHECK(std::strncmp(found_some[i] + 46, "SUPERBAD", 8) == 0);
     }
-    for (size_t i = 0 ; i < res.size() ; i++){
+    delete ucpp_gt_10;
+    for (size_t i = 0 ; i < res.size() ; i++)
         delete[] res[i];
-    }
-    for (size_t i = 0 ; i < found_some.size() ; i++){
+    for (size_t i = 0 ; i < found_some.size() ; i++)
         delete[] found_some[i];
-    }
     delete tree;
     std::system(clean_this_cache.c_str());
 }

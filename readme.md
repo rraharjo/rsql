@@ -34,12 +34,12 @@ Parser guide
     - Note: any leading/trailing space to the values will be removed. Use quotation marks to override this behavior.
 7. search row:
     - syntax (v1): SELECT FROM $table_name
-    - syntax (v2): SELECT FROM $table_name WHERE $primary_col $symbol $values AND ($col $symbol $values OR ($col $symbol $values AND $col $symbol %values))
-    - syntax (v3): SELECT FROM $table_name WHERE ($col $symbol $values OR ($col $symbol $values AND $col $symbol %values))
+    - syntax (v2): SELECT FROM $table_name WHERE $primary_col $symbol $values AND ($col $symbol $values OR ($col $symbol $values AND $col $symbol $values))
+    - syntax (v3): SELECT FROM $table_name WHERE ($col $symbol $values OR ($col $symbol $values AND $col $symbol $values))
     - syntax (v4): SELECT FROM $table_name WHERE $primary_col $symbol $values
     - Note: the WHERE clause is optional - ignoring it would return everything on the table. The $primary_col is also optional - this is the column used for indexed search - if this is not null, any additional condition must be connected with AND keyword. The additional conditions must be enclosed in parenthesis, and can be nested as many times as needed. In a single parenthesis, the connectors (AND/OR) must be the same - (a AND b OR c) is an invalid expression, but (a AND (b OR c)) is valid. 
 8. delete row:
-    - syntax: DELETE FROM $table_name WHERE $primary_col $symbol $values AND ($col $symbol $values OR ($col $symbol $values AND $col $symbol %values))
+    - syntax: DELETE FROM $table_name WHERE $primary_col $symbol $values AND ($col $symbol $values OR ($col $symbol $values AND $col $symbol $values))
     - Note: The WHERE clause use the same rules as search
 9. alter table add column:
     - syntax: ALTER TABLE $table_name ADD ($name_1 $data_type_1 $width_1) ($name_2 $data_type_2 $width_2) ...

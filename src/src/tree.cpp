@@ -37,13 +37,9 @@ namespace rsql
         static char starting_buffer[DISK_BUFFER_SZ];
         std::string where;
         if (!table)
-        {
             where = TREE_FILE;
-        }
         else
-        {
             where = std::filesystem::path(table->get_path()) / std::to_string(tree_num) / TREE_FILE;
-        }
 
         int tree_file_fd = open(where.c_str(), O_RDONLY);
         if (tree_file_fd < 0)

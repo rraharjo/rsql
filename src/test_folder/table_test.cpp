@@ -221,7 +221,8 @@ BOOST_AUTO_TEST_CASE(find_binary_row_test)
     std::system(clear_cache.c_str());
 }
 
-BOOST_AUTO_TEST_CASE(delete_row_test){
+BOOST_AUTO_TEST_CASE(delete_row_test)
+{
     rsql::Database *db = rsql::Database::create_new_database("test_db");
     BOOST_CHECK(db != nullptr);
     rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
@@ -241,7 +242,8 @@ BOOST_AUTO_TEST_CASE(delete_row_test){
     rsql::ucpp_int_to_char(row + 20, 32, ucpp);
     cpp_int scpp("-1000000000");
     rsql::scpp_int_to_char(row + 52, 8, scpp);
-    for (size_t i = 0 ; i < 50 ; i++){
+    for (size_t i = 0; i < 50; i++)
+    {
         table->insert_row_bin(row);
         scpp++;
         rsql::scpp_int_to_char(row + 52, 8, scpp);
@@ -255,7 +257,8 @@ BOOST_AUTO_TEST_CASE(delete_row_test){
     cpp_int high_scpp("-999999951");
     BOOST_CHECK(primary_result.size() == 17);
     BOOST_CHECK(not_found.size() == 0);
-    for (size_t i = 0 ; i < primary_result.size() ; i++){
+    for (size_t i = 0; i < primary_result.size(); i++)
+    {
         BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] > 32);
         BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] < 50);
         BOOST_CHECK(std::strncmp(primary_result[i] + 32, "RSQLTEST", 8) == 0);
@@ -268,7 +271,8 @@ BOOST_AUTO_TEST_CASE(delete_row_test){
         BOOST_CHECK(cur_scpp >= low_scpp && cur_scpp <= high_scpp);
     }
 
-    for (size_t i = 0 ; i < primary_result.size() ; i++){
+    for (size_t i = 0; i < primary_result.size(); i++)
+    {
         delete[] primary_result[i];
     }
     delete table;
@@ -276,7 +280,8 @@ BOOST_AUTO_TEST_CASE(delete_row_test){
     std::system(clear_cache.c_str());
 }
 
-BOOST_AUTO_TEST_CASE(delete_row_with_additional_comparison_test){
+BOOST_AUTO_TEST_CASE(delete_row_with_additional_comparison_test)
+{
     rsql::Database *db = rsql::Database::create_new_database("test_db");
     BOOST_CHECK(db != nullptr);
     rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
@@ -296,7 +301,8 @@ BOOST_AUTO_TEST_CASE(delete_row_with_additional_comparison_test){
     rsql::ucpp_int_to_char(row + 20, 32, ucpp);
     cpp_int scpp("-1000000000");
     rsql::scpp_int_to_char(row + 52, 8, scpp);
-    for (size_t i = 0 ; i < 50 ; i++){
+    for (size_t i = 0; i < 50; i++)
+    {
         table->insert_row_bin(row);
         scpp++;
         rsql::scpp_int_to_char(row + 52, 8, scpp);
@@ -314,7 +320,8 @@ BOOST_AUTO_TEST_CASE(delete_row_with_additional_comparison_test){
     cpp_int high_scpp("-999999956");
     BOOST_CHECK(primary_result.size() == 12);
     BOOST_CHECK(found_some.size() == 5);
-    for (size_t i = 0 ; i < primary_result.size() ; i++){
+    for (size_t i = 0; i < primary_result.size(); i++)
+    {
         BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] > 32);
         BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] < 45);
         BOOST_CHECK(std::strncmp(primary_result[i] + 32, "RSQLTEST", 8) == 0);
@@ -328,7 +335,8 @@ BOOST_AUTO_TEST_CASE(delete_row_with_additional_comparison_test){
     }
     low_scpp = cpp_int("-999999956");
     high_scpp = cpp_int("-999999951");
-    for (size_t i = 0 ; i < found_some.size() ; i++){
+    for (size_t i = 0; i < found_some.size(); i++)
+    {
         BOOST_CHECK(found_some[i][DEFAULT_KEY_WIDTH - 1] >= 45);
         BOOST_CHECK(found_some[i][DEFAULT_KEY_WIDTH - 1] < 50);
         BOOST_CHECK(std::strncmp(found_some[i] + 32, "RSQLTEST", 8) == 0);
@@ -341,18 +349,18 @@ BOOST_AUTO_TEST_CASE(delete_row_with_additional_comparison_test){
         BOOST_CHECK(cur_scpp >= low_scpp && cur_scpp <= high_scpp);
     }
 
-    for (size_t i = 0 ; i < primary_result.size() ; i++){
+    delete sint_compare;
+    for (size_t i = 0; i < primary_result.size(); i++)
         delete[] primary_result[i];
-    }
-    for (size_t i = 0 ; i < found_some.size() ; i++){
+    for (size_t i = 0; i < found_some.size(); i++)
         delete[] found_some[i];
-    }
     delete table;
     delete db;
     std::system(clear_cache.c_str());
 }
 
-BOOST_AUTO_TEST_CASE(delete_row_linear_search_test){
+BOOST_AUTO_TEST_CASE(delete_row_linear_search_test)
+{
     rsql::Database *db = rsql::Database::create_new_database("test_db");
     BOOST_CHECK(db != nullptr);
     rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
@@ -372,7 +380,8 @@ BOOST_AUTO_TEST_CASE(delete_row_linear_search_test){
     rsql::ucpp_int_to_char(row + 20, 32, ucpp);
     cpp_int scpp("-1000000000");
     rsql::scpp_int_to_char(row + 52, 8, scpp);
-    for (size_t i = 0 ; i < 50 ; i++){
+    for (size_t i = 0; i < 50; i++)
+    {
         table->insert_row_bin(row);
         scpp++;
         rsql::scpp_int_to_char(row + 52, 8, scpp);
@@ -389,7 +398,8 @@ BOOST_AUTO_TEST_CASE(delete_row_linear_search_test){
     cpp_int high_scpp("-999999951");
     BOOST_CHECK(primary_result.size() == 10);
     BOOST_CHECK(not_found.size() == 0);
-    for (size_t i = 0 ; i < primary_result.size() ; i++){
+    for (size_t i = 0; i < primary_result.size(); i++)
+    {
         BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] >= 40);
         BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] < 50);
         BOOST_CHECK(std::strncmp(primary_result[i] + 32, "RSQLTEST", 8) == 0);
@@ -402,7 +412,8 @@ BOOST_AUTO_TEST_CASE(delete_row_linear_search_test){
         BOOST_CHECK(cur_scpp >= low_scpp && cur_scpp <= high_scpp);
     }
 
-    for (size_t i = 0 ; i < primary_result.size() ; i++){
+    for (size_t i = 0; i < primary_result.size(); i++)
+    {
         delete[] primary_result[i];
     }
     delete table;
@@ -730,7 +741,8 @@ BOOST_AUTO_TEST_CASE(optional_indexing_write_reload_table_test)
     std::system(clear_cache.c_str());
 }
 
-BOOST_AUTO_TEST_CASE(delete_row_with_indexed_tree_test){
+BOOST_AUTO_TEST_CASE(delete_row_with_indexed_tree_test)
+{
     rsql::Database *db = rsql::Database::create_new_database("test_db");
     BOOST_CHECK(db != nullptr);
     rsql::Table *table = rsql::Table::create_new_table(db, "test_table");
@@ -751,7 +763,8 @@ BOOST_AUTO_TEST_CASE(delete_row_with_indexed_tree_test){
     rsql::ucpp_int_to_char(row + 20, 32, ucpp);
     cpp_int scpp("-1000000000");
     rsql::scpp_int_to_char(row + 52, 8, scpp);
-    for (size_t i = 0 ; i < 50 ; i++){
+    for (size_t i = 0; i < 50; i++)
+    {
         table->insert_row_bin(row);
         scpp++;
         rsql::scpp_int_to_char(row + 52, 8, scpp);
@@ -768,7 +781,8 @@ BOOST_AUTO_TEST_CASE(delete_row_with_indexed_tree_test){
     cpp_int high_scpp("-999999951");
     BOOST_CHECK(primary_result.size() == 10);
     BOOST_CHECK(not_found.size() == 0);
-    for (size_t i = 0 ; i < primary_result.size() ; i++){
+    for (size_t i = 0; i < primary_result.size(); i++)
+    {
         BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] >= 40);
         BOOST_CHECK(primary_result[i][DEFAULT_KEY_WIDTH - 1] < 50);
         BOOST_CHECK(std::strncmp(primary_result[i] + 32, "RSQLTEST", 8) == 0);
@@ -781,7 +795,8 @@ BOOST_AUTO_TEST_CASE(delete_row_with_indexed_tree_test){
         BOOST_CHECK(cur_scpp >= low_scpp && cur_scpp <= high_scpp);
     }
 
-    for (size_t i = 0 ; i < primary_result.size() ; i++){
+    for (size_t i = 0; i < primary_result.size(); i++)
+    {
         delete[] primary_result[i];
     }
     delete table;

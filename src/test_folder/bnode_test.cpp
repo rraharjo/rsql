@@ -8,9 +8,7 @@ BOOST_AUTO_TEST_CASE(merge_node_test)
     structure_1.push_back(rsql::Column::get_column(0, rsql::DataType::DEFAULT_KEY, 0));
     rsql::BTree *tree = rsql::BTree::create_new_tree();
     for (rsql::Column &c : structure_1)
-    {
         tree->add_column(c);
-    }
     char key[DEFAULT_KEY_WIDTH + 1] = "00000000000000000000000000000000";
     rsql::BNode *parent = new rsql::BNode(tree, 1);
     parent->keys[0] = new char[DEFAULT_KEY_WIDTH];
@@ -49,9 +47,10 @@ BOOST_AUTO_TEST_CASE(merge_node_test)
     BOOST_CHECK(strncmp(c_1->keys[2], "00000000000000000000000000000002", DEFAULT_KEY_WIDTH) == 0);
     BOOST_CHECK(c_3->size == 1);
     BOOST_CHECK(strncmp(c_3->keys[0], "00000000000000000000000000000004", DEFAULT_KEY_WIDTH) == 0);
+    delete parent;
+    delete c_1;
     delete c_3;
     delete tree;
-    //delete c_1;
     
     std::system(clean_this_cache.c_str());
 }
