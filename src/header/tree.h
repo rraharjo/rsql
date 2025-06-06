@@ -6,17 +6,14 @@
 #include <iostream>
 #include <unistd.h>
 #include <fcntl.h>
-// #include <memory>
 // Can be changed to any number >= 2
 #define DEGREE 2
-#define NODE_CACHE_SIZE 50
+#define NODE_CACHE_SIZE 1
 #define DISK_BUFFER_SZ 4096
 #define TREE_FILE "tree.rsql"
-// typedef std::shared_ptr<rsql::BNode> nodeptr;
 typedef std::pair<rsql::BNode *, rsql::BNode *> NodePair;
 namespace rsql
 {
-    //class BNode;
     class Table;
     class BTree
     {

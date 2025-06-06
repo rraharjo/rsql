@@ -658,12 +658,15 @@ namespace rsql
         {
             next_nodes.insert(next_nodes.end(), this->children.begin(), this->children.begin() + this->size + 1);
         }
+        this->tree->node_cache->evict(this->node_num);
         for (const uint32_t next_node : next_nodes)
         {
             BNode *cur_node = this->get_node(next_node);
             this->clear_eviction();
             cur_node->linear_search(result, condition);
         }
+        this->move_to_cache(this);
+        this->clear_eviction();
     }
     void BNode::insert(const char *src)
     {
@@ -855,18 +858,23 @@ namespace rsql
             this->eviction_notice.push_back(evicted.value());
     }
 
-    void BNode::extract_eviction(BNode *node)
+    bool BNode::extract_eviction(BNode *node)
     {
         auto it = std::find(this->eviction_notice.begin(), this->eviction_notice.end(), node);
-        if (it != this->eviction_notice.end())
-            this->eviction_notice.erase(it);
+        if (it == this->eviction_notice.end())
+            return false;
+        this->eviction_notice.erase(it);
+        return true;
     }
 
     void BNode::clear_eviction()
     {
+        bool removed_this = this->extract_eviction(this);
         for (const BNode *evict : this->eviction_notice)
             delete evict;
         this->eviction_notice.clear();
+        if (removed_this)
+            delete this;
     }
 }
 

@@ -190,12 +190,12 @@ namespace rsql
             new_root->leaf = false;
             new_root->children[0] = root->node_num;
             BNode *new_children = new_root->split_children(0, root);
-            std::optional<BNode *> evicted_root = this->node_cache->put(new_root->node_num, new_root);
             std::optional<BNode *> evicted_child = this->node_cache->put(new_children->node_num, new_children);
-            if (evicted_root.has_value())
-                delete evicted_root.value();
+            std::optional<BNode *> evicted_root = this->node_cache->put(new_root->node_num, new_root);
             if (evicted_child.has_value())
                 delete evicted_child.value();
+            if (evicted_root.has_value())
+                delete evicted_root.value();
             new_root->insert(src);
         }
         else

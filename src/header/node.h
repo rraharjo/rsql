@@ -110,7 +110,8 @@ namespace rsql
         void match_columns();
         /**
          * @brief Check the eviction vector. If the eviction has the object, it's put on the cache.
-         * Otherwise, it will ask the cache for the object.
+         * Otherwise, it will ask the cache for the object. 
+         * @warning There's a good chance this function will put this object to the eviction_notice
          * 
          * @param node_num 
          * @return BNode* 
@@ -122,7 +123,7 @@ namespace rsql
          * @param node 
          */
         void move_to_cache(BNode *node);
-        void extract_eviction(BNode *node);
+        bool extract_eviction(BNode *node);
         void clear_eviction();
 
     public:
