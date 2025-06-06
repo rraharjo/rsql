@@ -7,8 +7,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 // Can be changed to any number >= 2
-#define DEGREE 2
-#define NODE_CACHE_SIZE 1
+#define DEGREE 128
+// can be changed to any number >= 1
+#define NODE_CACHE_SIZE 25
 #define DISK_BUFFER_SZ 4096
 #define TREE_FILE "tree.rsql"
 typedef std::pair<rsql::BNode *, rsql::BNode *> NodePair;
