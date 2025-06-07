@@ -96,6 +96,7 @@ namespace rsql
          */
         void insert_row(const char *src);
         /**
+         * @deprecated
          * @brief find all the rows of which value at column col_idx equals to the argument key. If col_idx is not 0 (not indexed), a linear search will be performed
          *
          * @param key
@@ -128,21 +129,6 @@ namespace rsql
          * @return std::vector<char *>
          */
         std::vector<char *> delete_all_row(const char *key = nullptr, CompSymbol symbol = CompSymbol::EQ, Comparison *comparison = nullptr);
-        /**
-         * @brief Delete all occurences of which value at column indexed col_idx equals to the argument key
-         *
-         * @param key
-         * @param col_idx column index. If this value is 0 (indexed), a btree search is performed, otherwise linear search is performed
-         * @return std::vector<char *> the deleted elements, each element is dynamically allocated
-         */
-        std::vector<char *> delete_all(const char *key, const size_t col_idx);
-        /**
-         * @brief Delete all occurences of all keys. Keys have to be the first column
-         *
-         * @param keys a collection of the keys
-         * @return std::vector<char *> the deleted elements, each element is dynamically allocated
-         */
-        std::vector<char *> batch_delete(const std::vector<char *> &keys);
         /**
          * @brief add a column at the end
          *

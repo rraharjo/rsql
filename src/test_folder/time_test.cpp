@@ -26,6 +26,7 @@ int main()
     auto after_insert = std::chrono::high_resolution_clock::now();
     auto insert_duration = std::chrono::duration_cast<std::chrono::milliseconds>(after_insert - before_insert);
     std::cout << ITEMSNUM << " items inserted!" << std::endl;
+
     std::cout << "Time elapsed: " << insert_duration.count() << " ms" << std::endl;
     std::cout << "Started indexing column..." << std::endl;
     auto before_index = std::chrono::high_resolution_clock::now();
@@ -34,6 +35,22 @@ int main()
     auto index_duration = std::chrono::duration_cast<std::chrono::milliseconds>(after_index - before_index);
     std::cout << "Done indexing!" << std::endl;
     std::cout << "Time elapsed: " << index_duration.count() << " ms" << std::endl;
+
+    char del_key[DEFAULT_KEY_WIDTH];
+    std::memset(del_key, 0, DEFAULT_KEY_WIDTH);
+    std::cout << "Deleting " << ITEMSNUM << " items..." << std::endl;
+    auto before_delete = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < ITEMSNUM; i++)
+    {
+        std::vector<char *> res = table->delete_row(DEF_KEY_COL_NAME, del_key);
+        delete res[0];
+        rsql::increment_default_key(reinterpret_cast<unsigned char *>(del_key));
+    }
+    auto after_delete = std::chrono::high_resolution_clock::now();
+    auto del_duration = std::chrono::duration_cast<std::chrono::milliseconds>(after_delete - before_delete);
+    std::cout << ITEMSNUM << " items deleted!" << std::endl;
+    std::cout << "Time elapsed: " << del_duration.count() << " ms" << std::endl;
+    
     delete table;
     delete db;
     return 0;

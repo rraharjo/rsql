@@ -86,8 +86,6 @@ Structure:
     - next 32 bytes : next default key value
     - next 4 bytes  : primary tree num
     - next 4 bytes  : max tree num
-    - next 4 bytes = n: number of composite trees
-    - next n * 12 bytes : composite trees information (col_idx(4), col_idx(4), tree_num(4))
 
 Dependencies:
 1. C++ Boost libraries: https://www.boost.org/

@@ -240,38 +240,6 @@ namespace rsql
         }
         return to_ret;
     }
-    std::vector<char *> BTree::delete_all(const char *key, const size_t idx)
-    {
-        std::vector<char *> to_ret;
-        if (idx == 0)
-        {
-            char *to_add = nullptr;
-            while ((to_add = this->delete_row(key)))
-            {
-                to_ret.push_back(to_add);
-                to_add = nullptr;
-            }
-        }
-        else
-        {
-            std::vector<char *> keys = this->find_all_row(key, idx);
-            std::vector<char *> rows = this->batch_delete(keys);
-            for (const char *key : keys)
-                delete[] key;
-            return rows;
-        }
-        return to_ret;
-    }
-    std::vector<char *> BTree::batch_delete(const std::vector<char *> &keys)
-    {
-        std::vector<char *> to_ret;
-        for (size_t i = 0; i < keys.size(); i++)
-        {
-            std::vector<char *> cur_keys = this->delete_all(keys[i], 0);
-            to_ret.insert(to_ret.end(), cur_keys.begin(), cur_keys.end());
-        }
-        return to_ret;
-    }
     void BTree::add_column(const Column c)
     {
         this->columns.push_back(c);

@@ -131,35 +131,7 @@ namespace rsql
         uint32_t max_tree_num;
         std::memcpy(&max_tree_num, read_buffer + bytes_processed, 4);
         bytes_processed += 4;
-        uint32_t num_of_composite;
-        std::memcpy(&num_of_composite, read_buffer + bytes_processed, 4);
-        bytes_processed += 4;
-
-        uint32_t composite_idx1, composite_idx2;
-        for (uint32_t i = 0; i < num_of_composite; i++)
-        {
-            if (cur_read_bytes - bytes_processed < 12)
-            {
-                size_t remaining_bytes = cur_read_bytes - bytes_processed;
-                std::memmove(read_buffer, read_buffer + bytes_processed, remaining_bytes);
-                if ((cur_read_bytes = read(fd, read_buffer + remaining_bytes, DISK_BUFFER_SZ - remaining_bytes)) < 0)
-                {
-                    delete new_table;
-                    throw std::runtime_error("Failed to read file");
-                    return nullptr;
-                }
-                cur_read_bytes += remaining_bytes;
-                bytes_processed = 0;
-            }
-            std::memcpy(&composite_idx1, read_buffer + bytes_processed, 4);
-            bytes_processed += 4;
-            std::memcpy(&composite_idx2, read_buffer + bytes_processed, 4);
-            bytes_processed += 4;
-            std::memcpy(&tree_num, read_buffer + bytes_processed, 4);
-            bytes_processed += 4;
-            uintuint32 composite_key = {std::make_pair(composite_idx1, composite_idx2)};
-            new_table->composite_trees[composite_key] = BTree::read_disk(new_table, tree_num);
-        }
+        
         new_table->db = db;
         new_table->changed = false;
         new_table->primary_tree_num = primary_tree_num;
@@ -472,9 +444,7 @@ namespace rsql
                 primary_key_comparison->change_right_val(res);
                 std::vector<char *> opt_ret = pair.second->delete_all_row(res + preceding_size, CompSymbol::EQ, primary_key_comparison);
                 for (char *opt_res : opt_ret)
-                {
                     delete[] opt_res;
-                }
             }
             delete primary_key_comparison;
         }
@@ -548,104 +518,6 @@ namespace rsql
         this->changed = true;
         delete[] new_row;
     }
-    void Table::index_composite_columns(const std::string col_name_1, const std::string col_name_2)
-    {
-        auto it1 = this->col_name_indexes.find(col_name_1);
-        if (it1 == this->col_name_indexes.end())
-        {
-            throw std::invalid_argument("Can't index column - column doesn't exist");
-            return;
-        }
-        auto it2 = this->col_name_indexes.find(col_name_2);
-        if (it2 == this->col_name_indexes.end())
-        {
-            throw std::invalid_argument("Can't index column - column doesn't exist");
-            return;
-        }
-        size_t col_1_idx = it1->second, col_2_idx = it2->second;
-        if (col_1_idx == col_2_idx)
-        {
-            throw std::invalid_argument("Can't index composite columns - they are the same columns");
-            return;
-        }
-        Column col_1 = this->primary_tree->get_columns()[col_1_idx];
-        Column col_2 = this->primary_tree->get_columns()[col_2_idx];
-        if (col_1.type != col_2.type)
-        {
-            throw std::invalid_argument("Can't index columns - column types don't match");
-            return;
-        }
-        uintuint32 composite_key = {std::make_pair(col_1_idx, col_2_idx)};
-        if (this->composite_trees.find(composite_key) != this->composite_trees.end())
-        {
-            throw std::invalid_argument("Columns already indexed");
-            return;
-        }
-        Column first_column = this->primary_tree->get_columns()[0];
-        Column comparison_col = Column::get_column(0, col_1.type, std::min(col_1.width, col_2.width));
-        size_t preceding_size_1 = 0, preceding_size_2 = 0;
-        for (size_t i = 0; i < col_1_idx; i++)
-            preceding_size_1 += this->primary_tree->get_columns()[i].width;
-        for (size_t i = 0; i < col_2_idx; i++)
-            preceding_size_2 += this->primary_tree->get_columns()[i].width;
-
-        BTree *composite_tree = BTree::create_new_tree(this, ++this->max_tree_num, false);
-        std::string where = std::filesystem::path(this->get_path()) / std::to_string(composite_tree->tree_num);
-        std::filesystem::create_directories(where);
-        composite_tree->add_column(Column::get_column(0, DataType::SINT, COMPOSITE_KEY_SIZE)); // Key is a signed int
-        composite_tree->add_column(first_column);
-
-        char *buff = new char[composite_tree->width];
-        std::queue<uint32_t> children;
-        for (size_t i = 0; i < this->primary_tree->get_root()->get_size(); i++)
-        {
-            char *val_1 = this->primary_tree->get_root()->get_keys()[i] + preceding_size_1;
-            char *val_2 = this->primary_tree->get_root()->get_keys()[i] + preceding_size_2;
-            int comp = comparison_col.compare_key(val_1, val_2);
-            boost::multiprecision::cpp_int boost_comp = comp;
-            int boost_sign = boost_comp.sign();
-            std::memcpy(buff, &boost_sign, 1);
-            boost::multiprecision::import_bits(boost_comp, buff + 1, buff + COMPOSITE_KEY_SIZE, 8, false);
-            std::memcpy(buff + COMPOSITE_KEY_SIZE, this->primary_tree->get_root()->get_keys()[i], first_column.width);
-            composite_tree->insert_row(buff);
-        }
-        if (!this->primary_tree->get_root()->is_leaf())
-        {
-            for (size_t i = 0; i <= this->primary_tree->get_root()->get_size(); i++)
-            {
-                children.push(this->primary_tree->get_root()->get_children()[i]);
-            }
-        }
-        while (!children.empty())
-        {
-            uint32_t cur_node_num = children.front();
-            children.pop();
-            NodePair from_cache = this->primary_tree->get_node(cur_node_num);
-            BNode *cur_node = from_cache.first;
-            if (from_cache.second)
-                delete from_cache.second;
-            for (size_t i = 0; i < cur_node->get_size(); i++)
-            {
-                char *val_1 = cur_node->get_keys()[i] + preceding_size_1;
-                char *val_2 = cur_node->get_keys()[i] + preceding_size_2;
-                int comp = comparison_col.compare_key(val_1, val_2);
-                boost::multiprecision::cpp_int boost_comp = comp;
-                int boost_sign = boost_comp.sign();
-                std::memcpy(buff, &boost_sign, 1);
-                boost::multiprecision::import_bits(boost_comp, buff + 1, buff + COMPOSITE_KEY_SIZE, 8, false);
-                std::memcpy(buff + COMPOSITE_KEY_SIZE, this->primary_tree->get_root()->get_keys()[i], first_column.width);
-                composite_tree->insert_row(buff);
-            }
-            if (!cur_node->is_leaf())
-            {
-                for (size_t i = 0; i <= cur_node->get_size(); i++)
-                    children.push(cur_node->get_children()[i]);
-            }
-        }
-        delete[] buff;
-        this->composite_trees[composite_key] = composite_tree;
-        this->changed = true;
-    }
     std::string Table::get_path() const
     {
         return std::filesystem::path(this->db->get_path()) / this->table_name;
@@ -712,29 +584,6 @@ namespace rsql
         bytes_processed += 4;
         std::memcpy(write_buffer + bytes_processed, &this->max_tree_num, 4);
         bytes_processed += 4;
-        uint32_t num_of_composite = (uint32_t)this->composite_trees.size();
-        std::memcpy(write_buffer + bytes_processed, &num_of_composite, 4);
-        bytes_processed += 4;
-        for (const auto &it : this->composite_trees)
-        {
-            if (DISK_BUFFER_SZ - bytes_processed < 12)
-            {
-                if (write(fd, write_buffer, bytes_processed) < 0)
-                {
-                    close(fd);
-                    throw std::runtime_error("Failed to write table");
-                };
-                bytes_processed = 0;
-            }
-            std::memset(write_buffer + bytes_processed, 0, 2 * COL_NAME_SIZE);
-            std::memcpy(write_buffer + bytes_processed, &it.first.pair.first, 4);
-            bytes_processed += 4;
-            std::memcpy(write_buffer + bytes_processed, &it.first.pair.second, 4);
-            bytes_processed += 4;
-            uint32_t tree_num = it.second->tree_num;
-            std::memcpy(write_buffer + bytes_processed, &tree_num, 4);
-            bytes_processed += 4;
-        }
         if (write(fd, write_buffer, bytes_processed) < 0)
         {
             close(fd);

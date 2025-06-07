@@ -8,7 +8,6 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <queue>
 #include "tree.h"
-#define COMPOSITE_KEY_SIZE 2
 #define TABLE_NAME_SIZE 256
 #define COL_NAME_SIZE 128
 #define DEF_KEY_COL_NAME "DEFAULT_KEY"
@@ -67,7 +66,6 @@ namespace rsql
          *
          */
         std::unordered_map<uint32_t, rsql::BTree *> optional_trees;
-        std::unordered_map<uintuint32, rsql::BTree *, PairComp> composite_trees;
         
 
     private: 
@@ -164,14 +162,6 @@ namespace rsql
          * @param col_name
          */
         void index_column(const std::string col_name);
-        /**
-         * @brief UNTESTED!!! Index two column as composite. Key is represented as (col1 - col2)
-         *
-         * @throw std::invalid_argument if the columns can't be indexed
-         * @param col_name_1
-         * @param col_name_2
-         */
-        void index_composite_columns(const std::string col_name_1, const std::string col_name_2);
         /**
          * @brief Get the path, where this table is stored
          *
