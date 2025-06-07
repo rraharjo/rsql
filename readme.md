@@ -38,6 +38,7 @@ Parser guide
     - syntax (v3): SELECT FROM $table_name WHERE ($col $symbol $values OR ($col $symbol $values AND $col $symbol $values))
     - syntax (v4): SELECT FROM $table_name WHERE $primary_col $symbol $values
     - Note: the WHERE clause is optional - ignoring it would return everything on the table. The $primary_col is also optional - this is the column used for indexed search - if this is not null, any additional condition must be connected with AND keyword. The additional conditions must be enclosed in parenthesis, and can be nested as many times as needed. In a single parenthesis, the connectors (AND/OR) must be the same - (a AND b OR c) is an invalid expression, but (a AND (b OR c)) is valid. 
+    - Note: Under WHERE, if $values is not a numeric and not quoted, this will be considered a column name. Number do not need quotes.
 8. delete row:
     - syntax: DELETE FROM $table_name WHERE $primary_col $symbol $values AND ($col $symbol $values OR ($col $symbol $values AND $col $symbol $values))
     - Note: The WHERE clause use the same rules as search
