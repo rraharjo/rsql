@@ -9,11 +9,7 @@
 #include <memory>
 #include "column.h"
 #include "comparison.h"
-namespace rsql
-{
-    class BNode;
-}
-typedef std::shared_ptr<rsql::BNode> nodeptr;
+
 namespace rsql
 {
     class BTree;
@@ -21,13 +17,46 @@ namespace rsql
     {
     public:
         /**
+         * @brief
+         * Read file_name file and store all the data inside keys
+         * @param cols column format
+         * @param file_name
+         * @return BNode*
+         */
+        static BNode *read_disk(BTree *tree, const std::string file_name);
+        /**
+         * @brief Get the file name of the node with the stated node number
+         *
+         * @param node_num
+         * @return std::string
+         */
+        inline static const std::string get_file_name(const uint32_t node_num)
+        {
+            return "node_" + std::to_string(node_num) + ".rsql";
+        }
+
+    private:
+        // written information
+        uint32_t node_num;
+        std::vector<Column> columns;
+        uint32_t size;
+        std::vector<char *> keys;
+        std::vector<uint32_t> children;
+        uint8_t leaf;
+
+        // generated information
+        bool changed;
+        BTree *tree;
+
+    private:
+        /**
          * @brief return the first proper child idx that matches the symbol.
          *
          * @param k
          * @param symbol
          * @return int
          */
-        int first_child_idx(const char *k, CompSymbol symbol);
+        int first_child_idx(const char *k, CompSymbol symbol) const;
         /**
          * @brief return the last proper child idx
          *
@@ -35,7 +64,7 @@ namespace rsql
          * @param symbol
          * @return int
          */
-        int last_child_idx(const char *k, CompSymbol symbol);
+        int last_child_idx(const char *k, CompSymbol symbol) const;
         /**
          * @brief Compare k byte, where k is the width of column at position col_idx
          *
@@ -45,7 +74,16 @@ namespace rsql
          * @param symbol
          * @return true if k_1 symbol k_2 is true
          */
-        bool compare_key(const char *k_1, const char *k_2, size_t col_idx, CompSymbol symbol = CompSymbol::EQ);
+        bool compare_key(const char *k_1, const char *k_2, size_t col_idx, CompSymbol symbol = CompSymbol::EQ) const;
+        /**
+         * @brief Split the children node c_i, which has to be this children at index idx
+         * @warning newly created object is not inserted to the cache
+         *
+         * @param idx position of the target child
+         * @param c_i a pointer to the child node (c_i has to be in index idx)
+         * @return a pointer to the newly created node, at position idx + 1
+         */
+        BNode *split_children(const size_t idx, BNode *c_i);
         /**
          * @brief merge c_j to c_i, where c_i is the children number idx and c_j is children number (idx + 1).
          * BNode::destroy() will be called on c_j
@@ -56,14 +94,14 @@ namespace rsql
          */
         void merge(const size_t idx, BNode *c_i, BNode *c_j);
         /**
-         * @brief recuresively perform tree balancing on the left most children and 
+         * @brief recuresively perform tree balancing on the left most children and
          * remove the left most key on the left most leaf node, rooted at current node
          *
          * @return char* the left most key of the left most leaf node, rooted at current node
          */
         char *delete_left();
         /**
-         * @brief recuresively perform tree balancing on the right most children and 
+         * @brief recuresively perform tree balancing on the right most children and
          * remove the right most key on the right most leaf node, rooted at current node
          *
          * @return char* the right most key of the right most leaf node, rooted at current node
@@ -101,15 +139,6 @@ namespace rsql
          */
         void destroy();
         /**
-         * @brief Split the children node c_i, which has to be this children at index idx
-         * @warning newly created object is not inserted to the cache
-         *
-         * @param idx position of the target child
-         * @param c_i a pointer to the child node (c_i has to be in index idx)
-         * @return a pointer to the newly created node, at position idx + 1
-         */
-        BNode *split_children(const size_t idx, BNode *c_i);
-        /**
          * @brief Match the column structure of this node to the tree
          *
          */
@@ -117,7 +146,7 @@ namespace rsql
         /**
          * @brief Check the eviction vector. If the eviction has the object, it's put on the cache.
          * Otherwise, it will ask the cache for the object.
-         * @warning Calling this function will not guarantee ownership of this object. 
+         * @warning Calling this function will not guarantee ownership of this object.
          * this object may be placed in the cache or eviction_notice
          *
          * @param node_num
@@ -126,56 +155,32 @@ namespace rsql
         BNode *get_node(const uint32_t node_num);
         /**
          * @brief Make sure that node is available on the cache, and remove from eviction vector
-         * 
+         *
          * @param node
          */
         void move_to_cache(BNode *node);
         /**
          * @brief remove the node object from the eviction_notice
-         * 
-         * @param node 
-         * @return true 
-         * @return false 
+         *
+         * @param node
+         * @return true
+         * @return false
          */
         bool extract_eviction(BNode *node);
         /**
          * @brief delete all object inside the eviction_notice and clear the vector
-         * 
+         *
          */
         void clear_eviction();
 
     public:
-        std::vector<Column> columns;
-        uint32_t size;
-        std::vector<char *> keys;
-        std::vector<uint32_t> children;
-        uint8_t leaf;
-
-        uint32_t node_num;
-        bool changed;
-        BTree *tree;
-        static std::vector<BNode *> eviction_notice;
-
-    public:
-        /**
-         * @brief
-         * Read file_name file and store all the data inside keys
-         * @param cols column format
-         * @param file_name
-         * @return BNode*
-         */
-        static BNode *read_disk(BTree *tree, const std::string file_name);
-        /**
-         * @brief Get the file name of the node with the stated node number
-         *
-         * @param node_num
-         * @return std::string
-         */
-        static std::string get_file_name(const uint32_t node_num);
         BNode(BTree *tree, const uint32_t node_num);
-
         ~BNode();
-        bool full();
+        inline size_t get_size() const { return this->size; }
+        inline const std::vector<uint32_t> &get_children() const { return this->children; }
+        inline const std::vector<char *> &get_keys() const { return this->keys; }
+        inline bool is_leaf() const { return this->leaf; }
+        inline bool full() const { return this->size == this->keys.capacity(); };
         /**
          * @brief find the first row that matches the key
          *
@@ -205,7 +210,6 @@ namespace rsql
         void insert(const char *row);
         char *delete_row(const char *key, Comparison *comp = nullptr);
         void write_disk();
-
         friend std::ostream &operator<<(std::ostream &stream, const BNode &obj);
 
         friend class BTree;

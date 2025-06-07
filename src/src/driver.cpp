@@ -4,8 +4,8 @@ static bool inline valid_db(rsql::Database *db);
 static std::vector<std::string> split(const std::string &str, const std::string &delimiter);
 static void print_table(const std::vector<std::string> &columns, const std::vector<std::vector<std::string>> &val);
 static void print_fixed_width(const std::string &str, const size_t &width);
-static void print_vv(const std::vector<std::vector<std::string>> &vv);
 static inline void to_lower_case(std::string &str);
+
 namespace rsql
 {
     Driver::Driver()
@@ -274,18 +274,6 @@ std::vector<std::string> split(const std::string &str, const std::string &delimi
     tokens.push_back(str.substr(last));
 
     return tokens;
-}
-void print_vv(const std::vector<std::vector<std::string>> &vv)
-{
-    for (const std::vector<std::string> &v : vv)
-    {
-        for (const std::string &s : v)
-        {
-            std::cout << s << "|";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
 }
 void print_fixed_width(const std::string &str, const size_t &width)
 {

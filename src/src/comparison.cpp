@@ -90,7 +90,7 @@ namespace rsql
     }
 
     ColumnComparison::ColumnComparison(const ColumnComparison &other)
-        : SingleComparison(other), right_preceding(other.right_preceding), right_len(other.right_len)
+        : SingleComparison(other), right_len(other.right_len), right_preceding(other.right_preceding)
     {
     }
 

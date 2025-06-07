@@ -3,7 +3,7 @@
 #include "table.h"
 #include "database.h"
 typedef boost::multiprecision::cpp_int cpp_int;
-typedef std::shared_ptr<rsql::BNode> nodeptr;
+
 /**
  * @brief Shift all item starting at idx (inclusive) to the right by 1 unit
  *
@@ -28,12 +28,10 @@ template <typename T>
 static bool extract_vector(std::vector<T> &entries, const T &target);
 template <typename T>
 static void free_vector(const std::vector<T *> &entries);
-
 static unsigned int get_node_no(const std::string &file_name);
 
 namespace rsql
 {
-    std::vector<BNode *> BNode::eviction_notice = std::vector<BNode *>();
     BNode *BNode::read_disk(BTree *tree, const std::string file_name)
     {
         static char read_buffer[DISK_BUFFER_SZ];
@@ -137,38 +135,7 @@ namespace rsql
         new_node->match_columns();
         return new_node;
     }
-    inline std::string BNode::get_file_name(const uint32_t node_num)
-    {
-        std::string to_ret = "node_" + std::to_string(node_num) + ".rsql";
-        return to_ret;
-    }
-    int BNode::last_child_idx(const char *k, CompSymbol symbol)
-    {
-        if (symbol == CompSymbol::GEQ || symbol == CompSymbol::GT) // Last item that is GEQ k
-        {
-            return this->size;
-        }
-        CompSymbol new_symbol = symbol == CompSymbol::LT ? CompSymbol::LEQ : CompSymbol::LT;
-        int start = 0, end = this->size - 1;
-        int mid;
-        int to_ret = -1;
-        while (start <= end)
-        {
-            mid = (start + end) / 2;
-            bool comp = this->compare_key(k, this->keys[mid], 0, new_symbol);
-            if (comp)
-            {
-                end = mid - 1;
-            }
-            else
-            {
-                to_ret = std::max(to_ret, mid + 1);
-                start = mid + 1;
-            }
-        }
-        return to_ret == -1 ? 0 : to_ret;
-    }
-    int BNode::first_child_idx(const char *k, CompSymbol symbol)
+    int BNode::first_child_idx(const char *k, CompSymbol symbol) const
     {
         if (symbol == CompSymbol::LEQ || symbol == CompSymbol::LT) // First item that is less than k
         {
@@ -194,8 +161,31 @@ namespace rsql
         }
         return to_ret == -1 ? this->size : to_ret;
     }
-
-    inline bool BNode::compare_key(const char *k_1, const char *k_2, size_t col_idx, CompSymbol symbol)
+    int BNode::last_child_idx(const char *k, CompSymbol symbol) const
+    {
+        if (symbol == CompSymbol::GEQ || symbol == CompSymbol::GT) // Last item that is GEQ k
+            return this->size;
+        CompSymbol new_symbol = symbol == CompSymbol::LT ? CompSymbol::LEQ : CompSymbol::LT;
+        int start = 0, end = this->size - 1;
+        int mid;
+        int to_ret = -1;
+        while (start <= end)
+        {
+            mid = (start + end) / 2;
+            bool comp = this->compare_key(k, this->keys[mid], 0, new_symbol);
+            if (comp)
+            {
+                end = mid - 1;
+            }
+            else
+            {
+                to_ret = std::max(to_ret, mid + 1);
+                start = mid + 1;
+            }
+        }
+        return to_ret == -1 ? 0 : to_ret;
+    }
+    bool BNode::compare_key(const char *k_1, const char *k_2, size_t col_idx, CompSymbol symbol) const
     {
         ConstantComparison c(this->columns[col_idx].type, symbol, this->columns[col_idx].width, 0, k_2);
         return c.compare(k_1);
@@ -477,15 +467,6 @@ namespace rsql
         this->changed = false;
         delete this;
     }
-    BNode::BNode(BTree *tree, const uint32_t node_num)
-        : tree(tree), node_num(node_num), leaf(false), changed(true), size(0)
-    {
-        this->keys.reserve(2 * this->tree->t - 1);
-        this->keys.assign(this->keys.capacity(), nullptr);
-        this->children.reserve(2 * this->tree->t);
-        this->children.assign(this->children.capacity(), 0);
-        this->columns = tree->columns;
-    }
     void BNode::match_columns()
     {
         if (this->columns == this->tree->columns)
@@ -535,6 +516,66 @@ namespace rsql
         this->columns = tree->columns;
         this->changed = true;
     }
+    BNode *BNode::get_node(const uint32_t node_num)
+    {
+        BNode *to_ret = nullptr;
+        for (size_t i = 0; i < this->tree->eviction_notice.size(); i++)
+        {
+            if (this->tree->eviction_notice[i]->node_num == node_num)
+            {
+                to_ret = this->tree->eviction_notice[i];
+                this->tree->eviction_notice.erase(this->tree->eviction_notice.begin() + i);
+                std::optional<BNode *> evicted = this->tree->node_cache->put(node_num, to_ret);
+                if (evicted.value())
+                    this->tree->eviction_notice.push_back(evicted.value());
+                return to_ret;
+            }
+        }
+        NodePair from_tree = this->tree->get_node(node_num);
+        if (from_tree.second)
+            this->tree->eviction_notice.push_back(from_tree.second);
+        to_ret = from_tree.first;
+        return to_ret;
+    }
+    void BNode::move_to_cache(BNode *node)
+    {
+        for (size_t i = 0; i < this->tree->eviction_notice.size(); i++)
+        {
+            if (this->tree->eviction_notice[i]->node_num == node->node_num)
+            {
+                this->tree->eviction_notice.erase(this->tree->eviction_notice.begin() + i);
+                break;
+            }
+        }
+        std::optional<BNode *> evicted = this->tree->node_cache->put(node->node_num, node);
+        if (evicted.has_value())
+            this->tree->eviction_notice.push_back(evicted.value());
+    }
+
+    bool BNode::extract_eviction(BNode *node)
+    {
+        auto it = std::find(this->tree->eviction_notice.begin(), this->tree->eviction_notice.end(), node);
+        if (it == this->tree->eviction_notice.end())
+            return false;
+        this->tree->eviction_notice.erase(it);
+        return true;
+    }
+
+    void BNode::clear_eviction()
+    {
+        for (const BNode *evict : this->tree->eviction_notice)
+            delete evict;
+        this->tree->eviction_notice.clear();
+    }
+    BNode::BNode(BTree *tree, const uint32_t node_num)
+        : node_num(node_num), size(0), leaf(false), changed(true), tree(tree)
+    {
+        this->keys.reserve(2 * this->tree->t - 1);
+        this->keys.assign(this->keys.capacity(), nullptr);
+        this->children.reserve(2 * this->tree->t);
+        this->children.assign(this->children.capacity(), 0);
+        this->columns = tree->columns;
+    }
     BNode::~BNode()
     {
         this->match_columns();
@@ -542,10 +583,6 @@ namespace rsql
             this->write_disk();
         for (uint32_t i = 0; i < this->size; i++)
             delete[] this->keys[i];
-    }
-    bool BNode::full()
-    {
-        return this->size == this->keys.capacity();
     }
     char *BNode::find(const char *key)
     {
@@ -809,69 +846,12 @@ namespace rsql
         close(node_file_fd);
         this->changed = false;
     }
-
-    BNode *BNode::get_node(const uint32_t node_num)
-    {
-        BNode *to_ret = nullptr;
-        for (size_t i = 0; i < this->eviction_notice.size(); i++)
-        {
-            if (eviction_notice[i]->node_num == node_num)
-            {
-                to_ret = eviction_notice[i];
-                this->eviction_notice.erase(this->eviction_notice.begin() + i);
-                std::optional<BNode *> evicted = this->tree->node_cache->put(node_num, to_ret);
-                if (evicted.value())
-                    this->eviction_notice.push_back(evicted.value());
-                return to_ret;
-            }
-        }
-        NodePair from_tree = this->tree->get_node(node_num);
-        if (from_tree.second)
-            this->eviction_notice.push_back(from_tree.second);
-        to_ret = from_tree.first;
-        return to_ret;
-    }
-
-    void BNode::move_to_cache(BNode *node)
-    {
-        for (size_t i = 0; i < this->eviction_notice.size(); i++)
-        {
-            if (eviction_notice[i]->node_num == node->node_num)
-            {
-                this->eviction_notice.erase(this->eviction_notice.begin() + i);
-                break;
-            }
-        }
-        std::optional<BNode *> evicted = this->tree->node_cache->put(node->node_num, node);
-        if (evicted.has_value())
-            this->eviction_notice.push_back(evicted.value());
-    }
-
-    bool BNode::extract_eviction(BNode *node)
-    {
-        auto it = std::find(this->eviction_notice.begin(), this->eviction_notice.end(), node);
-        if (it == this->eviction_notice.end())
-            return false;
-        this->eviction_notice.erase(it);
-        return true;
-    }
-
-    void BNode::clear_eviction()
-    {
-        //bool removed_this = this->extract_eviction(this);
-        for (const BNode *evict : this->eviction_notice)
-            delete evict;
-        this->eviction_notice.clear();
-        // if (removed_this)
-        //     delete this;
-    }
-
     std::ostream &operator<<(std::ostream &stream, const BNode &obj)
     {
         stream << "Node number  : " << obj.node_num << std::endl;
         stream << "Node size    : " << obj.size << std::endl;
         stream << "Children     : ";
-        for (size_t i = 0 ; i <= obj.size ; i++)
+        for (size_t i = 0; i <= obj.size; i++)
             stream << obj.children[i] << " ";
         stream << std::endl;
         return stream;

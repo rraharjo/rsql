@@ -12,9 +12,9 @@ namespace rsql
     class Column
     {
     public:
-        DataType type;
-        size_t width;
         unsigned int col_id;
+        size_t width;
+        DataType type;
 
         Column(unsigned int col_id, size_t width, DataType type);
         /**
@@ -24,21 +24,14 @@ namespace rsql
          * @param dest
          * @param src
          */
-        void process_string(char *const dest, const std::string src);
-        std::string process_stream(const char *const src);
+        void process_string(char *const dest, const std::string src) const;
+        std::string process_stream(const char *const src) const;
         int compare_key(const char *const k1, const char *const k2, CompSymbol symbol = CompSymbol::EQ);
         bool operator==(const Column &other) const;
         bool operator!=(const Column &other) const;
 
         static Column pkey_column(unsigned int col_id);
         static Column unsigned_int_column(unsigned int col_id, const size_t width);
-        /**
-         * @brief return an unsigned column. The first byte is the sign byte (-1, 0, 1). The rest (n - 1) bytes are magnitude bytes
-         *
-         * @param col_id
-         * @param width
-         * @return Column
-         */
         static Column signed_int_column(unsigned int col_id, const size_t width);
         static Column char_column(unsigned int col_id, const size_t width);
         static Column date_column(unsigned int col_id);

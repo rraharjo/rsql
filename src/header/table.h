@@ -29,32 +29,6 @@ namespace rsql
     class Database;
     class Table
     {
-    private:
-        const Database *db;
-        std::string table_name;
-        std::unordered_map<std::string, uint32_t> col_name_indexes;
-        uint32_t primary_tree_num;
-        uint32_t max_tree_num;
-        unsigned char next_default_key[DEFAULT_KEY_WIDTH];
-
-        rsql::BTree *primary_tree;
-        /**
-         * @brief key is the index, value is the pointer to the tree. If a column does not have a tree, that column does not belong in this attribute
-         *
-         */
-        std::unordered_map<uint32_t, rsql::BTree *> optional_trees;
-        std::unordered_map<uintuint32, rsql::BTree *, PairComp> composite_trees;
-
-        bool changed;
-
-        /**
-         * @brief Construct a new Table object, does not necessarily write it to disk. Automatically set up the primary tree, numbered 1
-         *
-         * @param db
-         * @param table_name
-         */
-        Table(const Database *db, const std::string table_name);
-
     public:
         /**
          * @brief Create a new table object.
@@ -77,7 +51,37 @@ namespace rsql
          * @return Table*
          */
         static Table *load_table(Database *db, const std::string table_name);
+
+    private:
+        std::string table_name;
+        std::unordered_map<std::string, uint32_t> col_name_indexes;
+        uint32_t primary_tree_num;
+        uint32_t max_tree_num;
+        unsigned char next_default_key[DEFAULT_KEY_WIDTH];
+
+        const Database *db;
+        bool changed;
+        rsql::BTree *primary_tree;
+        /**
+         * @brief key is the index, value is the pointer to the tree. If a column does not have a tree, that column does not belong in this attribute
+         *
+         */
+        std::unordered_map<uint32_t, rsql::BTree *> optional_trees;
+        std::unordered_map<uintuint32, rsql::BTree *, PairComp> composite_trees;
+        
+
+    private: 
+        /**
+         * @brief Construct a new Table object, does not necessarily write it to disk. Automatically set up the primary tree, numbered 1
+         *
+         * @param db
+         * @param table_name
+         */
+        Table(const Database *db, const std::string table_name);
+
+    public:
         ~Table();
+        inline size_t get_width() const {return this->primary_tree->get_width(); }
         /**
          * @brief Convert a vector of values (in text format) to binary format. Number of values has to match number of columns. Does not count default key column
          *
@@ -86,16 +90,16 @@ namespace rsql
          * @return char* dynamically allocated. Ownership belongs to caller
          */
         char *convert_texts_to_char_stream(const std::vector<std::string> &values);
+        /**
+         * @brief Convert a stream to text format. Argument should be store the whole row information
+         * 
+         * @param stream 
+         * @return std::vector<std::string> 
+         */
         std::vector<std::string> convert_char_stream_to_texts(const char *const stream);
         Column get_column(std::string col_name);
         std::vector<std::pair<std::string, Column>> get_columns();
         size_t get_preceding_length(const std::string col_name) const;
-        /**
-         * @brief Get the width of the table
-         *
-         * @return size_t
-         */
-        size_t get_width() const;
         /**
          * @brief Get the width of the column with matching name
          *

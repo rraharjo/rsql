@@ -24,7 +24,7 @@ namespace rsql
     {
     }
 
-    void Column::process_string(char *const dest, const std::string src)
+    void Column::process_string(char *const dest, const std::string src) const
     {
         switch (this->type)
         {
@@ -107,7 +107,7 @@ namespace rsql
         }
         }
     }
-    std::string Column::process_stream(const char *const src)
+    std::string Column::process_stream(const char *const src) const
     {
         switch (this->type)
         {

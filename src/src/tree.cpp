@@ -3,35 +3,16 @@
 #include "database.h"
 namespace rsql
 {
-    BTree::BTree(Table *table)
-        : root_num(1), max_node_num(1), t(DEGREE), max_col_id(0), width(0), table(table), tree_num(0)
+    BTree *BTree::create_new_tree(Table *table, const uint32_t tree_num, bool unique_key)
     {
-        this->node_cache = new BTREE_CACHE(NODE_CACHE_SIZE);
+        BTree *to_ret = new BTree(unique_key, table);
+        to_ret->tree_num = tree_num;
+        BNode *root = new BNode(to_ret, to_ret->root_num);
+        root->changed = true;
+        root->leaf = 1;
+        to_ret->node_cache->put(to_ret->root_num, root);
+        return to_ret;
     }
-    BTree::~BTree()
-    {
-        this->write_disk();
-        while (!this->node_cache->empty())
-        {
-            BNode *evicted = this->node_cache->evict();
-            delete evicted;
-        }
-        delete this->node_cache;
-    }
-    NodePair BTree::get_node(const uint32_t node_num)
-    {
-        std::optional<BNode *> from_cache = this->node_cache->get(node_num);
-        if (from_cache.has_value())
-        {
-            from_cache.value()->match_columns();
-            return std::make_pair(from_cache.value(), nullptr);
-        }
-        std::string node_file_name = BNode::get_file_name(node_num);
-        BNode *from_disk = BNode::read_disk(this, node_file_name);
-        std::optional<BNode *> evicted = this->node_cache->put(node_num, from_disk);
-        return std::make_pair(from_disk, evicted.value_or(nullptr));
-    }
-
     BTree *BTree::read_disk(Table *table, const uint32_t tree_num)
     {
         static char starting_buffer[DISK_BUFFER_SZ];
@@ -118,16 +99,57 @@ namespace rsql
         close(tree_file_fd);
         return to_ret;
     }
-    BTree *BTree::create_new_tree(Table *table, const uint32_t tree_num, bool unique_key)
+    BTree::BTree(bool unique, Table *table)
+        : root_num(1), max_node_num(1), max_col_id(0), tree_num(0),
+          unique_key(unique), table(table), t(DEGREE), width(0),
+          node_cache(new BTREE_CACHE(NODE_CACHE_SIZE))
     {
-        BTree *to_ret = new BTree(table);
-        to_ret->tree_num = tree_num;
-        to_ret->unique_key = unique_key;
-        BNode *root = new BNode(to_ret, to_ret->root_num);
-        root->changed = true;
-        root->leaf = 1;
-        to_ret->node_cache->put(to_ret->root_num, root);
-        return to_ret;
+    }
+    NodePair BTree::get_node(const uint32_t node_num)
+    {
+        std::optional<BNode *> from_cache = this->node_cache->get(node_num);
+        if (from_cache.has_value())
+        {
+            from_cache.value()->match_columns();
+            return std::make_pair(from_cache.value(), nullptr);
+        }
+        std::string node_file_name = BNode::get_file_name(node_num);
+        BNode *from_disk = BNode::read_disk(this, node_file_name);
+        std::optional<BNode *> evicted = this->node_cache->put(node_num, from_disk);
+        return std::make_pair(from_disk, evicted.value_or(nullptr));
+    }
+    BTree::~BTree()
+    {
+        this->write_disk();
+        while (!this->node_cache->empty())
+        {
+            BNode *evicted = this->node_cache->evict();
+            delete evicted;
+        }
+        delete this->node_cache;
+    }
+    void BTree::insert_row(const char *src)
+    {
+        BNode *root = this->get_root();
+        if (root->full())
+        {
+            BNode *new_root = new BNode(this, ++this->max_node_num);
+            this->root_num = this->max_node_num;
+            new_root->leaf = false;
+            new_root->children[0] = root->node_num;
+            BNode *new_children = new_root->split_children(0, root);
+            std::optional<BNode *> evicted_child = this->node_cache->put(new_children->node_num, new_children);
+            std::optional<BNode *> evicted_root = this->node_cache->put(new_root->node_num, new_root);
+            if (evicted_child.has_value())
+                delete evicted_child.value();
+            if (evicted_root.has_value())
+                delete evicted_root.value();
+            new_root->insert(src);
+        }
+        else
+        {
+            root->insert(src);
+        }
     }
     std::vector<char *> BTree::find_all_row(const char *key, const size_t col_idx)
     {
@@ -175,29 +197,6 @@ namespace rsql
             this->get_root()->indexed_search(result, key, symbol, comparison);
         }
         return result;
-    }
-    void BTree::insert_row(const char *src)
-    {
-        BNode *root = this->get_root();
-        if (root->full())
-        {
-            BNode *new_root = new BNode(this, ++this->max_node_num);
-            this->root_num = this->max_node_num;
-            new_root->leaf = false;
-            new_root->children[0] = root->node_num;
-            BNode *new_children = new_root->split_children(0, root);
-            std::optional<BNode *> evicted_child = this->node_cache->put(new_children->node_num, new_children);
-            std::optional<BNode *> evicted_root = this->node_cache->put(new_root->node_num, new_root);
-            if (evicted_child.has_value())
-                delete evicted_child.value();
-            if (evicted_root.has_value())
-                delete evicted_root.value();
-            new_root->insert(src);
-        }
-        else
-        {
-            root->insert(src);
-        }
     }
     char *BTree::delete_row(const char *key, Comparison *comp)
     {
@@ -273,14 +272,6 @@ namespace rsql
         }
         return to_ret;
     }
-
-    std::string BTree::get_path() const
-    {
-        if (this->table)
-            return std::filesystem::path(this->table->get_path()) / std::to_string(this->tree_num);
-        else
-            return "";
-    }
     void BTree::add_column(const Column c)
     {
         this->columns.push_back(c);
@@ -299,11 +290,12 @@ namespace rsql
         this->columns.erase(this->columns.begin() + idx);
         this->get_root()->match_columns();
     }
-    void BTree::destroy()
+    std::string BTree::get_path() const
     {
-        std::string rm_command = "rm -r " + this->get_path();
-        delete this;
-        std::system(rm_command.c_str());
+        if (this->table)
+            return std::filesystem::path(this->table->get_path()) / std::to_string(this->tree_num);
+        else
+            return "";
     }
     void BTree::write_disk()
     {
@@ -365,5 +357,11 @@ namespace rsql
         }
         write(tree_file_fd, write_buffer, bytes_processed);
         close(tree_file_fd);
+    }
+    void BTree::destroy()
+    {
+        std::string rm_command = "rm -r " + this->get_path();
+        delete this;
+        std::system(rm_command.c_str());
     }
 }
